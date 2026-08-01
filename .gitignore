@@ -1,0 +1,15 @@
+# Django
+django_Backend/venv/
+django_Backend/db.sqlite3
+django_Backend/__pycache__/
+django_Backend/media/
+
+# Python
+*.pyc
+
+# React
+React_frontend/node_modules/
+React_frontend/dist/
+
+# Environment variables
+.env
