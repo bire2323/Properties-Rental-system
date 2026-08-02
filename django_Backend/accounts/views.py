@@ -1,0 +1,10 @@
+
+from django.http import JsonResponse
+
+# Create your views here.
+
+def home(request):
+    data = {
+        "message" : "well come to property rental system"
+    }
+    return JsonResponse(data)

@@ -4,6 +4,12 @@ django_Backend/db.sqlite3
 django_Backend/__pycache__/
 django_Backend/media/
 
+django_Backend/venv/
+django_Backend/__pycache__/
+django_Backend/*.pyc
+django_Backend/.env
+django_Backend/media/
+django_Backend/node_modules/
 # Python
 *.pyc
 

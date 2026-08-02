@@ -32,7 +32,7 @@ run this: CREATE DATABASE property_rental_db;
 check with running this: \l                 // you will see the database property_rental_db
 
 CREATE USER property_rent_user WITH PASSWORD 'postgres123';
-GRANT ALL PRIVILEGES ON DATABASE property_rental_db TO property_user;
+GRANT ALL PRIVILEGES ON DATABASE property_rental_db TO property_rent_user;
 
 GRANT ALL PRIVILEGES ON DATABASE property_rental_db TO property_rent_user;
 GRANT ALL ON SCHEMA public TO property_rent_user;
