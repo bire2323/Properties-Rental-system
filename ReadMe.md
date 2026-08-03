@@ -41,3 +41,34 @@ ALTER SCHEMA public OWNER TO property_rent_user;
 check user with running: \du
 // to see the table run: psql -U postgres -d property_rental_db 
 //then  run :            \dt
+
+## shadcn/ui Installation
+
+This project uses **shadcn/ui** for reusable and modern UI components.
+
+Install shadcn/ui:
+
+npx shadcn@latest init
+
+
+Add shadcn/ui components:
+
+
+npx shadcn@latest add button
+npx shadcn@latest add card
+npx shadcn@latest add dialog
+npx shadcn@latest add dropdown-menu
+npx shadcn@latest add input
+npx shadcn@latest add table
+
+
+Installed shadcn/ui dependencies:
+
+* shadcn/ui
+* Base UI
+* Tailwind CSS
+* class-variance-authority
+* clsx
+* tailwind-merge
+* tw-animate-css
+* Lucide React
