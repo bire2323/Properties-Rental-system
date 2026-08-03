@@ -15,6 +15,9 @@ import {
 } from 'lucide-react'
 import logo from '../../assets/logo.jpg'
 import Navbar from '../../components/common/Navbar'
+import GoogleLoginButton from '../../components/auth/GoogleLoginButton'
+import { useAuth } from '../../hooks/useAuth'
+import { getDashboardRoute } from '../../services/authService'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -107,6 +110,7 @@ function readImagePreview(file, callback) {
 }
 
 function Register() {
+  const { register } = useAuth()
   const [formData, setFormData] = useState(initialFormData)
   const [errors, setErrors] = useState({})
   const [previews, setPreviews] = useState({
@@ -167,7 +171,7 @@ function Register() {
     value = value.replace(/\D/g, '')
     // Limit to 9 digits
     value = value.slice(0, 9)
-    
+
     const nextData = {
       ...formData,
       phone: value,
@@ -228,7 +232,7 @@ function Register() {
     }
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     const nextErrors = applyValidation(formData)
@@ -238,14 +242,28 @@ function Register() {
       return
     }
 
-    const fullPhoneNumber = `+251${formData.phone}`
-    console.log('Registration data:', { ...formData, phone: fullPhoneNumber })
+    try {
+      const result = await register({
+        email: formData.email,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        password: formData.password,
+        confirm_password: formData.confirmPassword,
+        role: formData.accountType === 'seller' ? 'owner' : 'tenant',
+      })
 
-    setSuccessMessage(
-      formData.accountType === 'seller'
-        ? 'Seller profile looks great. Your details are ready for secure verification.'
-        : 'Customer account details look great. You are ready to continue.'
-    )
+      setSuccessMessage(
+        result?.message || 'Account created successfully.'
+      )
+
+      window.location.hash = getDashboardRoute(result?.user?.role)
+    } catch (error) {
+      setSuccessMessage('')
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        submit: error.message || 'Unable to create account right now.',
+      }))
+    }
   }
 
   const renderTextField = ({ name, label, placeholder, icon: Icon, type = 'text' }) => (
@@ -301,11 +319,10 @@ function Register() {
             setDraggingField('')
             handleFileSelection(fieldName, event.dataTransfer.files?.[0])
           }}
-          className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-3 py-2.5 text-left transition ${
-            draggingField === fieldName
+          className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-3 py-2.5 text-left transition ${draggingField === fieldName
               ? 'border-[#d4a756] bg-[#d4a756]/12 shadow-[0_16px_35px_rgba(212,167,86,0.18)]'
               : 'border-slate-300/80 bg-white/65 hover:border-[#d4a756]/65 hover:bg-[#d4a756]/6 dark:border-slate-700/70 dark:bg-slate-900/55 dark:hover:border-[#d4a756]/60'
-          }`}
+            }`}
         >
           <input
             id={fieldName}
@@ -376,227 +393,205 @@ function Register() {
 
       <main className="relative mx-auto flex min-h-[calc(100vh-6rem)] items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <div className="w-full max-w-lg">
-          <Card className="w-full max-h-[85vh] overflow-y-auto scrollbar-hide rounded-[2rem] border border-white/60 bg-white/78 p-0 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-800/70 dark:bg-slate-950/72" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-              <div className="border-b border-slate-200/80 px-6 py-4 sm:px-8 dark:border-slate-800/80">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={logo}
-                    alt="NexaSpace logo"
-                    className="h-10 w-10 rounded-xl object-cover shadow-lg"
-                  />
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b27a23]">
-                      Create account
-                    </p>
-                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
-                      Premium access starts here
-                    </h2>
-                  </div>
+          <Card className="w-full max-h-[85vh] overflow-y-auto scrollbar-hide rounded-[2rem] border border-white/60 bg-white/78 p-0 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-800/70 dark:bg-slate-950/72" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="border-b border-slate-200/80 px-6 py-4 sm:px-8 dark:border-slate-800/80">
+              <div className="flex items-center gap-3">
+                <img
+                  src={logo}
+                  alt="NexaSpace logo"
+                  className="h-10 w-10 rounded-xl object-cover shadow-lg"
+                />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b27a23]">
+                    Create account
+                  </p>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
+                    Premium access starts here
+                  </h2>
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-5 px-6 py-5 sm:px-8">
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                  <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                      Account Type
-                    </span>
-                    <div className="group relative">
-                      <Building2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
-                      <select
-                        name="accountType"
-                        value={formData.accountType}
-                        onChange={(e) => handleAccountTypeChange(e.target.value)}
-                        className={inputClassName}
-                      >
-                        {accountTypes.map(({ value, label }) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </label>
-
-                  <div className="grid gap-4">
-                    {textFields.map(renderTextField)}
+            <div className="space-y-5 px-6 py-5 sm:px-8">
+              <form className="space-y-4" onSubmit={handleSubmit}>
+                <label className="space-y-1.5">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                    Account Type
+                  </span>
+                  <div className="group relative">
+                    <Building2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
+                    <select
+                      name="accountType"
+                      value={formData.accountType}
+                      onChange={(e) => handleAccountTypeChange(e.target.value)}
+                      className={inputClassName}
+                    >
+                      {accountTypes.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                </label>
 
-                  <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                      Phone Number
-                    </span>
-                    <div className="group relative">
-                      <Smartphone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
-                      <div className="flex items-center">
-                        <span className="absolute left-10 top-1/2 -translate-y-1/2 select-none text-sm font-semibold text-white pointer-events-none z-10">
-                          +251
-                        </span>
-                        <span className="absolute left-[60px] top-1/2 h-4 w-px -translate-y-1/2 bg-slate-300 dark:bg-slate-600"></span>
-                        <Input
-                          name="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={handlePhoneChange}
-                          aria-invalid={Boolean(errors.phone)}
-                          className="h-11 rounded-xl border border-slate-200/80 bg-white/80 pl-[72px] pr-4 text-sm shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm transition focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/15 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-white placeholder:text-transparent"
-                          maxLength={9}
-                          inputMode="numeric"
-                          pattern="\d*"
-                        />
-                      </div>
+                <div className="grid gap-4">
+                  {textFields.map(renderTextField)}
+                </div>
+
+                <label className="space-y-1.5">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                    Phone Number
+                  </span>
+                  <div className="group relative">
+                    <Smartphone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
+                    <div className="flex items-center">
+                      <span className="absolute left-10 top-1/2 -translate-y-1/2 select-none text-sm font-semibold text-white pointer-events-none z-10">
+                        +251
+                      </span>
+                      <span className="absolute left-[60px] top-1/2 h-4 w-px -translate-y-1/2 bg-slate-300 dark:bg-slate-600"></span>
+                      <Input
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handlePhoneChange}
+                        aria-invalid={Boolean(errors.phone)}
+                        className="h-11 rounded-xl border border-slate-200/80 bg-white/80 pl-[72px] pr-4 text-sm shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm transition focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/15 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-white placeholder:text-transparent"
+                        maxLength={9}
+                        inputMode="numeric"
+                        pattern="\d*"
+                      />
                     </div>
-                    {errors.phone && <p className="text-xs text-rose-500">{errors.phone}</p>}
-                  </label>
+                  </div>
+                  {errors.phone && <p className="text-xs text-rose-500">{errors.phone}</p>}
+                </label>
 
-                  {renderUploadField({
-                    fieldName: 'nationalId',
-                    label: 'National ID Image Upload',
-                    helperText: 'JPG, PNG, or WEBP up to 10MB',
-                    accept: 'image/*',
-                    icon: ImagePlus,
+                {renderUploadField({
+                  fieldName: 'nationalId',
+                  label: 'National ID Image Upload',
+                  helperText: 'JPG, PNG, or WEBP up to 10MB',
+                  accept: 'image/*',
+                  icon: ImagePlus,
+                })}
+
+                {formData.accountType === 'seller' &&
+                  renderUploadField({
+                    fieldName: 'propertyMap',
+                    label: 'Property Map File Upload',
+                    helperText: 'Upload an image or PDF of the property map',
+                    accept: '.pdf,image/*',
+                    icon: UploadCloud,
                   })}
 
-                  {formData.accountType === 'seller' &&
-                    renderUploadField({
-                      fieldName: 'propertyMap',
-                      label: 'Property Map File Upload',
-                      helperText: 'Upload an image or PDF of the property map',
-                      accept: '.pdf,image/*',
-                      icon: UploadCloud,
-                    })}
-
-                  <label className="space-y-1.5">
-                      <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                        Password
-                      </span>
-                      <div className="group relative">
-                        <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
-                        <Input
-                          name="password"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="Create a password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          aria-invalid={Boolean(errors.password)}
-                          className={`${inputClassName} pr-10`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((currentState) => !currentState)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                      {errors.password && <p className="text-xs text-rose-500">{errors.password}</p>}
-                    </label>
-
-                    <label className="space-y-1.5">
-                      <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                        Confirm Password
-                      </span>
-                      <div className="group relative">
-                        <ShieldCheck className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
-                        <Input
-                          name="confirmPassword"
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          placeholder="Confirm your password"
-                          value={formData.confirmPassword}
-                          onChange={handleInputChange}
-                          aria-invalid={Boolean(errors.confirmPassword)}
-                          className={`${inputClassName} pr-10`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setShowConfirmPassword((currentState) => !currentState)
-                          }
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
-                          aria-label={
-                            showConfirmPassword
-                              ? 'Hide confirm password'
-                              : 'Show confirm password'
-                          }
-                        >
-                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                      {errors.confirmPassword && (
-                        <p className="text-xs text-rose-500">{errors.confirmPassword}</p>
-                      )}
-                    </label>
-
-                  {successMessage && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                      {successMessage}
-                    </div>
-                  )}
-
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-                        Or continue with
-                      </span>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 w-full rounded-xl border-2 border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
-                      <path
-                        fill="currentColor"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        style={{ fill: '#4285F4' }}
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        style={{ fill: '#34A853' }}
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                        style={{ fill: '#FBBC05' }}
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        style={{ fill: '#EA4335' }}
-                      />
-                    </svg>
-                    <span>Continue with Google</span>
-                  </Button>
-
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="h-11 w-full rounded-xl bg-[linear-gradient(135deg,_#f4ce7c,_#c88a29)] text-sm font-semibold text-slate-950 shadow-[0_20px_40px_rgba(212,167,86,0.28)] hover:translate-y-[-1px] hover:opacity-95"
-                  >
-                    <span>Create Account</span>
-                    <ArrowRight size={14} />
-                  </Button>
-
-                  <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-                    Already have an account?{' '}
-                    <a
-                      href="#login"
-                      className="font-semibold text-[#b27a23] transition hover:text-[#8c5c14] dark:text-[#f3c96d] dark:hover:text-[#f7db96]"
+                <label className="space-y-1.5">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                    Password
+                  </span>
+                  <div className="group relative">
+                    <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
+                    <Input
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Create a password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      aria-invalid={Boolean(errors.password)}
+                      className={`${inputClassName} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((currentState) => !currentState)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      Login
-                    </a>
-                  </p>
-                </form>
-              </div>
-            </Card>
-          </div>
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-xs text-rose-500">{errors.password}</p>}
+                </label>
+
+                <label className="space-y-1.5">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                    Confirm Password
+                  </span>
+                  <div className="group relative">
+                    <ShieldCheck className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
+                    <Input
+                      name="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="Confirm your password"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      aria-invalid={Boolean(errors.confirmPassword)}
+                      className={`${inputClassName} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword((currentState) => !currentState)
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
+                      aria-label={
+                        showConfirmPassword
+                          ? 'Hide confirm password'
+                          : 'Show confirm password'
+                      }
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-xs text-rose-500">{errors.confirmPassword}</p>
+                  )}
+                </label>
+
+                {successMessage && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                    {successMessage}
+                  </div>
+                )}
+
+                {errors.submit && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                    {errors.submit}
+                  </div>
+                )}
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
+                <GoogleLoginButton />
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="h-11 w-full rounded-xl bg-[linear-gradient(135deg,_#f4ce7c,_#c88a29)] text-sm font-semibold text-slate-950 shadow-[0_20px_40px_rgba(212,167,86,0.28)] hover:translate-y-[-1px] hover:opacity-95"
+                >
+                  <span>Create Account</span>
+                  <ArrowRight size={14} />
+                </Button>
+
+                <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                  Already have an account?{' '}
+                  <a
+                    href="#login"
+                    className="font-semibold text-[#b27a23] transition hover:text-[#8c5c14] dark:text-[#f3c96d] dark:hover:text-[#f7db96]"
+                  >
+                    Login
+                  </a>
+                </p>
+              </form>
+            </div>
+          </Card>
+        </div>
       </main>
     </div>
   )

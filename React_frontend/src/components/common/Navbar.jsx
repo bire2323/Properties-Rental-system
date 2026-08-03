@@ -2,12 +2,14 @@ import { useState, useRef, useEffect } from 'react'
 import {
   ChevronDown,
   Heart,
+  LogOut,
   Menu,
   Moon,
   SunMedium,
   User,
 } from 'lucide-react'
 import logo from '../../assets/logo.jpg'
+import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../context/ThemeContext'
 
 const propertyTypes = [
@@ -38,6 +40,7 @@ const navItems = [
 
 function Navbar() {
   const { isDark, toggleTheme } = useTheme()
+  const { user, logout, loading } = useAuth()
   const [propertyDropdownOpen, setPropertyDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -69,22 +72,22 @@ function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#c99b43]/25 bg-white/90 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-[#c99b43]/35 dark:bg-[linear-gradient(90deg,_#03172f_0%,_#04254a_55%,_#03172f_100%)] dark:text-white dark:shadow-[0_18px_50px_rgba(3,12,26,0.35)]">
-      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-[#c99b43]/25 bg-white/90 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-[#c99b43]/35 dark:bg-[linear-gradient(90deg,#03172f_0%,#04254a_55%,#03172f_100%)] dark:text-white dark:shadow-[0_18px_50px_rgba(3,12,26,0.35)]">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <a href="#home" className="flex shrink-0 items-center gap-3">
           <img
             src={logo}
             alt="NX Rent logo"
-            className="h-16 w-auto object-contain"
+            className="h-14 w-auto object-contain"
           />
-          <span className="text-xl font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d]">
-            <span className="bg-[linear-gradient(135deg,_#0b2141,_#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,_#f7db96,_#c99b43)]">
+          <span className="text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d]">
+            <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
               NexaSpace
             </span>
           </span>
         </a>
 
-        <nav className="hidden items-center gap-8 lg:flex">
+        <nav className="hidden items-center gap-5 lg:flex">
           {navItems.map((item) => (
             <div key={item.label} className="relative">
               {item.label === 'Properties' ? (
@@ -101,14 +104,13 @@ function Navbar() {
                       }
                     }}
                     onMouseEnter={() => setPropertyDropdownOpen(true)}
-                    className="flex items-center gap-1 text-[15px] font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+                    className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
                   >
                     <span>{item.label}</span>
                     <ChevronDown
                       size={16}
-                      className={`transition-transform duration-200 ${
-                        propertyDropdownOpen ? 'rotate-180' : ''
-                      }`}
+                      className={`transition-transform duration-200 ${propertyDropdownOpen ? 'rotate-180' : ''
+                        }`}
                       onClick={(e) => {
                         e.stopPropagation()
                         setPropertyDropdownOpen(!propertyDropdownOpen)
@@ -118,7 +120,7 @@ function Navbar() {
 
                   {/* Property Dropdown Menu */}
                   {propertyDropdownOpen && (
-                    <div 
+                    <div
                       className="absolute left-0 top-full mt-2 w-56 animate-in fade-in slide-in-from-top-2 duration-200"
                       onMouseLeave={() => setPropertyDropdownOpen(false)}
                     >
@@ -141,7 +143,7 @@ function Navbar() {
               ) : (
                 <a
                   href={item.href}
-                  className="flex items-center gap-1 text-[15px] font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+                  className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
                 >
                   <span>{item.label}</span>
                   {item.hasDropdown && <ChevronDown size={16} />}
@@ -151,32 +153,69 @@ function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-5 lg:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] transition hover:bg-[#c99b43]/12 dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d]"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] transition hover:bg-[#c99b43]/12 dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d]"
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             title={isDark ? 'Light mode' : 'Dark mode'}
           >
-            {isDark ? <SunMedium size={18} /> : <Moon size={18} />}
+            {isDark ? <SunMedium size={17} /> : <Moon size={17} />}
           </button>
 
           <a
             href="#home"
-            className="flex items-center gap-2 text-[15px] font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+            className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
           >
-            <Heart size={18} />
+            <Heart size={16} />
             <span>Favorites</span>
           </a>
 
-          <a
-            href="#login"
-            className="flex items-center gap-2 text-[15px] font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
-          >
-            <User size={18} />
-            <span>Login</span>
-          </a>
+          {loading ? (
+            <span className="rounded-full border border-[#c99b43]/30 px-2.5 py-1 text-[11px] font-semibold text-[#b27a23] dark:text-[#f3c96d]">
+              Checking session...
+            </span>
+          ) : user ? (
+            <div className="flex items-center gap-2 rounded-full border border-[#c99b43]/30 bg-[#c99b43]/8 px-2 py-1 dark:border-[#c99b43]/40 dark:bg-white/5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#b27a23] dark:bg-slate-800 dark:text-[#f3c96d]">
+                <User size={14} />
+              </span>
+              <div className="min-w-0 text-left">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#b27a23] dark:text-[#f3c96d]">
+                  Signed in
+                </div>
+                <div className="truncate text-xs font-semibold text-slate-800 dark:text-white">
+                  {user.first_name || user.email?.split('@')[0] || 'User'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="flex items-center gap-1 rounded-full border border-[#c99b43]/30 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:bg-[#c99b43]/10 dark:border-[#c99b43]/40 dark:text-white dark:hover:bg-[#c99b43]/10"
+              >
+                <LogOut size={14} />
+                <span>Logout</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <a
+                href="#login"
+                className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+              >
+                <User size={16} />
+                <span>Login</span>
+              </a>
+              <a
+                href="#register"
+                className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+              >
+                <User size={16} />
+                <span>Register</span>
+              </a>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-3 lg:hidden">
