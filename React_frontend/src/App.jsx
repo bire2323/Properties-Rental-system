@@ -1,34 +1,47 @@
 import { useEffect, useState } from 'react'
+import Home from './pages/Home/Home'
+import Login from './pages/Auth/Login'
+import Register from './pages/Auth/Register'
+import Properties from './pages/Properties/Properties'
+import PropertyDetails from './pages/Properties/PropertyDetails'
 
+function getCurrentPage() {
+  if (typeof window === 'undefined') {
+    return 'home'
+  }
 
+  const hash = window.location.hash.slice(1) // Remove the #
+  const page = hash.split('?')[0] // Get page name before query params
+  
+  if (page === 'login') return 'login'
+  if (page === 'register') return 'register'
+  if (page === 'properties') return 'properties'
+  if (page === 'property-details') return 'property-details'
+  if (page === 'home' || page === '') return 'home'
+  return 'home' // Default to home for any other hash
+}
 
 function App() {
-  const [data, setData] = useState(null);
+  const [currentPage, setCurrentPage] = useState(getCurrentPage)
+
   useEffect(() => {
-    fetch('http://localhost:8000/api/accounts/')
-      .then(response => response.json())
-      .then(data => setData(data.message))
-      .catch(error => console.error('Error fetching data:', error));
-  }, []);
+    // Update page based on hash changes
+    const handleHashChange = () => {
+      setCurrentPage(getCurrentPage())
+    }
 
-  return (
-    <>
-      <div className="w-full h-screen flex justify-center items-center bg-gray-100">
-        <p className="text-2xl  font-bold">Property rental system</p>
-      </div>
-      <div className="w-full h-screen flex justify-center items-center bg-gray-100">
-        {data ? (
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Data from Django Backend:</h1>
-            <pre className="bg-white p-4 rounded shadow">{data}</pre>
-          </div>
-        ) : (
-          <p className="text-xl">Loading data...</p>
-        )}
-      </div>
+    window.addEventListener('hashchange', handleHashChange)
 
-    </>
-  )
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [])
+
+  if (currentPage === 'login') return <Login />
+  if (currentPage === 'register') return <Register />
+  if (currentPage === 'properties') return <Properties />
+  if (currentPage === 'property-details') return <PropertyDetails />
+  return <Home />
 }
 
 export default App
