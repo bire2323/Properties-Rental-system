@@ -72,3 +72,11 @@ Installed shadcn/ui dependencies:
 * tailwind-merge
 * tw-animate-css
 * Lucide React
+
+
+<h1>FOR DJANGO IT IS VERY NECCESSARY !!!!! </h1>
+// django lay adis liberary install stadergi push kemadregsh befit run :
+pip freeze > requirements.txt
+
+// django lay update yehone file pull snaderg run:
+pip install -r requirements.txt
