@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-
-const ThemeContext = createContext(undefined)
+import { useEffect, useMemo, useState } from 'react'
+import { ThemeContext } from './theme-context'
 
 function getInitialTheme() {
   if (typeof window === 'undefined') {
@@ -42,14 +41,4 @@ function ThemeProvider({ children }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
-function useTheme() {
-  const context = useContext(ThemeContext)
-
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-
-  return context
-}
-
-export { ThemeProvider, useTheme }
+export { ThemeProvider }

@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react'
-import { MapPin, Star, Bed, Bath, Maximize2, Heart, Share2, Phone, Mail, Calendar, CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car, Wifi, Wind, Droplets, Zap, Shield, Camera, Dumbbell, TreePine, Sofa, X } from 'lucide-react'
+import { MapPin, Star, Bed, Bath, Maximize2, Heart, Share2, Calendar, CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car, Wifi, Wind, Droplets, Zap, Shield, Camera, Dumbbell, TreePine, Sofa, X } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
@@ -59,8 +59,12 @@ function PropertyDetails() {
 
       <section className="bg-white py-8 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-2xl cursor-pointer">
+          <div className="relative cursor-pointer overflow-hidden rounded-[28px] border border-slate-200/70 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800">
             <img src={property.images[selectedImage]} alt={property.title} className="h-96 w-full object-cover md:h-[500px]" onClick={() => setLightboxOpen(true)} />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/65 via-slate-950/10 to-transparent" />
+            <div className="absolute bottom-5 left-5 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg backdrop-blur dark:bg-slate-900/80 dark:text-white">
+              {selectedImage + 1} / {property.images.length} Photos
+            </div>
             {property.images.length > 1 && (
               <>
                 <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-lg hover:bg-white dark:bg-slate-900/90"><ChevronLeft className="h-6 w-6" /></button>
@@ -84,7 +88,8 @@ function PropertyDetails() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <Card className="p-6 md:p-8">
+              <Card className="relative overflow-hidden border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95 md:p-8">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#c99b43] via-[#f3c96d] to-[#c99b43]" />
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-3">
@@ -101,39 +106,98 @@ function PropertyDetails() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-center gap-6 border-y border-slate-200 py-6 dark:border-slate-800">
-                  <div><p className="text-sm text-slate-600 dark:text-slate-400">Price</p><p className="mt-1 text-3xl font-bold text-[#c99b43]">{property.price}<span className="text-lg text-slate-600 dark:text-slate-400"> ETB/mo</span></p></div>
-                  <div className="h-12 w-px bg-slate-200 dark:bg-slate-800" />
-                  <div className="flex gap-6">
-                    <div className="flex items-center gap-2"><Bed className="h-5 w-5 text-slate-400" /><div><p className="font-semibold text-slate-900 dark:text-white">{property.beds}</p><p className="text-xs text-slate-600 dark:text-slate-400">Bedrooms</p></div></div>
-                    <div className="flex items-center gap-2"><Bath className="h-5 w-5 text-slate-400" /><div><p className="font-semibold text-slate-900 dark:text-white">{property.baths}</p><p className="text-xs text-slate-600 dark:text-slate-400">Bathrooms</p></div></div>
-                    <div className="flex items-center gap-2"><Maximize2 className="h-5 w-5 text-slate-400" /><div><p className="font-semibold text-slate-900 dark:text-white">{property.area} m²</p><p className="text-xs text-slate-600 dark:text-slate-400">Area</p></div></div>
-                    <div className="flex items-center gap-2"><Car className="h-5 w-5 text-slate-400" /><div><p className="font-semibold text-slate-900 dark:text-white">{property.parking}</p><p className="text-xs text-slate-600 dark:text-slate-400">Parking</p></div></div>
+                <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                  <div className="rounded-2xl border border-[#c99b43]/20 bg-gradient-to-br from-[#fff7e8] to-white p-5 shadow-sm dark:border-[#c99b43]/20 dark:from-[#1e1a11] dark:to-slate-900">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Monthly Price</p>
+                    <p className="mt-2 text-3xl font-bold text-[#c99b43]">{property.price}</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ETB / month</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Bed className="h-5 w-5 text-[#c99b43]" />
+                      <div><p className="font-semibold text-slate-900 dark:text-white">{property.beds}</p><p className="text-xs text-slate-600 dark:text-slate-400">Bedrooms</p></div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Bath className="h-5 w-5 text-[#c99b43]" />
+                      <div><p className="font-semibold text-slate-900 dark:text-white">{property.baths}</p><p className="text-xs text-slate-600 dark:text-slate-400">Bathrooms</p></div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Maximize2 className="h-5 w-5 text-[#c99b43]" />
+                      <div><p className="font-semibold text-slate-900 dark:text-white">{property.area} m²</p><p className="text-xs text-slate-600 dark:text-slate-400">Area</p></div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Car className="h-5 w-5 text-[#c99b43]" />
+                      <div><p className="font-semibold text-slate-900 dark:text-white">{property.parking}</p><p className="text-xs text-slate-600 dark:text-slate-400">Parking</p></div>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-8"><h2 className="text-2xl font-bold text-slate-900 dark:text-white">Description</h2><p className="mt-4 leading-relaxed text-slate-600 dark:text-slate-400">{property.description}</p></div>
-                <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                  <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800"><CheckCircle className="h-5 w-5 text-emerald-500" /><div><p className="text-sm text-slate-600 dark:text-slate-400">Furnished</p><p className="font-semibold text-slate-900 dark:text-white">{property.furnished}</p></div></div>
-                  <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800"><CheckCircle className="h-5 w-5 text-emerald-500" /><div><p className="text-sm text-slate-600 dark:text-slate-400">Property ID</p><p className="font-semibold text-slate-900 dark:text-white">{property.propertyId}</p></div></div>
-                  <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800"><Calendar className="h-5 w-5 text-emerald-500" /><div><p className="text-sm text-slate-600 dark:text-slate-400">Date Posted</p><p className="font-semibold text-slate-900 dark:text-white">{property.datePosted}</p></div></div>
+                <div className="mt-10">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Description</h2>
+                  <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-950/40">
+                    <p className="leading-relaxed text-slate-600 dark:text-slate-400">{property.description}</p>
+                  </div>
                 </div>
-                <div className="mt-8"><h2 className="text-2xl font-bold text-slate-900 dark:text-white">Features & Amenities</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">{property.features.map((feature, index) => {const Icon = featureIcons[feature] || CheckCircle; return (<div key={index} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800"><Icon className="h-5 w-5 text-[#c99b43]" /><span className="text-slate-700 dark:text-slate-300">{feature}</span></div>)})}</div></div>
+                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800"><CheckCircle className="h-5 w-5 text-emerald-500" /><div><p className="text-sm text-slate-600 dark:text-slate-400">Furnished</p><p className="font-semibold text-slate-900 dark:text-white">{property.furnished}</p></div></div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800"><CheckCircle className="h-5 w-5 text-emerald-500" /><div><p className="text-sm text-slate-600 dark:text-slate-400">Property ID</p><p className="font-semibold text-slate-900 dark:text-white">{property.propertyId}</p></div></div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800"><Calendar className="h-5 w-5 text-emerald-500" /><div><p className="text-sm text-slate-600 dark:text-slate-400">Date Posted</p><p className="font-semibold text-slate-900 dark:text-white">{property.datePosted}</p></div></div>
+                </div>
+                <div className="mt-10">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Features & Amenities</h2>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">{property.features.map((feature, index) => {const Icon = featureIcons[feature] || CheckCircle; return (<div key={index} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#c99b43]/50 hover:shadow-sm dark:border-slate-800"><Icon className="h-5 w-5 text-[#c99b43]" /><span className="text-slate-700 dark:text-slate-300">{feature}</span></div>)})}</div>
+                </div>
               </Card>
               {similarProperties.length > 0 && (
-                <Card className="mt-8 p-6"><h2 className="text-2xl font-bold text-slate-900 dark:text-white">Similar Properties</h2><div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{similarProperties.map((prop) => (<div key={prop.id} className="group overflow-hidden rounded-xl border border-slate-200 bg-white transition-all hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><img src={prop.images[0]} alt={prop.title} className="h-40 w-full object-cover transition-transform group-hover:scale-110" /><div className="p-4"><h3 className="font-semibold text-slate-900 dark:text-white">{prop.title}</h3><p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{prop.location}</p><div className="mt-3 flex items-center justify-between"><span className="text-lg font-bold text-[#c99b43]">{prop.price} ETB</span><Button size="sm" onClick={() => (window.location.hash = `property-details?id=${prop.id}`)} className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950">View</Button></div></div></div>))}</div></Card>
+                <Card className="mt-8 border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95"><h2 className="text-2xl font-bold text-slate-900 dark:text-white">Similar Properties</h2><div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{similarProperties.map((prop) => (<div key={prop.id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><img src={prop.images[0]} alt={prop.title} className="h-40 w-full object-cover transition-transform group-hover:scale-110" /><div className="p-4"><h3 className="font-semibold text-slate-900 dark:text-white">{prop.title}</h3><p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{prop.location}</p><div className="mt-3 flex items-center justify-between"><span className="text-lg font-bold text-[#c99b43]">{prop.price} ETB</span><Button size="sm" onClick={() => (window.location.hash = `property-details?id=${prop.id}`)} className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950">View</Button></div></div></div>))}</div></Card>
               )}
             </div>
             <div className="lg:col-span-1">
-              <Card className="sticky top-32 p-6">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Contact Property Owner</h3>
-                <div className="mt-6 flex items-center gap-4"><img src={property.owner.photo} alt={property.owner.name} className="h-16 w-16 rounded-full" /><div><p className="font-semibold text-slate-900 dark:text-white">{property.owner.name}</p><p className="text-sm text-slate-600 dark:text-slate-400">Property Owner</p></div></div>
-                <div className="mt-6 space-y-3">
-                  <Button className="w-full gap-2 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"><Phone className="h-4 w-4" />{property.owner.phone}</Button>
-                  <Button variant="outline" className="w-full gap-2"><Mail className="h-4 w-4" />Email Owner</Button>
-                  <Button variant="outline" className="w-full gap-2"><Calendar className="h-4 w-4" />Schedule Visit</Button>
-                </div>
-                <div className="mt-6 rounded-lg bg-slate-100 p-4 dark:bg-slate-800"><p className="text-sm text-slate-600 dark:text-slate-400">Interested in this property? Contact the owner for more information.</p></div>
-              </Card>
+              <div className="sticky top-32 space-y-6">
+                <Card className="border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Property Snapshot</h3>
+                  <div className="mt-5 space-y-4">
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Availability</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{property.status}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Category</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{property.type}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Furnished</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{property.furnished}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Rating</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{property.rating} / 5</span>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="overflow-hidden border-[#c99b43]/20 bg-gradient-to-br from-[#fff8eb] via-white to-[#fff3d3] p-6 shadow-[0_24px_80px_rgba(201,155,67,0.16)] dark:border-[#c99b43]/20 dark:from-[#1f1a10] dark:via-slate-900 dark:to-[#1a1308]">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Why This Property Stands Out</h3>
+                  <div className="mt-5 space-y-3">
+                    <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 dark:bg-slate-950/40">
+                      <CheckCircle className="mt-0.5 h-5 w-5 text-[#c99b43]" />
+                      <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">Well-balanced layout with {property.beds} bedrooms, {property.baths} bathrooms, and {property.area} m² of usable space.</p>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 dark:bg-slate-950/40">
+                      <CheckCircle className="mt-0.5 h-5 w-5 text-[#c99b43]" />
+                      <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">Located in {property.location}, giving quick access to a strong residential area and everyday conveniences.</p>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 dark:bg-slate-950/40">
+                      <CheckCircle className="mt-0.5 h-5 w-5 text-[#c99b43]" />
+                      <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">Comes with sought-after amenities like {property.features.slice(0, 3).join(', ')} and more.</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
             </div>
           </div>
         </div>

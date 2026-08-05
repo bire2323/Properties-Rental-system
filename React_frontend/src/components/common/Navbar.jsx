@@ -5,12 +5,13 @@ import {
   LogOut,
   Menu,
   Moon,
+  Settings,
   SunMedium,
   User,
 } from 'lucide-react'
 import logo from '../../assets/logo.jpg'
 import { useAuth } from '../../hooks/useAuth'
-import { useTheme } from '../../context/ThemeContext'
+import { useTheme } from '../../hooks/useTheme'
 
 const propertyTypes = [
   { label: 'All Properties', value: '' },
@@ -29,46 +30,150 @@ const propertyTypes = [
   { label: 'Shop', value: 'shop' },
 ]
 
+const vehicleTypes = [
+  { label: 'All Vehicles', value: '' },
+  { label: 'Sedan', value: 'sedan' },
+  { label: 'SUV', value: 'suv' },
+  { label: 'Hatchback', value: 'hatchback' },
+  { label: 'Coupe', value: 'coupe' },
+  { label: 'Convertible', value: 'convertible' },
+  { label: 'Pickup Truck', value: 'pickup-truck' },
+  { label: 'Van', value: 'van' },
+  { label: 'Minibus', value: 'minibus' },
+  { label: 'Bus', value: 'bus' },
+  { label: 'Motorcycle', value: 'motorcycle' },
+  { label: 'Scooter', value: 'scooter' },
+  { label: 'Bicycle', value: 'bicycle' },
+  { label: 'Truck', value: 'truck' },
+  { label: 'Trailer', value: 'trailer' },
+]
+
 const navItems = [
   { label: 'Home', href: '#home', hasDropdown: false },
-  { label: 'Properties', href: '#properties', hasDropdown: true },
-  { label: 'Vehicles', href: '#vehicles', hasDropdown: true },
+  { label: 'Properties', href: '#properties', hasDropdown: false },
+  { label: 'Vehicles', href: '#vehicles', hasDropdown: false },
   { label: 'About Us', href: '#about', hasDropdown: false },
-  { label: 'How It Works', href: '#how-it-works', hasDropdown: false },
-  { label: 'Contact', href: '#contact', hasDropdown: false },
 ]
 
 function Navbar() {
   const { isDark, toggleTheme } = useTheme()
   const { user, logout, loading } = useAuth()
   const [propertyDropdownOpen, setPropertyDropdownOpen] = useState(false)
-  const dropdownRef = useRef(null)
+  const [vehicleDropdownOpen, setVehicleDropdownOpen] = useState(false)
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false)
+  const propertyDropdownRef = useRef(null)
+  const vehicleDropdownRef = useRef(null)
+  const authDropdownRef = useRef(null)
+  const navigateTo = (path) => {
+    // #region debug-point A:navigate-to
+    fetch('http://127.0.0.1:7777/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'vehicle-navbar-nav',
+        runId: 'pre-fix',
+        hypothesisId: 'A',
+        location: 'src/components/common/Navbar.jsx:61',
+        msg: '[DEBUG] Navbar navigateTo called',
+        data: { path, currentHash: window.location.hash },
+        ts: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    window.location.hash = path
+    // #region debug-point A:hash-after-set
+    setTimeout(() => {
+      fetch('http://127.0.0.1:7777/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'vehicle-navbar-nav',
+          runId: 'pre-fix',
+          hypothesisId: 'A',
+          location: 'src/components/common/Navbar.jsx:74',
+          msg: '[DEBUG] Navbar hash after navigation',
+          data: { path, nextHash: window.location.hash },
+          ts: Date.now(),
+        }),
+      }).catch(() => {})
+    }, 0)
+    // #endregion
+  }
+  const getHashPath = (path) => {
+    return `#${path}`
+  }
+  const userLabel = user?.first_name || user?.email?.split('@')[0] || 'User'
+  const userInitial = userLabel.charAt(0).toUpperCase()
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (
+        propertyDropdownRef.current &&
+        !propertyDropdownRef.current.contains(event.target)
+      ) {
         setPropertyDropdownOpen(false)
+      }
+
+      if (
+        vehicleDropdownRef.current &&
+        !vehicleDropdownRef.current.contains(event.target)
+      ) {
+        setVehicleDropdownOpen(false)
+      }
+
+      if (
+        authDropdownRef.current &&
+        !authDropdownRef.current.contains(event.target)
+      ) {
+        setAuthDropdownOpen(false)
       }
     }
 
-    if (propertyDropdownOpen) {
+    if (propertyDropdownOpen || vehicleDropdownOpen || authDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [propertyDropdownOpen])
+  }, [propertyDropdownOpen, vehicleDropdownOpen, authDropdownOpen])
 
   const handlePropertyTypeClick = (value) => {
-    console.log('Property type clicked:', value) // Debug log
     setPropertyDropdownOpen(false)
     if (value) {
-      window.location.hash = `properties?type=${value}`
+      navigateTo(`properties?type=${value}`)
     } else {
-      window.location.hash = 'properties'
+      navigateTo('properties')
     }
+  }
+
+  const handleVehicleTypeClick = (value) => {
+    // #region debug-point A:vehicle-type-click
+    fetch('http://127.0.0.1:7777/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'vehicle-navbar-nav',
+        runId: 'pre-fix',
+        hypothesisId: 'A',
+        location: 'src/components/common/Navbar.jsx:126',
+        msg: '[DEBUG] Vehicle type menu clicked',
+        data: { value, currentHash: window.location.hash },
+        ts: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    setVehicleDropdownOpen(false)
+    if (value) {
+      navigateTo(`vehicles?type=${value}`)
+    } else {
+      navigateTo('vehicles')
+    }
+  }
+
+  const handleLogout = async () => {
+    setAuthDropdownOpen(false)
+    await logout()
   }
 
   return (
@@ -91,7 +196,7 @@ function Navbar() {
           {navItems.map((item) => (
             <div key={item.label} className="relative">
               {item.label === 'Properties' ? (
-                <div ref={dropdownRef}>
+                <div ref={propertyDropdownRef}>
                   <button
                     onClick={(e) => {
                       // If clicking on the chevron, toggle dropdown
@@ -100,7 +205,7 @@ function Navbar() {
                       if (isChevron) {
                         setPropertyDropdownOpen(!propertyDropdownOpen)
                       } else {
-                        window.location.hash = 'properties'
+                        navigateTo('properties')
                       }
                     }}
                     onMouseEnter={() => setPropertyDropdownOpen(true)}
@@ -127,13 +232,84 @@ function Navbar() {
                       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
                         <div className="max-h-96 overflow-y-auto p-2">
                           {propertyTypes.map((type) => (
-                            <button
+                            <a
                               key={type.value}
+                              href={getHashPath(type.value ? `properties?type=${type.value}` : 'properties')}
                               onClick={() => handlePropertyTypeClick(type.value)}
-                              className="w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                              className="block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                             >
                               {type.label}
-                            </button>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : item.label === 'Vehicles' ? (
+                <div ref={vehicleDropdownRef}>
+                  <div
+                    onMouseEnter={() => setVehicleDropdownOpen(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <a
+                      href="#vehicles"
+                      onClick={() => {
+                        // #region debug-point D:vehicles-nav-link
+                        fetch('http://127.0.0.1:7777/event', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            sessionId: 'vehicle-navbar-nav',
+                            runId: 'post-fix',
+                            hypothesisId: 'D',
+                            location: 'src/components/common/Navbar.jsx:225',
+                            msg: '[DEBUG] Vehicles nav label clicked',
+                            data: { currentHash: window.location.hash, nextHash: '#vehicles' },
+                            ts: Date.now(),
+                          }),
+                        }).catch(() => {})
+                        // #endregion
+                        setVehicleDropdownOpen(false)
+                      }}
+                      className="px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+                    >
+                      <span>{item.label}</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setVehicleDropdownOpen(!vehicleDropdownOpen)}
+                      className="flex items-center px-1 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+                      aria-label="Toggle vehicle types"
+                    >
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform duration-200 ${vehicleDropdownOpen ? 'rotate-180' : ''
+                        }`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setVehicleDropdownOpen(!vehicleDropdownOpen)
+                      }}
+                    />
+                    </button>
+                  </div>
+
+                  {vehicleDropdownOpen && (
+                    <div
+                      className="absolute left-0 top-full mt-2 w-56 animate-in fade-in slide-in-from-top-2 duration-200"
+                      onMouseLeave={() => setVehicleDropdownOpen(false)}
+                    >
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                        <div className="max-h-96 overflow-y-auto p-2">
+                          {vehicleTypes.map((type) => (
+                            <a
+                              key={type.value}
+                              href={getHashPath(type.value ? `vehicles?type=${type.value}` : 'vehicles')}
+                              onClick={() => handleVehicleTypeClick(type.value)}
+                              className="block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                            >
+                              {type.label}
+                            </a>
                           ))}
                         </div>
                       </div>
@@ -166,10 +342,11 @@ function Navbar() {
 
           <a
             href="#home"
-            className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-100 dark:hover:bg-[#c99b43]/10 dark:hover:text-[#f3c96d]"
+            aria-label="Favorites"
+            title="Favorites"
           >
             <Heart size={16} />
-            <span>Favorites</span>
           </a>
 
           {loading ? (
@@ -177,44 +354,87 @@ function Navbar() {
               Checking session...
             </span>
           ) : user ? (
-            <div className="flex items-center gap-2 rounded-full border border-[#c99b43]/30 bg-[#c99b43]/8 px-2 py-1 dark:border-[#c99b43]/40 dark:bg-white/5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#b27a23] dark:bg-slate-800 dark:text-[#f3c96d]">
-                <User size={14} />
-              </span>
-              <div className="min-w-0 text-left">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#b27a23] dark:text-[#f3c96d]">
-                  Signed in
-                </div>
-                <div className="truncate text-xs font-semibold text-slate-800 dark:text-white">
-                  {user.first_name || user.email?.split('@')[0] || 'User'}
-                </div>
-              </div>
+            <div className="relative" ref={authDropdownRef}>
               <button
                 type="button"
-                onClick={logout}
-                className="flex items-center gap-1 rounded-full border border-[#c99b43]/30 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:bg-[#c99b43]/10 dark:border-[#c99b43]/40 dark:text-white dark:hover:bg-[#c99b43]/10"
+                onClick={() => setAuthDropdownOpen((open) => !open)}
+                className="flex items-center gap-2 rounded-full border border-[#c99b43]/30 bg-[#c99b43]/8 p-1 pr-2 text-slate-700 transition hover:bg-[#c99b43]/12 dark:border-[#c99b43]/40 dark:bg-white/5 dark:text-white"
+                aria-label="Open profile menu"
               >
-                <LogOut size={14} />
-                <span>Logout</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] text-sm font-semibold text-slate-950 shadow-sm">
+                  {userInitial}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${authDropdownOpen ? 'rotate-180' : ''}`}
+                />
               </button>
+
+              {authDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                  <button
+                    type="button"
+                    onClick={() => setAuthDropdownOpen(false)}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                  >
+                    <User size={15} />
+                    <span>Profile</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthDropdownOpen(false)}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                  >
+                    <Settings size={15} />
+                    <span>Setting</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                  >
+                    <LogOut size={15} />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
-            <>
-              <a
-                href="#login"
+            <div className="relative" ref={authDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setAuthDropdownOpen((open) => !open)}
                 className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
               >
                 <User size={16} />
-                <span>Login</span>
-              </a>
-              <a
-                href="#register"
-                className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
-              >
-                <User size={16} />
-                <span>Register</span>
-              </a>
-            </>
+                <span>Sign In</span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${authDropdownOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {authDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                  <a
+                    href="#login"
+                    onClick={() => setAuthDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                  >
+                    <User size={15} />
+                    <span>Sign In</span>
+                  </a>
+                  <a
+                    href="#register"
+                    onClick={() => setAuthDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                  >
+                    <User size={15} />
+                    <span>Sign Up</span>
+                  </a>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

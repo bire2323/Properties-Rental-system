@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
     getProfile,
     login as loginRequest,
@@ -8,8 +8,7 @@ import {
     refreshToken as refreshTokenRequest,
 } from '../api/authApi'
 import { normalizeErrorMessage } from '../services/authService'
-
-export const AuthContext = createContext(null)
+import { AuthContext } from './auth-context'
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
@@ -17,13 +16,11 @@ export function AuthProvider({ children }) {
 
     // Restore the authenticated user from the HttpOnly cookie-backed profile API.
     async function checkAuth() {
-        setLoading(true)
-
         try {
             const profile = await getProfile()
             setUser(profile)
             return profile
-        } catch (error) {
+        } catch {
             try {
                 // If the access cookie has expired, try refreshing the session first.
                 await refreshTokenRequest()
@@ -50,7 +47,7 @@ export function AuthProvider({ children }) {
             setUser(result.user)
             return result
         } catch (error) {
-            throw new Error(normalizeErrorMessage(error))
+            throw new Error(normalizeErrorMessage(error), { cause: error })
         } finally {
             setLoading(false)
         }
@@ -63,7 +60,7 @@ export function AuthProvider({ children }) {
             setUser(result.user)
             return result
         } catch (error) {
-            throw new Error(normalizeErrorMessage(error))
+            throw new Error(normalizeErrorMessage(error), { cause: error })
         } finally {
             setLoading(false)
         }
@@ -85,7 +82,7 @@ export function AuthProvider({ children }) {
             setUser(result.user)
             return result
         } catch (error) {
-            throw new Error(normalizeErrorMessage(error))
+            throw new Error(normalizeErrorMessage(error), { cause: error })
         } finally {
             setLoading(false)
         }
