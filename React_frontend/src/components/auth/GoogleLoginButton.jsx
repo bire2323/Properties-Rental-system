@@ -1,16 +1,17 @@
 import { GoogleLogin } from '@react-oauth/google'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getDashboardRoute } from '../../services/authService'
 
 export default function GoogleLoginButton() {
+    const navigate = useNavigate()
     const { googleLogin } = useAuth()
 
-    // The Google credential is sent to Django, which verifies it and returns the profile.
     const handleSuccess = async (credentialResponse) => {
         try {
             const result = await googleLogin(credentialResponse.credential)
             const route = getDashboardRoute(result?.user?.role)
-            window.location.hash = route
+            navigate(route)
         } catch (error) {
             window.alert(error?.message || 'Google sign-in failed.')
         }

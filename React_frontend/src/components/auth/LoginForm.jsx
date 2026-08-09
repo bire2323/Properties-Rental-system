@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getDashboardRoute } from '../../services/authService'
 
 export default function LoginForm() {
+    const navigate = useNavigate()
     const { login } = useAuth()
     const [formData, setFormData] = useState({ email: '', password: '' })
     const [error, setError] = useState('')
@@ -18,7 +20,7 @@ export default function LoginForm() {
 
         try {
             const result = await login(formData)
-            window.location.hash = getDashboardRoute(result?.user?.role)
+            navigate(getDashboardRoute(result?.user?.role))
         } catch (submitError) {
             setError(submitError.message || 'Login failed.')
         }

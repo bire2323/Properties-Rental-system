@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { MapPin, Star, Heart, Share2, Calendar, CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car, Fuel, Users, Settings2, Wifi, Shield, Camera, Wind, Zap, X } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
@@ -108,20 +109,13 @@ const featureIcons = {
 }
 
 function VehicleDetails() {
-  const [vehicle, setVehicle] = useState(null)
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const vehicleId = Number(id)
+  const vehicle = allVehicles.find((v) => v.id === vehicleId) ?? null
   const [isFavorite, setIsFavorite] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
-
-  useEffect(() => {
-    const hash = window.location.hash
-    const urlParams = new URLSearchParams(hash.split('?')[1] || '')
-    const vehicleId = parseInt(urlParams.get('id'))
-    console.log('VehicleDetails: Looking for vehicle ID:', vehicleId);
-    const foundVehicle = allVehicles.find((v) => v.id === vehicleId)
-    console.log('VehicleDetails: Found vehicle:', foundVehicle);
-    if (foundVehicle) setVehicle(foundVehicle)
-  }, [])
 
   if (!vehicle) {
     return (
@@ -132,7 +126,7 @@ function VehicleDetails() {
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Vehicle Not Found</h2>
             <p className="mt-2 text-slate-600 dark:text-slate-400">The vehicle you're looking for does not exist.</p>
             <Button
-              onClick={() => (window.location.hash = 'vehicles')}
+              onClick={() => navigate('/vehicles')}
               className="mt-6 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"
             >
               Back to Vehicles
@@ -158,7 +152,7 @@ function VehicleDetails() {
           <div className="flex items-center justify-between">
             <Button
               variant="outline"
-              onClick={() => (window.location.hash = 'vehicles')}
+              onClick={() => navigate('/vehicles')}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -218,9 +212,8 @@ function VehicleDetails() {
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`overflow-hidden rounded-lg border-2 transition-all ${
-                    selectedImage === index ? 'border-[#c99b43]' : 'border-transparent hover:border-slate-300'
-                  }`}
+                  className={`overflow-hidden rounded-lg border-2 transition-all ${selectedImage === index ? 'border-[#c99b43]' : 'border-transparent hover:border-slate-300'
+                    }`}
                 >
                   <img src={img} alt={`View ${index + 1}`} className="h-20 w-full object-cover" />
                 </button>
@@ -238,7 +231,7 @@ function VehicleDetails() {
             <div className="lg:col-span-2">
               <Card className="relative overflow-hidden border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95 md:p-8">
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#c99b43] via-[#f3c96d] to-[#c99b43]" />
-                
+
                 {/* Header */}
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -395,7 +388,7 @@ function VehicleDetails() {
                             <span className="text-lg font-bold text-[#c99b43]">{veh.price} ETB</span>
                             <Button
                               size="sm"
-                              onClick={() => (window.location.hash = `vehicle-details?id=${veh.id}`)}
+                              onClick={() => navigate(`/vehicles/${veh.id}`)}
                               className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"
                             >
                               View

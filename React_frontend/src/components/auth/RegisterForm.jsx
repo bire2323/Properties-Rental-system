@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getDashboardRoute } from '../../services/authService'
 
 export default function RegisterForm() {
+    const navigate = useNavigate()
     const { register } = useAuth()
     const [formData, setFormData] = useState({
         email: '',
@@ -25,7 +27,7 @@ export default function RegisterForm() {
 
         try {
             const result = await register(formData)
-            window.location.hash = getDashboardRoute(result?.user?.role)
+            navigate(getDashboardRoute(result?.user?.role))
         } catch (submitError) {
             setError(submitError.message || 'Registration failed.')
         }

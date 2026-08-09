@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { MapPin, Star, Bed, Bath, Maximize2, Heart, Share2, Calendar, CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car, Wifi, Wind, Droplets, Zap, Shield, Camera, Dumbbell, TreePine, Sofa, X } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
@@ -14,24 +15,19 @@ const allProperties = [
 const featureIcons = { 'Wi-Fi': Wifi, 'Balcony': Sofa, 'Garden': TreePine, 'Security': Shield, 'CCTV': Camera, 'Air Conditioning': Wind, 'Swimming Pool': Droplets, 'Pool': Droplets, 'Gym': Dumbbell, 'Water Supply': Droplets, 'Electricity': Zap }
 
 function PropertyDetails() {
-  const [property, setProperty] = useState(null)
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const propertyId = Number(id)
+  const property = allProperties.find((p) => p.id === propertyId) ?? null
   const [isFavorite, setIsFavorite] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
-
-  useEffect(() => {
-    const hash = window.location.hash
-    const urlParams = new URLSearchParams(hash.split('?')[1] || '')
-    const propertyId = parseInt(urlParams.get('id'))
-    const foundProperty = allProperties.find((p) => p.id === propertyId)
-    if (foundProperty) setProperty(foundProperty)
-  }, [])
 
   if (!property) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <Navbar />
-        <div className="flex min-h-[60vh] items-center justify-center"><div className="text-center"><h2 className="text-2xl font-bold">Property Not Found</h2><p className="mt-2">The property does not exist.</p><Button onClick={() => (window.location.hash = 'properties')} className="mt-6 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950">Back</Button></div></div>
+        <div className="flex min-h-[60vh] items-center justify-center"><div className="text-center"><h2 className="text-2xl font-bold">Property Not Found</h2><p className="mt-2">The property does not exist.</p><Button onClick={() => navigate('/properties')} className="mt-6 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950">Back</Button></div></div>
         <Footer />
       </div>
     )
@@ -48,7 +44,7 @@ function PropertyDetails() {
       <section className="border-b border-slate-200 bg-white py-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => (window.location.hash = 'properties')} className="gap-2"><ArrowLeft className="h-4 w-4" />Back to Properties</Button>
+            <Button variant="outline" onClick={() => navigate('/properties')} className="gap-2"><ArrowLeft className="h-4 w-4" />Back to Properties</Button>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={() => setIsFavorite(!isFavorite)} className={isFavorite ? 'border-red-500 text-red-500' : ''}><Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} /></Button>
               <Button variant="outline" size="icon"><Share2 className="h-5 w-5" /></Button>
@@ -150,11 +146,11 @@ function PropertyDetails() {
                 </div>
                 <div className="mt-10">
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Features & Amenities</h2>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">{property.features.map((feature, index) => {const Icon = featureIcons[feature] || CheckCircle; return (<div key={index} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#c99b43]/50 hover:shadow-sm dark:border-slate-800"><Icon className="h-5 w-5 text-[#c99b43]" /><span className="text-slate-700 dark:text-slate-300">{feature}</span></div>)})}</div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">{property.features.map((feature, index) => { const Icon = featureIcons[feature] || CheckCircle; return (<div key={index} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#c99b43]/50 hover:shadow-sm dark:border-slate-800"><Icon className="h-5 w-5 text-[#c99b43]" /><span className="text-slate-700 dark:text-slate-300">{feature}</span></div>) })}</div>
                 </div>
               </Card>
               {similarProperties.length > 0 && (
-                <Card className="mt-8 border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95"><h2 className="text-2xl font-bold text-slate-900 dark:text-white">Similar Properties</h2><div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{similarProperties.map((prop) => (<div key={prop.id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><img src={prop.images[0]} alt={prop.title} className="h-40 w-full object-cover transition-transform group-hover:scale-110" /><div className="p-4"><h3 className="font-semibold text-slate-900 dark:text-white">{prop.title}</h3><p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{prop.location}</p><div className="mt-3 flex items-center justify-between"><span className="text-lg font-bold text-[#c99b43]">{prop.price} ETB</span><Button size="sm" onClick={() => (window.location.hash = `property-details?id=${prop.id}`)} className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950">View</Button></div></div></div>))}</div></Card>
+                <Card className="mt-8 border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95"><h2 className="text-2xl font-bold text-slate-900 dark:text-white">Similar Properties</h2><div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{similarProperties.map((prop) => (<div key={prop.id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><img src={prop.images[0]} alt={prop.title} className="h-40 w-full object-cover transition-transform group-hover:scale-110" /><div className="p-4"><h3 className="font-semibold text-slate-900 dark:text-white">{prop.title}</h3><p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{prop.location}</p><div className="mt-3 flex items-center justify-between"><span className="text-lg font-bold text-[#c99b43]">{prop.price} ETB</span><Button size="sm" onClick={() => navigate(`/properties/${prop.id}`)} className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950">View</Button></div></div></div>))}</div></Card>
               )}
             </div>
             <div className="lg:col-span-1">

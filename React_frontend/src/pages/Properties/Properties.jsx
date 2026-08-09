@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Building2, MapPin, Search, SlidersHorizontal, Star, Heart, Grid3x3, List, ChevronDown, Bed, Bath, Maximize2 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
@@ -128,6 +129,8 @@ const allProperties = [
 ]
 
 function Properties() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
   const [propertyType, setPropertyType] = useState('all')
   const [priceRange, setPriceRange] = useState('all')
@@ -135,46 +138,31 @@ function Properties() {
   const [viewMode, setViewMode] = useState('grid')
   const [favorites, setFavorites] = useState([])
 
-  // Get property type from URL on mount and when hash changes
-  useEffect(() => {
-    const updateFromURL = () => {
-      const hash = window.location.hash
-      const urlParams = new URLSearchParams(hash.split('?')[1] || '')
-      const typeParam = urlParams.get('type')
-      
-      console.log('URL hash:', hash) // Debug log
-      console.log('Type parameter:', typeParam) // Debug log
-      
-      if (typeParam) {
-        // Map URL parameter to property type
-        const typeMap = {
-          'apartment': 'Apartment',
-          'house': 'House',
-          'villa': 'Villa',
-          'studio': 'Studio',
-          'condo': 'Condo',
-          'penthouse': 'Penthouse',
-          'townhouse': 'Townhouse',
-          'mansion': 'Mansion',
-          'commercial': 'Commercial',
-          'office': 'Office',
-          'land': 'Land',
-          'warehouse': 'Warehouse',
-          'shop': 'Shop',
-        }
-        const mappedType = typeMap[typeParam] || 'all'
-        console.log('Setting property type to:', mappedType) // Debug log
-        setPropertyType(mappedType)
-      } else {
-        console.log('No type parameter, showing all properties') // Debug log
-        setPropertyType('all')
-      }
-    }
+  const typeMap = {
+    apartment: 'Apartment',
+    house: 'House',
+    villa: 'Villa',
+    studio: 'Studio',
+    condo: 'Condo',
+    penthouse: 'Penthouse',
+    townhouse: 'Townhouse',
+    mansion: 'Mansion',
+    commercial: 'Commercial',
+    office: 'Office',
+    land: 'Land',
+    warehouse: 'Warehouse',
+    shop: 'Shop',
+  }
 
-    updateFromURL()
-    window.addEventListener('hashchange', updateFromURL)
-    return () => window.removeEventListener('hashchange', updateFromURL)
-  }, [])
+  const selectedTypeParam = searchParams.get('type')
+  if (selectedTypeParam && selectedTypeParam !== 'all') {
+    const mappedType = typeMap[selectedTypeParam] || 'all'
+    if (mappedType !== propertyType) {
+      setPropertyType(mappedType)
+    }
+  } else if (selectedTypeParam === null && propertyType !== 'all') {
+    setPropertyType('all')
+  }
 
   // Get page title based on property type
   const getPageTitle = () => {
@@ -192,13 +180,13 @@ function Properties() {
   // Filter properties based on search and filters
   const filteredProperties = allProperties.filter((property) => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.location.toLowerCase().includes(searchTerm.toLowerCase())
+      property.location.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = propertyType === 'all' || property.type === propertyType
     const matchesPrice = priceRange === 'all' ||
-                        (priceRange === 'low' && parseInt(property.price.replace(/,/g, '')) < 30000) ||
-                        (priceRange === 'mid' && parseInt(property.price.replace(/,/g, '')) >= 30000 && parseInt(property.price.replace(/,/g, '')) < 50000) ||
-                        (priceRange === 'high' && parseInt(property.price.replace(/,/g, '')) >= 50000)
-    
+      (priceRange === 'low' && parseInt(property.price.replace(/,/g, '')) < 30000) ||
+      (priceRange === 'mid' && parseInt(property.price.replace(/,/g, '')) >= 30000 && parseInt(property.price.replace(/,/g, '')) < 50000) ||
+      (priceRange === 'high' && parseInt(property.price.replace(/,/g, '')) >= 50000)
+
     return matchesSearch && matchesType && matchesPrice
   })
 
@@ -242,13 +230,12 @@ function Properties() {
               <select
                 value={propertyType}
                 onChange={(e) => {
-                  setPropertyType(e.target.value)
-                  // Update URL when filter changes
-                  if (e.target.value !== 'all') {
-                    const typeParam = e.target.value.toLowerCase()
-                    window.location.hash = `properties?type=${typeParam}`
+                  const nextType = e.target.value
+                  setPropertyType(nextType)
+                  if (nextType !== 'all') {
+                    setSearchParams({ type: nextType.toLowerCase() })
                   } else {
-                    window.location.hash = 'properties'
+                    setSearchParams({})
                   }
                 }}
                 className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm shadow-sm transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -300,7 +287,7 @@ function Properties() {
                 className="h-12 w-full rounded-xl border-slate-300 pl-10 pr-4 shadow-sm"
               />
             </div>
-            
+
             {/* Property Type & Price - Single Row */}
             <div className="grid grid-cols-2 gap-3">
               {/* Property Type */}
@@ -309,13 +296,12 @@ function Properties() {
                 <select
                   value={propertyType}
                   onChange={(e) => {
-                    setPropertyType(e.target.value)
-                    // Update URL when filter changes
-                    if (e.target.value !== 'all') {
-                      const typeParam = e.target.value.toLowerCase()
-                      window.location.hash = `properties?type=${typeParam}`
+                    const nextType = e.target.value
+                    setPropertyType(nextType)
+                    if (nextType !== 'all') {
+                      setSearchParams({ type: nextType.toLowerCase() })
                     } else {
-                      window.location.hash = 'properties'
+                      setSearchParams({})
                     }
                   }}
                   className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-10 pr-8 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -394,22 +380,20 @@ function Properties() {
               <div className="flex items-center gap-1 rounded-lg border border-slate-300 p-1 dark:border-slate-700">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`rounded p-1.5 transition-colors ${
-                    viewMode === 'grid'
+                  className={`rounded p-1.5 transition-colors ${viewMode === 'grid'
                       ? 'bg-[#c99b43] text-white'
                       : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                  }`}
+                    }`}
                   aria-label="Grid view"
                 >
                   <Grid3x3 className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`rounded p-1.5 transition-colors ${
-                    viewMode === 'list'
+                  className={`rounded p-1.5 transition-colors ${viewMode === 'list'
                       ? 'bg-[#c99b43] text-white'
                       : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                  }`}
+                    }`}
                   aria-label="List view"
                 >
                   <List className="h-4 w-4" />
@@ -437,14 +421,13 @@ function Properties() {
                       alt={property.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
-                    
+
                     {/* Status Badge */}
                     <div className="absolute left-4 top-4">
-                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold shadow-md ${
-                        property.status === 'For Rent'
+                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold shadow-md ${property.status === 'For Rent'
                           ? 'bg-emerald-500 text-white'
                           : 'bg-blue-500 text-white'
-                      }`}>
+                        }`}>
                         {property.status}
                       </span>
                     </div>
@@ -456,11 +439,10 @@ function Properties() {
                       aria-label="Add to favorites"
                     >
                       <Heart
-                        className={`h-5 w-5 transition-colors ${
-                          favorites.includes(property.id)
+                        className={`h-5 w-5 transition-colors ${favorites.includes(property.id)
                             ? 'fill-red-500 text-red-500'
                             : 'text-slate-600 dark:text-slate-400'
-                        }`}
+                          }`}
                       />
                     </button>
 
@@ -515,7 +497,7 @@ function Properties() {
                       <Button
                         size="sm"
                         className="rounded-lg bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:opacity-90"
-                        onClick={() => (window.location.hash = `property-details?id=${property.id}`)}
+                        onClick={() => navigate(`/properties/${property.id}`)}
                       >
                         View Details
                       </Button>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   Building2,
@@ -110,6 +111,7 @@ function readImagePreview(file, callback) {
 }
 
 function Register() {
+  const navigate = useNavigate()
   const { register } = useAuth()
   const [formData, setFormData] = useState(initialFormData)
   const [errors, setErrors] = useState({})
@@ -256,7 +258,7 @@ function Register() {
         result?.message || 'Account created successfully.'
       )
 
-      window.location.hash = getDashboardRoute(result?.user?.role)
+      navigate(getDashboardRoute(result?.user?.role))
     } catch (error) {
       setSuccessMessage('')
       setErrors((currentErrors) => ({
@@ -320,8 +322,8 @@ function Register() {
             handleFileSelection(fieldName, event.dataTransfer.files?.[0])
           }}
           className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-3 py-2.5 text-left transition ${draggingField === fieldName
-              ? 'border-[#d4a756] bg-[#d4a756]/12 shadow-[0_16px_35px_rgba(212,167,86,0.18)]'
-              : 'border-slate-300/80 bg-white/65 hover:border-[#d4a756]/65 hover:bg-[#d4a756]/6 dark:border-slate-700/70 dark:bg-slate-900/55 dark:hover:border-[#d4a756]/60'
+            ? 'border-[#d4a756] bg-[#d4a756]/12 shadow-[0_16px_35px_rgba(212,167,86,0.18)]'
+            : 'border-slate-300/80 bg-white/65 hover:border-[#d4a756]/65 hover:bg-[#d4a756]/6 dark:border-slate-700/70 dark:bg-slate-900/55 dark:hover:border-[#d4a756]/60'
             }`}
         >
           <input
@@ -581,12 +583,13 @@ function Register() {
 
                 <p className="text-center text-xs text-slate-500 dark:text-slate-400">
                   Already have an account?{' '}
-                  <a
-                    href="#login"
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
                     className="font-semibold text-[#b27a23] transition hover:text-[#8c5c14] dark:text-[#f3c96d] dark:hover:text-[#f7db96]"
                   >
                     Login
-                  </a>
+                  </button>
                 </p>
               </form>
             </div>

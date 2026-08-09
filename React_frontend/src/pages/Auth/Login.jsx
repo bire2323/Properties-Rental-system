@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   Eye,
@@ -16,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Input } from '../../components/ui/input'
 
 function Login() {
+  const navigate = useNavigate()
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -46,7 +48,7 @@ function Login() {
         password: formData.password,
       })
 
-      window.location.hash = getDashboardRoute(result?.user?.role)
+      navigate(getDashboardRoute(result?.user?.role))
     } catch (error) {
       setErrorMessage(error.message || 'Unable to sign in right now.')
     } finally {
@@ -201,12 +203,13 @@ function Login() {
 
                 <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                   Don&apos;t have an account?{' '}
-                  <a
-                    href="#register"
+                  <button
+                    type="button"
+                    onClick={() => navigate('/register')}
                     className="font-medium text-[#b27a23] transition hover:text-[#8c5c14]"
                   >
                     Create account
-                  </a>
+                  </button>
                 </p>
               </form>
             </CardContent>

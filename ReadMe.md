@@ -81,3 +81,10 @@ pip freeze > requirements.txt
 // django lay update yehone file pull snaderg run:
 pip install -r requirements.txt
 npm install @react-oauth/google
+
+
+
+//install this for react router
+ 
+ 
+ npm install react-router-dom

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ChevronDown,
   Heart,
@@ -49,13 +50,14 @@ const vehicleTypes = [
 ]
 
 const navItems = [
-  { label: 'Home', href: '#home', hasDropdown: false },
-  { label: 'Properties', href: '#properties', hasDropdown: false },
-  { label: 'Vehicles', href: '#vehicles', hasDropdown: false },
-  { label: 'About Us', href: '#about', hasDropdown: false },
+  { label: 'Home', path: '/', hasDropdown: false },
+  { label: 'Properties', path: '/properties', hasDropdown: false },
+  { label: 'Vehicles', path: '/vehicles', hasDropdown: false },
+  { label: 'About Us', path: '/about', hasDropdown: false },
 ]
 
 function Navbar() {
+  const navigate = useNavigate()
   const { isDark, toggleTheme } = useTheme()
   const { user, logout, loading } = useAuth()
   const [propertyDropdownOpen, setPropertyDropdownOpen] = useState(false)
@@ -65,42 +67,7 @@ function Navbar() {
   const vehicleDropdownRef = useRef(null)
   const authDropdownRef = useRef(null)
   const navigateTo = (path) => {
-    // #region debug-point A:navigate-to
-    fetch('http://127.0.0.1:7777/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'vehicle-navbar-nav',
-        runId: 'pre-fix',
-        hypothesisId: 'A',
-        location: 'src/components/common/Navbar.jsx:61',
-        msg: '[DEBUG] Navbar navigateTo called',
-        data: { path, currentHash: window.location.hash },
-        ts: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
-    window.location.hash = path
-    // #region debug-point A:hash-after-set
-    setTimeout(() => {
-      fetch('http://127.0.0.1:7777/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'vehicle-navbar-nav',
-          runId: 'pre-fix',
-          hypothesisId: 'A',
-          location: 'src/components/common/Navbar.jsx:74',
-          msg: '[DEBUG] Navbar hash after navigation',
-          data: { path, nextHash: window.location.hash },
-          ts: Date.now(),
-        }),
-      }).catch(() => {})
-    }, 0)
-    // #endregion
-  }
-  const getHashPath = (path) => {
-    return `#${path}`
+    navigate(path)
   }
   const userLabel = user?.first_name || user?.email?.split('@')[0] || 'User'
   const userInitial = userLabel.charAt(0).toUpperCase()
@@ -141,33 +108,18 @@ function Navbar() {
   const handlePropertyTypeClick = (value) => {
     setPropertyDropdownOpen(false)
     if (value) {
-      navigateTo(`properties?type=${value}`)
+      navigateTo(`/properties?type=${value}`)
     } else {
-      navigateTo('properties')
+      navigateTo('/properties')
     }
   }
 
   const handleVehicleTypeClick = (value) => {
-    // #region debug-point A:vehicle-type-click
-    fetch('http://127.0.0.1:7777/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'vehicle-navbar-nav',
-        runId: 'pre-fix',
-        hypothesisId: 'A',
-        location: 'src/components/common/Navbar.jsx:126',
-        msg: '[DEBUG] Vehicle type menu clicked',
-        data: { value, currentHash: window.location.hash },
-        ts: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
     setVehicleDropdownOpen(false)
     if (value) {
-      navigateTo(`vehicles?type=${value}`)
+      navigateTo(`/vehicles?type=${value}`)
     } else {
-      navigateTo('vehicles')
+      navigateTo('/vehicles')
     }
   }
 
@@ -179,7 +131,7 @@ function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#c99b43]/25 bg-white/90 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-[#c99b43]/35 dark:bg-[linear-gradient(90deg,#03172f_0%,#04254a_55%,#03172f_100%)] dark:text-white dark:shadow-[0_18px_50px_rgba(3,12,26,0.35)]">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <a href="#home" className="flex shrink-0 items-center gap-3">
+        <button type="button" onClick={() => navigate('/')} className="flex shrink-0 items-center gap-3">
           <img
             src={logo}
             alt="NX Rent logo"
@@ -190,7 +142,7 @@ function Navbar() {
               NexaSpace
             </span>
           </span>
-        </a>
+        </button>
 
         <nav className="hidden items-center gap-5 lg:flex">
           {navItems.map((item) => (
@@ -205,7 +157,7 @@ function Navbar() {
                       if (isChevron) {
                         setPropertyDropdownOpen(!propertyDropdownOpen)
                       } else {
-                        navigateTo('properties')
+                        navigateTo('/properties')
                       }
                     }}
                     onMouseEnter={() => setPropertyDropdownOpen(true)}
@@ -232,14 +184,14 @@ function Navbar() {
                       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
                         <div className="max-h-96 overflow-y-auto p-2">
                           {propertyTypes.map((type) => (
-                            <a
+                            <button
                               key={type.value}
-                              href={getHashPath(type.value ? `properties?type=${type.value}` : 'properties')}
+                              type="button"
                               onClick={() => handlePropertyTypeClick(type.value)}
                               className="block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                             >
                               {type.label}
-                            </a>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -252,45 +204,31 @@ function Navbar() {
                     onMouseEnter={() => setVehicleDropdownOpen(true)}
                     className="flex items-center gap-1"
                   >
-                    <a
-                      href="#vehicles"
+                    <button
+                      type="button"
                       onClick={() => {
-                        // #region debug-point D:vehicles-nav-link
-                        fetch('http://127.0.0.1:7777/event', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            sessionId: 'vehicle-navbar-nav',
-                            runId: 'post-fix',
-                            hypothesisId: 'D',
-                            location: 'src/components/common/Navbar.jsx:225',
-                            msg: '[DEBUG] Vehicles nav label clicked',
-                            data: { currentHash: window.location.hash, nextHash: '#vehicles' },
-                            ts: Date.now(),
-                          }),
-                        }).catch(() => {})
-                        // #endregion
                         setVehicleDropdownOpen(false)
+                        navigate('/vehicles')
                       }}
                       className="px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
                     >
                       <span>{item.label}</span>
-                    </a>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setVehicleDropdownOpen(!vehicleDropdownOpen)}
                       className="flex items-center px-1 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
                       aria-label="Toggle vehicle types"
                     >
-                    <ChevronDown
-                      size={16}
-                      className={`transition-transform duration-200 ${vehicleDropdownOpen ? 'rotate-180' : ''
-                        }`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setVehicleDropdownOpen(!vehicleDropdownOpen)
-                      }}
-                    />
+                      <ChevronDown
+                        size={16}
+                        className={`transition-transform duration-200 ${vehicleDropdownOpen ? 'rotate-180' : ''
+                          }`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setVehicleDropdownOpen(!vehicleDropdownOpen)
+                        }}
+                      />
                     </button>
                   </div>
 
@@ -302,14 +240,14 @@ function Navbar() {
                       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
                         <div className="max-h-96 overflow-y-auto p-2">
                           {vehicleTypes.map((type) => (
-                            <a
+                            <button
                               key={type.value}
-                              href={getHashPath(type.value ? `vehicles?type=${type.value}` : 'vehicles')}
+                              type="button"
                               onClick={() => handleVehicleTypeClick(type.value)}
                               className="block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                             >
                               {type.label}
-                            </a>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -317,13 +255,14 @@ function Navbar() {
                   )}
                 </div>
               ) : (
-                <a
-                  href={item.href}
+                <button
+                  type="button"
+                  onClick={() => navigate(item.path)}
                   className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
                 >
                   <span>{item.label}</span>
                   {item.hasDropdown && <ChevronDown size={16} />}
-                </a>
+                </button>
               )}
             </div>
           ))}
@@ -340,14 +279,15 @@ function Navbar() {
             {isDark ? <SunMedium size={17} /> : <Moon size={17} />}
           </button>
 
-          <a
-            href="#home"
+          <button
+            type="button"
+            onClick={() => navigate('/')}
             className="flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-100 dark:hover:bg-[#c99b43]/10 dark:hover:text-[#f3c96d]"
             aria-label="Favorites"
             title="Favorites"
           >
             <Heart size={16} />
-          </a>
+          </button>
 
           {loading ? (
             <span className="rounded-full border border-[#c99b43]/30 px-2.5 py-1 text-[11px] font-semibold text-[#b27a23] dark:text-[#f3c96d]">
@@ -415,23 +355,29 @@ function Navbar() {
               </button>
 
               {authDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
-                  <a
-                    href="#login"
-                    onClick={() => setAuthDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                <div className="absolute right-0 top-full mt-2 w-fit overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthDropdownOpen(false)
+                      navigate('/login')
+                    }}
+                    className="flex items-center w-30 gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                   >
                     <User size={15} />
                     <span>Sign In</span>
-                  </a>
-                  <a
-                    href="#register"
-                    onClick={() => setAuthDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthDropdownOpen(false)
+                      navigate('/register')
+                    }}
+                    className="flex items-center w-30 gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                   >
                     <User size={15} />
                     <span>Sign Up</span>
-                  </a>
+                  </button>
                 </div>
               )}
             </div>

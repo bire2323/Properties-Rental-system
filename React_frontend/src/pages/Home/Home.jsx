@@ -1,4 +1,5 @@
 import { ArrowRight, Building2, CheckCircle, Key, MapPin, Search, Shield, Star, TrendingUp, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
@@ -77,10 +78,12 @@ const stats = [
 ]
 
 function Home() {
+  const navigate = useNavigate()
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="relative min-h-[90vh] overflow-hidden pt-24">
         <div className="absolute inset-0 z-0">
@@ -106,15 +109,15 @@ function Home() {
               </p>
 
               <div className="mt-10 flex flex-wrap gap-4">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-8 text-base font-semibold text-slate-950 hover:opacity-90"
-                  onClick={() => window.location.hash = 'properties'}
+                  onClick={() => navigate('/properties')}
                 >
                   Explore Properties
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-slate-900">
+                <Button size="lg" variant="outline" className="border-2 border-white dark:text-white hover:bg-white hover:text-slate-900">
                   List Property
                 </Button>
               </div>
@@ -159,9 +162,9 @@ function Home() {
                     placeholder="Price Range"
                     className="h-14 rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:border-[#c99b43]"
                   />
-                  <Button 
+                  <Button
                     className="h-14 w-full rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-base font-semibold text-slate-950 hover:opacity-90"
-                    onClick={() => window.location.hash = 'properties'}
+                    onClick={() => navigate('/properties')}
                   >
                     <Search className="mr-2 h-5 w-5" />
                     Search Now
@@ -217,10 +220,10 @@ function Home() {
                 Handpicked premium properties just for you
               </p>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
-              onClick={() => window.location.hash = 'properties'}
+              onClick={() => navigate('/properties')}
             >
               View All
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -265,10 +268,10 @@ function Home() {
                       <span className="text-2xl font-bold text-[#c99b43]">{property.price}</span>
                       <span className="text-sm text-slate-600 dark:text-slate-400"> ETB/mo</span>
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 hover:opacity-90"
-                      onClick={() => window.location.hash = 'properties'}
+                      onClick={() => navigate('/properties')}
                     >
                       View Details
                     </Button>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Car, MapPin, Search, SlidersHorizontal, Star, Heart, Grid3x3, List, ChevronDown, Fuel, Users, Settings2 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
@@ -136,6 +137,8 @@ const typeLabels = {
 }
 
 function Vehicles() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
   const [vehicleType, setVehicleType] = useState('all')
   const [priceRange, setPriceRange] = useState('all')
@@ -143,23 +146,12 @@ function Vehicles() {
   const [viewMode, setViewMode] = useState('grid')
   const [favorites, setFavorites] = useState([])
 
-  // Get vehicle type from URL on mount and when hash changes
-  useEffect(() => {
-    const updateFromHash = () => {
-      const hash = window.location.hash
-      const params = new URLSearchParams(hash.split('?')[1] || '')
-      const typeParam = params.get('type') || 'all'
-      
-      console.log('URL hash:', hash)
-      console.log('Type parameter:', typeParam)
-      
-      setVehicleType(typeParam)
-    }
-
-    updateFromHash()
-    window.addEventListener('hashchange', updateFromHash)
-    return () => window.removeEventListener('hashchange', updateFromHash)
-  }, [])
+  const typeParam = searchParams.get('type') || 'all'
+  if (typeParam !== vehicleType && typeParam !== 'all') {
+    setVehicleType(typeParam)
+  } else if (typeParam === 'all' && vehicleType !== 'all') {
+    setVehicleType('all')
+  }
 
   // Get page title based on vehicle type
   const getPageTitle = () => {
@@ -177,13 +169,13 @@ function Vehicles() {
   // Filter vehicles based on search and filters
   const filteredVehicles = allVehicles.filter((vehicle) => {
     const matchesSearch = vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         vehicle.location.toLowerCase().includes(searchTerm.toLowerCase())
+      vehicle.location.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = vehicleType === 'all' || vehicle.type === vehicleType
     const matchesPrice = priceRange === 'all' ||
-                        (priceRange === 'low' && parseInt(vehicle.price.replace(/,/g, '')) < 3000) ||
-                        (priceRange === 'mid' && parseInt(vehicle.price.replace(/,/g, '')) >= 3000 && parseInt(vehicle.price.replace(/,/g, '')) < 6000) ||
-                        (priceRange === 'high' && parseInt(vehicle.price.replace(/,/g, '')) >= 6000)
-    
+      (priceRange === 'low' && parseInt(vehicle.price.replace(/,/g, '')) < 3000) ||
+      (priceRange === 'mid' && parseInt(vehicle.price.replace(/,/g, '')) >= 3000 && parseInt(vehicle.price.replace(/,/g, '')) < 6000) ||
+      (priceRange === 'high' && parseInt(vehicle.price.replace(/,/g, '')) >= 6000)
+
     return matchesSearch && matchesType && matchesPrice
   })
 
@@ -227,12 +219,12 @@ function Vehicles() {
               <select
                 value={vehicleType}
                 onChange={(e) => {
-                  setVehicleType(e.target.value)
-                  // Update URL when filter changes
-                  if (e.target.value !== 'all') {
-                    window.location.hash = `vehicles?type=${e.target.value}`
+                  const nextType = e.target.value
+                  setVehicleType(nextType)
+                  if (nextType !== 'all') {
+                    setSearchParams({ type: nextType })
                   } else {
-                    window.location.hash = 'vehicles'
+                    setSearchParams({})
                   }
                 }}
                 className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm shadow-sm transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -285,7 +277,7 @@ function Vehicles() {
                 className="h-12 w-full rounded-xl border-slate-300 pl-10 pr-4 shadow-sm"
               />
             </div>
-            
+
             {/* Vehicle Type & Price - Single Row */}
             <div className="grid grid-cols-2 gap-3">
               {/* Vehicle Type */}
@@ -294,11 +286,12 @@ function Vehicles() {
                 <select
                   value={vehicleType}
                   onChange={(e) => {
-                    setVehicleType(e.target.value)
-                    if (e.target.value !== 'all') {
-                      window.location.hash = `vehicles?type=${e.target.value}`
+                    const nextType = e.target.value
+                    setVehicleType(nextType)
+                    if (nextType !== 'all') {
+                      setSearchParams({ type: nextType })
                     } else {
-                      window.location.hash = 'vehicles'
+                      setSearchParams({})
                     }
                   }}
                   className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-10 pr-8 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -371,22 +364,20 @@ function Vehicles() {
               <div className="flex items-center gap-1 rounded-lg border border-slate-300 p-1 dark:border-slate-700">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`rounded p-1.5 transition-colors ${
-                    viewMode === 'grid'
+                  className={`rounded p-1.5 transition-colors ${viewMode === 'grid'
                       ? 'bg-[#c99b43] text-white'
                       : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                  }`}
+                    }`}
                   aria-label="Grid view"
                 >
                   <Grid3x3 className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`rounded p-1.5 transition-colors ${
-                    viewMode === 'list'
+                  className={`rounded p-1.5 transition-colors ${viewMode === 'list'
                       ? 'bg-[#c99b43] text-white'
                       : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                  }`}
+                    }`}
                   aria-label="List view"
                 >
                   <List className="h-4 w-4" />
@@ -414,7 +405,7 @@ function Vehicles() {
                       alt={vehicle.name}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
-                    
+
                     {/* Type Badge */}
                     <div className="absolute left-4 top-4">
                       <span className="inline-flex rounded-full bg-[#c99b43] px-3 py-1 text-xs font-semibold text-white shadow-md">
@@ -429,11 +420,10 @@ function Vehicles() {
                       aria-label="Add to favorites"
                     >
                       <Heart
-                        className={`h-5 w-5 transition-colors ${
-                          favorites.includes(vehicle.id)
+                        className={`h-5 w-5 transition-colors ${favorites.includes(vehicle.id)
                             ? 'fill-red-500 text-red-500'
                             : 'text-slate-600 dark:text-slate-400'
-                        }`}
+                          }`}
                       />
                     </button>
 
@@ -488,10 +478,7 @@ function Vehicles() {
                       <Button
                         size="sm"
                         className="rounded-lg bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:opacity-90"
-                        onClick={() => {
-                          console.log('Navigating to vehicle details, ID:', vehicle.id);
-                          window.location.hash = `vehicle-details?id=${vehicle.id}`;
-                        }}
+                        onClick={() => navigate(`/vehicles/${vehicle.id}`)}
                       >
                         View Details
                       </Button>

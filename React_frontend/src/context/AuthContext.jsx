@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
             await logoutRequest()
         } finally {
             setUser(null)
-            window.location.hash = 'login'
+            window.location.assign('/login')
         }
     }
 
