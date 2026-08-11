@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getDashboardRoute } from '@/services/authService'
 import {
   ChevronDown,
   Heart,
@@ -314,7 +315,11 @@ function Navbar() {
                 <div className="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
                   <button
                     type="button"
-                    onClick={() => setAuthDropdownOpen(false)}
+                    onClick={() => {
+                      setAuthDropdownOpen(false)
+                      const dashboardRoute = getDashboardRoute(user?.role)
+                      navigate(dashboardRoute)
+                    }}
                     className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                   >
                     <User size={15} />

@@ -5,12 +5,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
  * Includes credentials (cookies) for authenticated endpoints.
  */
 async function request(endpoint, options = {}) {
+    const headers = {
+        ...(options.headers || {}),
+    }
+
+    if (!(options.body instanceof FormData) && headers['Content-Type'] !== 'multipart/form-data') {
+        headers['Content-Type'] = 'application/json'
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options.headers || {}),
-        },
+        headers,
         ...options,
     })
 
@@ -71,4 +76,34 @@ export async function getAllProperties(filters = {}) {
  */
 export async function getPropertyById(id) {
     return request(`/api/properties/${id}/`, { method: 'GET' })
+}
+
+/**
+ * DELETE /api/properties/:id/
+ * Removes a property. Requires authenticated owner with permission.
+ */
+export async function deleteProperty(id) {
+    return request(`/api/properties/${id}/`, { method: 'DELETE' })
+}
+
+/**
+ * POST /api/properties/
+ * Create a new property. Expects the create serializer payload.
+ */
+export async function createProperty(payload) {
+    return request(`/api/properties/`, {
+        method: 'POST',
+        body: payload,
+    })
+}
+
+/**
+ * PUT /api/properties/:id/
+ * Update an existing property (full update).
+ */
+export async function updateProperty(id, payload) {
+    return request(`/api/properties/${id}/`, {
+        method: 'PUT',
+        body: payload,
+    })
 }
