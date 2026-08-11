@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Building2, MapPin, Search, SlidersHorizontal, Star, Heart, Grid3x3, List, ChevronDown, Bed, Bath, Maximize2, AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
@@ -114,8 +114,13 @@ function Properties() {
   const [error, setError] = useState(null)
 
   // Fetch properties from the backend on mount
+  const fetchedRef = useRef(false)
+
   useEffect(() => {
-    fetchProperties()
+    if (!fetchedRef.current) {
+      fetchedRef.current = true
+      fetchProperties()
+    }
   }, [])
 
   async function fetchProperties() {
@@ -364,8 +369,8 @@ function Properties() {
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`rounded p-1.5 transition-colors ${viewMode === 'grid'
-                      ? 'bg-[#c99b43] text-white'
-                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                    ? 'bg-[#c99b43] text-white'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                     }`}
                   aria-label="Grid view"
                 >
@@ -374,8 +379,8 @@ function Properties() {
                 <button
                   onClick={() => setViewMode('list')}
                   className={`rounded p-1.5 transition-colors ${viewMode === 'list'
-                      ? 'bg-[#c99b43] text-white'
-                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                    ? 'bg-[#c99b43] text-white'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                     }`}
                   aria-label="List view"
                 >
@@ -444,8 +449,8 @@ function Properties() {
                     {/* Availability Badge */}
                     <div className="absolute left-4 top-4">
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold shadow-md ${property.is_available
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-slate-500 text-white'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-500 text-white'
                         }`}>
                         {property.is_available ? 'Available' : 'Rented'}
                       </span>
@@ -466,8 +471,8 @@ function Properties() {
                     >
                       <Heart
                         className={`h-5 w-5 transition-colors ${favorites.includes(property.id)
-                            ? 'fill-red-500 text-red-500'
-                            : 'text-slate-600 dark:text-slate-400'
+                          ? 'fill-red-500 text-red-500'
+                          : 'text-slate-600 dark:text-slate-400'
                           }`}
                       />
                     </button>
