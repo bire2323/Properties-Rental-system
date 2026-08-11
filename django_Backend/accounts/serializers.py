@@ -111,7 +111,7 @@ class GoogleAuthSerializer(serializers.Serializer):
             defaults={
                 "first_name": first_name or "Google",
                 "last_name": last_name or "User",
-                "role": User.Role.TENANT,
+                "role": User.Role.OWNER,
                 "is_verified": True,
                 "auth_provider": User.AuthProvider.GOOGLE,
                 "google_id": google_id,

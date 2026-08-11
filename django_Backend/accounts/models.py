@@ -83,7 +83,7 @@ class User(AbstractUser):
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
-        default=Role.TENANT
+        default=Role.OWNER
     )
 
     phone_number = models.CharField(
