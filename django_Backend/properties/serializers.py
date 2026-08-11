@@ -39,9 +39,11 @@ class PropertySerializer(serializers.ModelSerializer):
     """
     Used for retrieving property data (list and detail views).
     Nests the specific child data (house or car) and all associated images.
+    The first image (by order) is surfaced as 'main_image'.
     """
     owner_email = serializers.EmailField(source='owner.email', read_only=True)
     specific = serializers.SerializerMethodField()
+    main_image = serializers.SerializerMethodField()
     images = PropertyImageSerializer(many=True, read_only=True)
 
     class Meta:
@@ -64,6 +66,16 @@ class PropertySerializer(serializers.ModelSerializer):
             'updated_at'
         ]
         read_only_fields = ['owner', 'owner_email']
+
+    def get_main_image(self, obj):
+        """
+        Return the first image (ordered by 'order') as the main image.
+        The PropertyImage.Meta.ordering = ['order'] ensures correct ordering.
+        """
+        first_image = obj.images.first()
+        if first_image:
+            return PropertyImageSerializer(first_image, context=self.context).data
+        return None
 
     def get_specific(self, obj):
         """
@@ -90,12 +102,13 @@ class PropertySerializer(serializers.ModelSerializer):
 class PropertyCreateSerializer(serializers.ModelSerializer):
     """
     Used for creating and updating properties.
-    Accepts nested 'specific' data (house or car fields) 
-    and a list of 'image_urls' to create multiple images.
+    Accepts nested 'specific' data (house or car fields)
+    and a list of uploaded image files via 'images'.
+    The first uploaded image (order=0) will serve as the main image.
     """
     specific = serializers.DictField(write_only=True)
-    image_urls = serializers.ListField(
-        child=serializers.URLField(),
+    images = serializers.ListField(
+        child=serializers.ImageField(),
         write_only=True,
         required=False,
         default=[]
@@ -110,19 +123,18 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             'security_deposit',
             'property_type',
             'location',
-            'main_image',
             'specific',
-            'image_urls'
+            'images'
         ]
 
-   
     def create(self, validated_data):
         """
         Create the base Property, then create the specific child
         (House or Car), and finally create all PropertyImage records.
+        The first image (order=0) becomes the main image.
         """
         specific_data = validated_data.pop('specific')
-        image_urls = validated_data.pop('image_urls', [])
+        uploaded_images = validated_data.pop('images', [])
         property_type = validated_data.get('property_type')
 
         # 1. Create the base Property
@@ -134,11 +146,13 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         elif property_type == 'car':
             Car.objects.create(property_ptr=property_instance, **specific_data)
 
-        # 3. The image URL list is not a current storage-backed API contract.
-        # The permission work does not require that code path to be active.
-        for index, url in enumerate(image_urls):
-            if url:
-                continue
+        # 3. Create PropertyImage records from uploaded files
+        for index, image_file in enumerate(uploaded_images):
+            PropertyImage.objects.create(
+                property=property_instance,
+                image=image_file,
+                order=index  # First image (order=0) is the main image
+            )
 
         return property_instance
 
@@ -148,7 +162,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         and handle image replacements (if provided).
         """
         specific_data = validated_data.pop('specific', None)
-        image_urls = validated_data.pop('image_urls', None)
+        uploaded_images = validated_data.pop('images', None)
 
         # 1. Update base Property fields
         for attr, value in validated_data.items():
@@ -171,10 +185,13 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
                 car_instance.save()
 
         # 3. Replace images if new ones are provided
-        # This API is still keyed to a file-based image model. A URL list is not
-        # current media-storage support, so the permission feature keeps the
-        # serializer from raising inside the image branch.
-        if image_urls is not None:
+        if uploaded_images is not None:
             instance.images.all().delete()
+            for index, image_file in enumerate(uploaded_images):
+                PropertyImage.objects.create(
+                    property=instance,
+                    image=image_file,
+                    order=index
+                )
 
         return instance

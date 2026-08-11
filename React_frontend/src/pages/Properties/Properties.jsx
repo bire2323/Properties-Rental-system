@@ -1,132 +1,102 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Building2, MapPin, Search, SlidersHorizontal, Star, Heart, Grid3x3, List, ChevronDown, Bed, Bath, Maximize2 } from 'lucide-react'
+import { Building2, MapPin, Search, SlidersHorizontal, Star, Heart, Grid3x3, List, ChevronDown, Bed, Bath, Maximize2, AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
+import { getAllProperties } from '../../api/property/propertyApi'
 
-// Sample properties data
-const allProperties = [
-  {
-    id: 1,
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800',
-    title: 'Modern Villa with Pool',
-    location: 'Bole, Addis Ababa',
-    price: '45,000',
-    beds: 4,
-    baths: 3,
-    area: '320',
-    rating: 4.9,
-    type: 'Villa',
-    status: 'For Rent',
-  },
-  {
-    id: 2,
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=800',
-    title: 'Luxury Apartment',
-    location: 'Kazanchis, Addis Ababa',
-    price: '35,000',
-    beds: 3,
-    baths: 2,
-    area: '180',
-    rating: 4.8,
-    type: 'Apartment',
-    status: 'For Rent',
-  },
-  {
-    id: 3,
-    image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=800',
-    title: 'Executive Penthouse',
-    location: 'CMC, Addis Ababa',
-    price: '65,000',
-    beds: 5,
-    baths: 4,
-    area: '450',
-    rating: 5.0,
-    type: 'Penthouse',
-    status: 'For Sale',
-  },
-  {
-    id: 4,
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800',
-    title: 'Cozy Family House',
-    location: '4 Kilo, Addis Ababa',
-    price: '28,000',
-    beds: 3,
-    baths: 2,
-    area: '200',
-    rating: 4.7,
-    type: 'House',
-    status: 'For Rent',
-  },
-  {
-    id: 5,
-    image: 'https://images.unsplash.com/photo-1613977257363-707ba9348227?q=80&w=800',
-    title: 'Spacious Studio',
-    location: 'Sarbet, Addis Ababa',
-    price: '18,000',
-    beds: 1,
-    baths: 1,
-    area: '80',
-    rating: 4.5,
-    type: 'Studio',
-    status: 'For Rent',
-  },
-  {
-    id: 6,
-    image: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=800',
-    title: 'Garden Villa',
-    location: 'Old Airport, Addis Ababa',
-    price: '52,000',
-    beds: 4,
-    baths: 3,
-    area: '380',
-    rating: 4.9,
-    type: 'Villa',
-    status: 'For Rent',
-  },
-  {
-    id: 7,
-    image: 'https://images.unsplash.com/photo-1600585154363-67eb9e2e2099?q=80&w=800',
-    title: 'Modern Townhouse',
-    location: 'Megenagna, Addis Ababa',
-    price: '40,000',
-    beds: 3,
-    baths: 2,
-    area: '220',
-    rating: 4.6,
-    type: 'Townhouse',
-    status: 'For Sale',
-  },
-  {
-    id: 8,
-    image: 'https://images.unsplash.com/photo-1600566752355-35792bedcfea?q=80&w=800',
-    title: 'Elegant Condo',
-    location: 'Lebu, Addis Ababa',
-    price: '32,000',
-    beds: 2,
-    baths: 2,
-    area: '150',
-    rating: 4.8,
-    type: 'Condo',
-    status: 'For Rent',
-  },
-  {
-    id: 9,
-    image: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?q=80&w=800',
-    title: 'Luxury Mansion',
-    location: 'Summit, Addis Ababa',
-    price: '95,000',
-    beds: 6,
-    baths: 5,
-    area: '600',
-    rating: 5.0,
-    type: 'Mansion',
-    status: 'For Sale',
-  },
-]
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+/**
+ * Build a full image URL from the backend response.
+ * If the image path is already absolute (http/https), return as-is.
+ * Otherwise, prepend the API base URL.
+ */
+function resolveImageUrl(imagePath) {
+  if (!imagePath) return null
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath
+  }
+  // imagePath from DRF will be like "/media/properties/2026/08/11/photo.jpg"
+  return `${API_BASE_URL}${imagePath}`
+}
+
+/**
+ * Map a single backend property object to the shape the UI cards expect.
+ *
+ * Backend shape (from PropertySerializer):
+ *   { id, owner, owner_email, title, description, price, security_deposit,
+ *     property_type, location, main_image, is_available, specific, images,
+ *     created_at, updated_at }
+ *
+ * UI card shape:
+ *   { id, image, title, location, price, beds, baths, area, type, is_available, created_at }
+ */
+function mapPropertyToCard(property) {
+  // Resolve the main image — first image by order, or a placeholder
+  const mainImageUrl = property.main_image?.image
+    ? resolveImageUrl(property.main_image.image)
+    : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
+
+  // Extract house-specific fields from the nested 'specific' object
+  const specific = property.specific || {}
+  const beds = specific.bedrooms ?? '-'
+  const baths = specific.bathrooms ?? '-'
+  const area = specific.area_sqft ?? '-'
+
+  // Format price with commas for display
+  const priceNum = parseFloat(property.price) || 0
+  const priceFormatted = priceNum.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+
+  // Capitalize property_type for display (e.g. 'house' → 'House')
+  const typeDisplay =
+    property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)
+
+  return {
+    id: property.id,
+    image: mainImageUrl,
+    title: property.title,
+    location: property.location,
+    price: priceFormatted,
+    priceRaw: priceNum,
+    beds,
+    baths,
+    area,
+    type: typeDisplay,
+    is_available: property.is_available,
+    created_at: property.created_at,
+  }
+}
+
+/**
+ * Loading skeleton card component that matches the property card layout.
+ */
+function PropertyCardSkeleton() {
+  return (
+    <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-56 animate-pulse bg-slate-200 dark:bg-slate-800" />
+      <div className="space-y-3 p-5">
+        <div className="h-5 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="flex gap-4 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        </div>
+        <div className="flex items-center justify-between pt-2">
+          <div className="h-7 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-9 w-28 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        </div>
+      </div>
+    </Card>
+  )
+}
 
 function Properties() {
   const navigate = useNavigate()
@@ -137,6 +107,32 @@ function Properties() {
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid')
   const [favorites, setFavorites] = useState([])
+
+  // API state
+  const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Fetch properties from the backend on mount
+  useEffect(() => {
+    fetchProperties()
+  }, [])
+
+  async function fetchProperties() {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getAllProperties()
+      // DRF's DefaultRouter returns an array directly from a ViewSet list action.
+      // If paginated, results would be in data.results — handle both cases.
+      const results = Array.isArray(data) ? data : data.results || []
+      setProperties(results.map(mapPropertyToCard))
+    } catch (err) {
+      setError(err.message || 'Failed to load properties.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const typeMap = {
     apartment: 'Apartment',
@@ -152,6 +148,7 @@ function Properties() {
     land: 'Land',
     warehouse: 'Warehouse',
     shop: 'Shop',
+    car: 'Car',
   }
 
   const selectedTypeParam = searchParams.get('type')
@@ -178,14 +175,14 @@ function Properties() {
   }
 
   // Filter properties based on search and filters
-  const filteredProperties = allProperties.filter((property) => {
+  const filteredProperties = properties.filter((property) => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.location.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = propertyType === 'all' || property.type === propertyType
     const matchesPrice = priceRange === 'all' ||
-      (priceRange === 'low' && parseInt(property.price.replace(/,/g, '')) < 30000) ||
-      (priceRange === 'mid' && parseInt(property.price.replace(/,/g, '')) >= 30000 && parseInt(property.price.replace(/,/g, '')) < 50000) ||
-      (priceRange === 'high' && parseInt(property.price.replace(/,/g, '')) >= 50000)
+      (priceRange === 'low' && property.priceRaw < 30000) ||
+      (priceRange === 'mid' && property.priceRaw >= 30000 && property.priceRaw < 50000) ||
+      (priceRange === 'high' && property.priceRaw >= 50000)
 
     return matchesSearch && matchesType && matchesPrice
   })
@@ -194,11 +191,11 @@ function Properties() {
   const sortedProperties = [...filteredProperties].sort((a, b) => {
     switch (sortBy) {
       case 'price-low':
-        return parseInt(a.price.replace(/,/g, '')) - parseInt(b.price.replace(/,/g, ''))
+        return a.priceRaw - b.priceRaw
       case 'price-high':
-        return parseInt(b.price.replace(/,/g, '')) - parseInt(a.price.replace(/,/g, ''))
-      case 'popular':
-        return b.rating - a.rating
+        return b.priceRaw - a.priceRaw
+      case 'newest':
+        return new Date(b.created_at) - new Date(a.created_at)
       default:
         return 0
     }
@@ -241,19 +238,8 @@ function Properties() {
                 className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm shadow-sm transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value="all">All Types</option>
-                <option value="Villa">Villa</option>
-                <option value="Apartment">Apartment</option>
                 <option value="House">House</option>
-                <option value="Penthouse">Penthouse</option>
-                <option value="Studio">Studio</option>
-                <option value="Townhouse">Townhouse</option>
-                <option value="Condo">Condo</option>
-                <option value="Mansion">Mansion</option>
-                <option value="Commercial">Commercial</option>
-                <option value="Office">Office</option>
-                <option value="Land">Land</option>
-                <option value="Warehouse">Warehouse</option>
-                <option value="Shop">Shop</option>
+                <option value="Car">Car</option>
               </select>
               <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             </div>
@@ -307,19 +293,8 @@ function Properties() {
                   className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-10 pr-8 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="all">All Types</option>
-                  <option value="Villa">Villa</option>
-                  <option value="Apartment">Apartment</option>
                   <option value="House">House</option>
-                  <option value="Penthouse">Penthouse</option>
-                  <option value="Studio">Studio</option>
-                  <option value="Townhouse">Townhouse</option>
-                  <option value="Condo">Condo</option>
-                  <option value="Mansion">Mansion</option>
-                  <option value="Commercial">Commercial</option>
-                  <option value="Office">Office</option>
-                  <option value="Land">Land</option>
-                  <option value="Warehouse">Warehouse</option>
-                  <option value="Shop">Shop</option>
+                  <option value="Car">Car</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               </div>
@@ -354,8 +329,17 @@ function Properties() {
                 {getPageTitle()}
               </h1>
               <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">
-                <span className="font-bold text-[#c99b43]">{sortedProperties.length}</span>{' '}
-                {sortedProperties.length === 1 ? 'Property' : 'Properties'} Available
+                {loading ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-bold text-[#c99b43]">{sortedProperties.length}</span>{' '}
+                    {sortedProperties.length === 1 ? 'Property' : 'Properties'} Available
+                  </>
+                )}
               </p>
             </div>
 
@@ -371,7 +355,6 @@ function Properties() {
                   <option value="newest">Newest</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
-                  <option value="popular">Most Popular</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               </div>
@@ -407,7 +390,40 @@ function Properties() {
       {/* Properties Grid */}
       <section className="bg-slate-50 py-8 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {sortedProperties.length > 0 ? (
+
+          {/* Loading State */}
+          {loading && (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <PropertyCardSkeleton key={i} />
+              ))}
+            </div>
+          )}
+
+          {/* Error State */}
+          {!loading && error && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="rounded-full bg-red-100 p-6 dark:bg-red-900/30">
+                <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400" />
+              </div>
+              <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
+                Failed to Load Properties
+              </h3>
+              <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
+                {error}
+              </p>
+              <Button
+                onClick={fetchProperties}
+                className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 shadow-sm hover:opacity-90"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {/* Properties List */}
+          {!loading && !error && sortedProperties.length > 0 && (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {sortedProperties.map((property) => (
                 <Card
@@ -420,15 +436,25 @@ function Properties() {
                       src={property.image}
                       alt={property.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
+                      }}
                     />
 
-                    {/* Status Badge */}
+                    {/* Availability Badge */}
                     <div className="absolute left-4 top-4">
-                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold shadow-md ${property.status === 'For Rent'
+                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold shadow-md ${property.is_available
                           ? 'bg-emerald-500 text-white'
-                          : 'bg-blue-500 text-white'
+                          : 'bg-slate-500 text-white'
                         }`}>
-                        {property.status}
+                        {property.is_available ? 'Available' : 'Rented'}
+                      </span>
+                    </div>
+
+                    {/* Type Badge */}
+                    <div className="absolute left-4 bottom-4">
+                      <span className="inline-flex rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-md backdrop-blur-sm dark:bg-slate-900/95 dark:text-slate-300">
+                        {property.type}
                       </span>
                     </div>
 
@@ -445,14 +471,6 @@ function Properties() {
                           }`}
                       />
                     </button>
-
-                    {/* Rating Badge */}
-                    <div className="absolute bottom-4 right-4 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 shadow-md backdrop-blur-sm dark:bg-slate-900/95">
-                      <Star className="h-3.5 w-3.5 fill-[#c99b43] text-[#c99b43]" />
-                      <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                        {property.rating}
-                      </span>
-                    </div>
                   </div>
 
                   {/* Content */}
@@ -468,26 +486,28 @@ function Properties() {
                       {property.location}
                     </p>
 
-                    {/* Property Details */}
-                    <div className="mt-4 flex items-center gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
-                      <div className="flex items-center gap-1.5">
-                        <Bed className="h-4 w-4" />
-                        <span>{property.beds}</span>
+                    {/* Property Details — only show bed/bath/area for houses */}
+                    {property.type === 'House' && (
+                      <div className="mt-4 flex items-center gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+                        <div className="flex items-center gap-1.5">
+                          <Bed className="h-4 w-4" />
+                          <span>{property.beds}</span>
+                        </div>
+                        <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
+                        <div className="flex items-center gap-1.5">
+                          <Bath className="h-4 w-4" />
+                          <span>{property.baths}</span>
+                        </div>
+                        <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
+                        <div className="flex items-center gap-1.5">
+                          <Maximize2 className="h-4 w-4" />
+                          <span>{property.area} sqft</span>
+                        </div>
                       </div>
-                      <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
-                      <div className="flex items-center gap-1.5">
-                        <Bath className="h-4 w-4" />
-                        <span>{property.baths}</span>
-                      </div>
-                      <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
-                      <div className="flex items-center gap-1.5">
-                        <Maximize2 className="h-4 w-4" />
-                        <span>{property.area} m²</span>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Price & CTA */}
-                    <div className="mt-4 flex items-center justify-between">
+                    <div className={`flex items-center justify-between ${property.type === 'House' ? 'mt-4' : 'mt-4 border-t border-slate-200 pt-4 dark:border-slate-800'}`}>
                       <div>
                         <span className="text-2xl font-bold text-[#c99b43]">
                           {property.price}
@@ -506,8 +526,10 @@ function Properties() {
                 </Card>
               ))}
             </div>
-          ) : (
-            // Empty State
+          )}
+
+          {/* Empty State — only show when data is loaded but filters match nothing */}
+          {!loading && !error && sortedProperties.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="rounded-full bg-slate-100 p-6 dark:bg-slate-800">
                 <Building2 className="h-12 w-12 text-slate-400 dark:text-slate-600" />
@@ -516,21 +538,26 @@ function Properties() {
                 No Properties Found
               </h3>
               <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
-                We couldn't find any properties matching your search criteria. Try adjusting your filters.
+                {properties.length === 0
+                  ? 'There are no properties listed yet. Check back later!'
+                  : "We couldn't find any properties matching your search criteria. Try adjusting your filters."}
               </p>
-              <Button
-                onClick={() => {
-                  setSearchTerm('')
-                  setPropertyType('all')
-                  setPriceRange('all')
-                }}
-                variant="outline"
-                className="mt-6 border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
-              >
-                Clear Filters
-              </Button>
+              {properties.length > 0 && (
+                <Button
+                  onClick={() => {
+                    setSearchTerm('')
+                    setPropertyType('all')
+                    setPriceRange('all')
+                  }}
+                  variant="outline"
+                  className="mt-6 border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           )}
+
         </div>
       </section>
 
