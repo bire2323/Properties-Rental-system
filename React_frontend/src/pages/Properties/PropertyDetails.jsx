@@ -176,6 +176,39 @@ function PropertyDetails() {
                     </div>
                   </div>
                 </Card>
+                <div className="w-full rounded-xl border-2 border-red-500 bg-white p-6 shadow-xl dark:bg-slate-900">
+                  <h2 className="text-2xl font-bold text-red-500">
+                    BOOKING CARD
+                  </h2>
+
+                  <p className="mt-2 text-slate-700 dark:text-slate-300">
+                    Monthly Rent
+                  </p>
+
+                  <p className="mt-1 text-2xl font-bold text-[#c99b43]">
+                    ETB {property.price}
+                    <span className="ml-1 text-sm font-normal">
+                      / month
+                    </span>
+                  </p>
+
+                  <Button
+                    disabled={property.status !== 'For Rent'}
+                    onClick={() => navigate(`/properties/${property.id}/book`)}
+                    className="mt-5 w-full bg-[#c99b43] text-white hover:bg-[#b88a35]"
+                  >
+                    {property.status === 'For Rent'
+                      ? 'Book Now'
+                      : 'Currently Unavailable'}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="mt-3 w-full"
+                  >
+                    Contact Owner
+                  </Button>
+                </div>
                 <Card className="overflow-hidden border-[#c99b43]/20 bg-gradient-to-br from-[#fff8eb] via-white to-[#fff3d3] p-6 shadow-[0_24px_80px_rgba(201,155,67,0.16)] dark:border-[#c99b43]/20 dark:from-[#1f1a10] dark:via-slate-900 dark:to-[#1a1308]">
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white">Why This Property Stands Out</h3>
                   <div className="mt-5 space-y-3">

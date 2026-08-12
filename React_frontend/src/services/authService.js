@@ -6,7 +6,7 @@ export function getDashboardRoute(role) {
         case 'owner':
             return '/owner'
         case 'tenant':
-            return '/owner'
+            return '/tenant'
         default:
             // return '/tenant-dashboard'
             return '/owner'
