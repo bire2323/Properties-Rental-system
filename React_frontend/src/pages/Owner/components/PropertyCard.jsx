@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
-import { Building2, MapPin, DollarSign, CircleDollarSign } from 'lucide-react'
+import { Building2, MapPin, DollarSign, CircleDollarSign, Eye, Pencil, Trash2 } from 'lucide-react'
+import { getImageUrl } from '../../../lib/utils'
 
-export default function PropertyCard({ property }) {
+export default function PropertyCard({ property, onDelete }) {
     const navigate = useNavigate()
-    const imageUrl = property.main_image?.image || property.images?.[0]?.image || ''
+    const imageUrl = getImageUrl(property.main_image?.image || property.images?.[0]?.image) || ''
 
     return (
         <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
@@ -11,6 +12,10 @@ export default function PropertyCard({ property }) {
                 <img
                     src={imageUrl}
                     alt={property.title}
+                    onError={(e) => {
+                        e.currentTarget.onerror = null
+                        e.currentTarget.src = 'https://via.placeholder.com/600x400?text=No+Image'
+                    }}
                     className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                 />
             </div>
@@ -44,15 +49,33 @@ export default function PropertyCard({ property }) {
                         onClick={() => navigate(`/owner/properties/${property.id}`)}
                         className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                     >
-                        View
+                        <Eye className="h-5 w-5" />
                     </button>
                     <button
                         type="button"
                         onClick={() => navigate(`/owner/properties/${property.id}/edit`)}
                         className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-100 dark:hover:bg-slate-800"
                     >
-                        Edit
+                        <Pencil className="h-5 w-5" />
                     </button>
+
+                    <button type="button"
+                        onClick={async () => {
+                            const ok = window.confirm(`Delete property \"${property.title}\"?`)
+                            if (!ok) return
+                            try {
+                                await (typeof onDelete === 'function' ? onDelete(property.id) : Promise.resolve())
+                            } catch (err) {
+                                alert(err.message || 'Unable to delete')
+                            }
+                        }}
+                        className="rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600"
+                    >
+                        <Trash2 className="h-5 w-5" />
+                    </button>
+
+
+
                 </div>
             </div>
         </div>

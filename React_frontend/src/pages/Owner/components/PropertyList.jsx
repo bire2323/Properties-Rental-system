@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { MapPin, DollarSign } from 'lucide-react'
+import { MapPin, DollarSign, Eye, Pencil, Trash2 } from 'lucide-react'
 
-export default function PropertyList({ properties }) {
+export default function PropertyList({ properties, onDelete }) {
     const navigate = useNavigate()
 
     return (
@@ -39,14 +39,29 @@ export default function PropertyList({ properties }) {
                                 onClick={() => navigate(`/owner/properties/${property.id}`)}
                                 className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
                             >
-                                View
+                                <Eye className="h-5 w-5" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => navigate(`/owner/properties/${property.id}/edit`)}
                                 className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
                             >
-                                Edit
+                                <Pencil className="h-5 w-5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const ok = window.confirm(`Delete property \"${property.title}\"?`)
+                                    if (!ok) return
+                                    try {
+                                        await (typeof onDelete === 'function' ? onDelete(property.id) : Promise.resolve())
+                                    } catch (err) {
+                                        alert(err.message || 'Unable to delete')
+                                    }
+                                }}
+                                className="rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600"
+                            >
+                                <Trash2 className="h-5 w-5" />
                             </button>
                         </div>
                     </div>

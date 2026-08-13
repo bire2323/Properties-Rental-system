@@ -1,10 +1,13 @@
+
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getPropertyById, updateProperty } from '../../api/property/propertyApi'
+import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
+import { Eye, Pencil, Trash2 } from 'lucide-react'
 
 export default function EditProperty() {
     const { id } = useParams()
@@ -31,6 +34,7 @@ export default function EditProperty() {
                     location: data.location || '',
                     specific: data.specific || {},
                     images: [],
+                    selectedFeatures: data.features || [],
                 })
             } catch (err) {
                 setError(err.message || 'Unable to load property.')
@@ -98,6 +102,10 @@ export default function EditProperty() {
             payload.append('property_type', form.property_type)
             payload.append('location', form.location)
             payload.append('specific', JSON.stringify(form.specific))
+            payload.append(
+                'feature_ids',
+                JSON.stringify(form.selectedFeatures.map((feature) => feature.id))
+            )
             if (form.images.length) {
                 form.images.forEach((file) => {
                     payload.append('images', file)
@@ -212,6 +220,18 @@ export default function EditProperty() {
                                 </label>
                             ))}
                         </div>
+                    </section>
+                    <section className="space-y-4">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Update the amenities available at this property.
+                        </p>
+                        <FeatureMultiSelect
+                            selectedFeatures={form.selectedFeatures}
+                            onChange={(selectedFeatures) =>
+                                setForm((prev) => ({ ...prev, selectedFeatures }))
+                            }
+                        />
                     </section>
                 </div>
                 <aside className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">

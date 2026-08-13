@@ -12,6 +12,8 @@ import OwnerProperties from '../pages/Owner/OwnerProperties'
 import OwnerReports from '../pages/Owner/OwnerReports'
 import OwnerSettings from '../pages/Owner/OwnerSettings'
 import AddProperty from '../pages/Owner/AddProperty'
+import OwnerPropertyDetails from '../pages/Owner/OwnerPropertyDetails'
+import EditProperty from '../pages/Owner/EditProperty'
 import TenantDashboard from '../pages/Tenant/TenantDashboard'
 import Home from '../pages/Home/Home'
 import Login from '../pages/Auth/Login'
@@ -82,6 +84,8 @@ function AppRoutes() {
                     <Route path="dashboard" element={<OwnerDashboard />} />
                     <Route path="properties" element={<OwnerProperties />} />
                     <Route path="properties/add" element={<AddProperty />} />
+                    <Route path="properties/:id" element={<OwnerPropertyDetails />} />
+                    <Route path="properties/:id/edit" element={<EditProperty />} />
                     <Route path="bookings" element={<OwnerBookings />} />
                     <Route path="favorites" element={<OwnerFavorites />} />
                     <Route path="payments" element={<OwnerPayments />} />

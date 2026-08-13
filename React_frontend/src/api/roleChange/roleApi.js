@@ -6,21 +6,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
  * @returns {Promise} Response object
  */
 export const becomeOwner = async (formData) => {
-    // Get token from localStorage
-    const token = localStorage.getItem('access_token')
+    // ✅ No need to get token from localStorage – cookies are sent automatically
+    // ✅ No need to set Authorization header – cookies handle authentication
 
-    // Build headers
-    const headers = {}
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-    }
-    // ⚠️ Do NOT set 'Content-Type' header manually when sending FormData
-    // The browser will automatically set it with the correct boundary
-
-    const response = await fetch(`${API_BASE_URL}/accounts/become-owner/`, {
+    const response = await fetch(`${API_BASE_URL}/api/accounts/become-owner/`, {
         method: 'POST',
-        headers: headers,
+        credentials: 'include', // 👈 CRITICAL: Send HTTP‑only cookies
         body: formData,
+        // ⚠️ Do NOT set 'Content-Type' header – browser handles it for FormData
     })
 
     // Parse response

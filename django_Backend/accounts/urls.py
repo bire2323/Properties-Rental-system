@@ -7,6 +7,7 @@ from .views import (
     LogoutAPIView,
     ProfileAPIView,
     RegisterAPIView,
+    BecomeOwnerAPIView,
     home,
 )
 
@@ -18,4 +19,5 @@ urlpatterns = [
     path('google/', GoogleAuthAPIView.as_view(), name='google-auth'),
     path('token/refresh/', CookieTokenRefreshView.as_view(), name='token-refresh'),
     path('profile/', ProfileAPIView.as_view(), name='profile'),
+    path('become-owner/', BecomeOwnerAPIView.as_view(), name='become-owner'),
 ]

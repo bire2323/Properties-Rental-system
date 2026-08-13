@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { getAllProperties } from '../../api/property/propertyApi'
+import { getAllProperties, deleteProperty } from '../../api/property/propertyApi'
 import PropertyToolbar from './components/PropertyToolbar'
 import PropertyGrid from './components/PropertyGrid'
 import PropertyList from './components/PropertyList'
@@ -34,6 +34,16 @@ export default function OwnerProperties() {
         }
         loadProperties()
     }, [])
+
+    const handleDelete = async (id) => {
+        try {
+            await deleteProperty(id)
+            setProperties((prev) => prev.filter((p) => p.id !== id))
+        } catch (err) {
+            console.error('Delete failed', err)
+            setError(err.message || 'Unable to delete property.')
+        }
+    }
 
     const { user } = useAuth()
 
@@ -91,9 +101,9 @@ export default function OwnerProperties() {
                     }
                 />
             ) : viewMode === 'list' ? (
-                <PropertyList properties={filteredProperties} />
+                <PropertyList properties={filteredProperties} onDelete={handleDelete} />
             ) : (
-                <PropertyGrid properties={filteredProperties} />
+                <PropertyGrid properties={filteredProperties} onDelete={handleDelete} />
             )}
         </div>
     )

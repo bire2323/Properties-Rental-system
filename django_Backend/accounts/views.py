@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .permissions import CookieJWTAuthentication, IsAuthenticatedCookie
 from .serializers import (
@@ -139,4 +140,61 @@ class CookieTokenRefreshView(TokenRefreshView):
             )
 
         return response
+
+class BecomeOwnerAPIView(APIView):
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticatedCookie]
+    parser_classes = [MultiPartParser, FormParser]  # For file upload
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        
+        # 1. Check if already an owner
+        if user.role == User.Role.OWNER:
+            return Response(
+                {"message": "You are already an owner."},
+                status=status.HTTP_200_OK
+            )
+        
+        # 2. Validate required fields
+        required_fields = ['city', 'country', 'date_of_birth', 'phone_number']
+        missing = [f for f in required_fields if not request.data.get(f)]
+        if missing:
+            return Response(
+                {"error": f"Missing required fields: {', '.join(missing)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 3. Update user fields
+        user.role = User.Role.OWNER
+        user.city = request.data.get('city')
+        user.country = request.data.get('country')
+        user.address = request.data.get('address', '')
+        user.date_of_birth = request.data.get('date_of_birth')
+        user.phone_number = request.data.get('phone_number')
+        
+        # 4. Handle profile image upload
+        if request.FILES.get('profile_image'):
+            user.profile_image = request.FILES['profile_image']
+        
+        user.save()
+        
+        # 5. Return updated user data
+        return Response({
+            "message": "You are now a property owner!",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": user.role,
+                "phone_number": user.phone_number,
+                "city": user.city,
+                "country": user.country,
+                "address": user.address,
+                "date_of_birth": user.date_of_birth,
+                "profile_image": user.profile_image.url if user.profile_image else None,
+                "is_verified": user.is_verified,
+            }
+        }, status=status.HTTP_200_OK)
 

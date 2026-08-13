@@ -19,6 +19,12 @@ class Property(models.Model):
     security_deposit = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     property_type = models.CharField(max_length=10, choices=PROPERTY_TYPES)
     location = models.CharField(max_length=255)
+    features = models.ManyToManyField(
+        'Feature',
+        blank=True,
+        related_name='properties',
+        help_text='Amenities and features available at this property.',
+    )
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -70,6 +76,25 @@ class Car(Property):
 
     class Meta:
         verbose_name = "Car"
+
+class Feature(models.Model):
+    """Reusable amenity/feature that can be assigned to multiple properties."""
+
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text='Display name, e.g. Wi-Fi, Security, Swimming Pool.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Feature'
+        verbose_name_plural = 'Features'
+
+    def __str__(self):
+        return self.name
+
 
 class PropertyImage(models.Model):
     property = models.ForeignKey(

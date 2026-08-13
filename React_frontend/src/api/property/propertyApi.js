@@ -35,6 +35,17 @@ async function request(endpoint, options = {}) {
 }
 
 /**
+ * GET /api/properties/features/
+ *
+ * Fetches all available property features/amenities.
+ *
+ * @returns {Promise<Array<{id: number, name: string}>>}
+ */
+export async function getFeatures() {
+    return request('/api/properties/features/', { method: 'GET' })
+}
+
+/**
  * GET /api/properties/
  *
  * Fetches all properties from the backend.

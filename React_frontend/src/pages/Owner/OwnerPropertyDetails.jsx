@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Trash2, Edit3, ArrowLeft, MapPin, DollarSign, CalendarDays } from 'lucide-react'
 import { getPropertyById, deleteProperty } from '../../api/property/propertyApi'
+import { getImageUrl } from '../../lib/utils'
+import { getFeatureIcon } from '../../lib/featureIcons'
 import { Button } from '../../components/ui/button'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
@@ -21,6 +23,7 @@ export default function OwnerPropertyDetails() {
             try {
                 const data = await getPropertyById(id)
                 setProperty(data)
+                console.debug('Loaded property (OwnerPropertyDetails):', data)
             } catch (err) {
                 setError(err.message || 'Unable to load property.')
             } finally {
@@ -49,6 +52,17 @@ export default function OwnerPropertyDetails() {
     }
 
     const imageUrl = property?.main_image?.image || property?.images?.[0]?.image || ''
+
+    const handleImgError = (e) => {
+        // Prevent infinite onError loops by clearing the handler before setting a fallback
+        try {
+            e.currentTarget.onerror = null
+            console.warn('Image failed to load:', e.currentTarget.src)
+            e.currentTarget.src = 'https://via.placeholder.com/800x600?text=No+Image'
+        } catch (err) {
+            // ignore
+        }
+    }
 
     return (
         <div className="space-y-6">
@@ -89,8 +103,8 @@ export default function OwnerPropertyDetails() {
                 <div className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
                     <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-900">
-                            {imageUrl ? (
-                                <img src={imageUrl} alt={property.title} className="h-80 w-full object-cover" />
+                            {getImageUrl(imageUrl) ? (
+                                <img src={getImageUrl(imageUrl)} alt={property.title} onError={handleImgError} className="h-80 w-full object-cover" />
                             ) : (
                                 <div className="flex h-80 items-center justify-center bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400">No image available</div>
                             )}
@@ -161,12 +175,34 @@ export default function OwnerPropertyDetails() {
                             <div className="mt-5 grid gap-3">
                                 {property.images?.length ? (
                                     property.images.map((image) => (
-                                        <img key={image.id} src={image.image} alt={property.title} className="h-28 w-full rounded-3xl object-cover" />
+                                        <img key={image.id} src={getImageUrl(image)} alt={property.title} onError={handleImgError} className="h-28 w-full rounded-3xl object-cover" />
                                     ))
                                 ) : (
                                     <div className="rounded-3xl bg-slate-100 p-8 text-center text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">No additional images</div>
                                 )}
                             </div>
+                        </div>
+
+                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
+                            {property.features?.length ? (
+                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                    {property.features.map((feature) => {
+                                        const Icon = getFeatureIcon(feature.name)
+                                        return (
+                                            <div
+                                                key={feature.id}
+                                                className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4 dark:bg-slate-900"
+                                            >
+                                                <Icon className="h-5 w-5 text-[#c99b43]" />
+                                                <span className="font-medium text-slate-900 dark:text-white">{feature.name}</span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">No features listed for this property.</p>
+                            )}
                         </div>
                     </div>
                 </div>

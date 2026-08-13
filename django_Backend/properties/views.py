@@ -1,8 +1,19 @@
 from rest_framework import viewsets
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import AllowAny
 from django.db.models import Q
-from .models import Property
+from .models import Property, Feature
 from .permissions import PropertyPermission
-from .serializers import PropertySerializer, PropertyCreateSerializer
+from .serializers import PropertySerializer, PropertyCreateSerializer, FeatureSerializer
+
+
+class FeatureListView(ListAPIView):
+    """Read-only list of available property features/amenities."""
+    queryset = Feature.objects.all()
+    serializer_class = FeatureSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
@@ -19,7 +30,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         - select_related('owner'): Fetches owner data in the same query.
         - prefetch_related('images'): Fetches all images in a separate efficient query.
         """
-        queryset = Property.objects.select_related('owner').prefetch_related('images')
+        queryset = Property.objects.select_related('owner').prefetch_related('images', 'features')
 
         # --- FILTERING LOGIC (for search/query params) ---
         # Example: /api/properties/?location=Addis&min_price=500&max_price=2000&type=house&bedrooms=3
@@ -74,11 +85,21 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return PropertyCreateSerializer
         return PropertySerializer
 
+    # Ensure the view can accept multipart/form-data (files + JSON fields)
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def perform_create(self, serializer):
         """
         Automatically set the property's owner to the currently logged-in user.
         The serializer handles the rest (creating house/car and images).
         """
+        # Temporary debug: print incoming parsed request data and files
+        try:
+            print('*** perform_create: request.data ->', self.request.data)
+            print('*** perform_create: request.FILES ->', self.request.FILES)
+        except Exception:
+            pass
+
         serializer.save(owner=self.request.user)
 
     def perform_update(self, serializer):

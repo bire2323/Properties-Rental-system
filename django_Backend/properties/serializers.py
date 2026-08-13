@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import Property, House, Car, PropertyImage
+import logging
+from decimal import Decimal, InvalidOperation
+
+logger = logging.getLogger(__name__)
+from .models import Property, House, Car, PropertyImage, Feature
+
+
+class FeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feature
+        fields = ['id', 'name']
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):
@@ -45,6 +55,7 @@ class PropertySerializer(serializers.ModelSerializer):
     specific = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
     images = PropertyImageSerializer(many=True, read_only=True)
+    features = FeatureSerializer(many=True, read_only=True)
 
     class Meta:
         model = Property
@@ -59,6 +70,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'property_type',
             'location',
             'main_image',
+            'features',
             'is_available',
             'specific',      # Dynamically returns house or car fields
             'images',        # List of all property images
@@ -106,7 +118,20 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
     and a list of uploaded image files via 'images'.
     The first uploaded image (order=0) will serve as the main image.
     """
-    specific = serializers.DictField(write_only=True)
+    # Use JSONField so incoming JSON strings in multipart FormData are parsed
+    # automatically into Python dicts. DictField would reject JSON strings.
+    # Explicitly declare numeric fields to ensure proper validation/coercion
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    security_deposit = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+
+    # Use JSONField so incoming JSON strings in multipart FormData are parsed
+    # automatically into Python dicts. DictField would reject JSON strings.
+    specific = serializers.JSONField(write_only=True)
+    feature_ids = serializers.JSONField(
+        write_only=True,
+        required=False,
+        default=list,
+    )
     images = serializers.ListField(
         child=serializers.ImageField(),
         write_only=True,
@@ -124,8 +149,47 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             'property_type',
             'location',
             'specific',
+            'feature_ids',
             'images'
         ]
+
+    def validate_feature_ids(self, value):
+        if value in (None, ''):
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Must be a list of feature IDs.')
+        try:
+            unique_ids = list(dict.fromkeys(int(item) for item in value))
+        except (TypeError, ValueError):
+            raise serializers.ValidationError('Each feature ID must be an integer.')
+        existing_ids = set(
+            Feature.objects.filter(id__in=unique_ids).values_list('id', flat=True)
+        )
+        missing = set(unique_ids) - existing_ids
+        if missing:
+            raise serializers.ValidationError(
+                f'Invalid feature ID(s): {sorted(missing)}'
+            )
+        return unique_ids
+
+    def validate(self, data):
+        # Ensure price is provided and coercible to Decimal
+        # Debug print to trace incoming validated input
+        try:
+            print('*** PropertyCreateSerializer.validate incoming data ->', data)
+        except Exception:
+            pass
+
+        price = data.get('price')
+        if price in (None, ''):
+            raise serializers.ValidationError({'price': 'This field is required.'})
+        # coerce string prices to Decimal early so create() sees a Decimal
+        if isinstance(price, str):
+            try:
+                data['price'] = Decimal(price)
+            except InvalidOperation:
+                raise serializers.ValidationError({'price': 'Enter a valid decimal value.'})
+        return data
 
     def create(self, validated_data):
         """
@@ -133,20 +197,55 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         (House or Car), and finally create all PropertyImage records.
         The first image (order=0) becomes the main image.
         """
-        specific_data = validated_data.pop('specific')
+        # Be defensive: allow 'specific' to be optional and default to empty dict
+        # Debug print and log validated_data to help debug missing fields
+        try:
+            print('*** PropertyCreateSerializer.create validated_data ->', validated_data)
+        except Exception:
+            pass
+        logger.debug('PropertyCreateSerializer.create validated_data: %s', validated_data)
+
+        specific_data = validated_data.pop('specific', {}) or {}
+        feature_ids = validated_data.pop('feature_ids', [])
         uploaded_images = validated_data.pop('images', [])
         property_type = validated_data.get('property_type')
 
         # 1. Create the base Property
         property_instance = Property.objects.create(**validated_data)
 
-        # 2. Create the specific child based on property_type
-        if property_type == 'house':
-            House.objects.create(property_ptr=property_instance, **specific_data)
-        elif property_type == 'car':
-            Car.objects.create(property_ptr=property_instance, **specific_data)
+        # 2. Assign features (M2M must happen after the property exists)
+        if feature_ids:
+            features = Feature.objects.filter(id__in=feature_ids)
+            property_instance.features.set(features)
 
-        # 3. Create PropertyImage records from uploaded files
+        # 3. Create the specific child based on property_type
+        # Use the parent's primary key (id) when creating multi-table-inherited
+        # child records. Passing `property_ptr` can lead to parent fields being
+        # overwritten with empty values during the child's save. Creating the
+        # child with the same `id` ensures Django links the rows correctly.
+        if property_type == 'house':
+            # Build a House instance, attach the parent Property, copy parent
+            # concrete field values onto the child so any parent-save during
+            # the child's save won't overwrite columns with NULLs.
+            house = House(**specific_data)
+            house.property_ptr = property_instance
+            for field in Property._meta.concrete_fields:
+                try:
+                    setattr(house, field.attname, getattr(property_instance, field.attname))
+                except AttributeError:
+                    pass
+            house.save()
+        elif property_type == 'car':
+            car = Car(**specific_data)
+            car.property_ptr = property_instance
+            for field in Property._meta.concrete_fields:
+                try:
+                    setattr(car, field.attname, getattr(property_instance, field.attname))
+                except AttributeError:
+                    pass
+            car.save()
+
+        # 4. Create PropertyImage records from uploaded files
         for index, image_file in enumerate(uploaded_images):
             PropertyImage.objects.create(
                 property=property_instance,
@@ -161,7 +260,8 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         Update the base Property, update the specific child,
         and handle image replacements (if provided).
         """
-        specific_data = validated_data.pop('specific', None)
+        specific_data = validated_data.pop('specific', None) or None
+        feature_ids = validated_data.pop('feature_ids', None)
         uploaded_images = validated_data.pop('images', None)
 
         # 1. Update base Property fields
@@ -169,7 +269,12 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        # 2. Update the specific child (if provided)
+        # 2. Update features if provided (replaces existing relationships)
+        if feature_ids is not None:
+            features = Feature.objects.filter(id__in=feature_ids)
+            instance.features.set(features)
+
+        # 3. Update the specific child (if provided)
         if specific_data:
             property_type = instance.property_type
             if property_type == 'house':
@@ -184,7 +289,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
                     setattr(car_instance, attr, value)
                 car_instance.save()
 
-        # 3. Replace images if new ones are provided
+        # 4. Replace images if new ones are provided
         if uploaded_images is not None:
             instance.images.all().delete()
             for index, image_file in enumerate(uploaded_images):
