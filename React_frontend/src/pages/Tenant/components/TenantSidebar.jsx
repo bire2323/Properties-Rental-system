@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Bookmark, Calendar, CreditCard, MessageSquare, User, Settings, LogOut, Menu } from 'lucide-react'
+import { Home, Bookmark, Calendar, CreditCard, MessageSquare, User, Settings, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
@@ -18,7 +18,12 @@ export default function TenantSidebar({ isOpen, onClose }) {
     const { logout } = useAuth()
     const navigate = useNavigate()
     return (
-        <aside className={cn('fixed top-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 lg:static lg:translate-x-0', isOpen ? 'translate-x-0' : '-translate-x-full')}>
+        <aside
+            className={cn(
+                'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 overflow-y-auto lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
+                isOpen ? 'translate-x-0' : '-translate-x-full'
+            )}
+        >
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                 <button
                     type="button"
@@ -28,8 +33,12 @@ export default function TenantSidebar({ isOpen, onClose }) {
                     <Home onClick={() => navigate('/')} className="h-4 w-4" />
                     Home
                 </button>
-                <button onClick={onClose} className="lg:hidden inline-flex items-center justify-center rounded-lg p-2 text-slate-700 dark:text-slate-200">
-                    <Menu />
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900 lg:hidden"
+                >
+                    <X size={20} />
                 </button>
             </div>
 

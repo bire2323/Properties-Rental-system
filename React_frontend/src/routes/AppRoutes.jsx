@@ -30,6 +30,10 @@ import TenantMessages from '../pages/Tenant/TenantMessages' // placeholder if mi
 import Profile from '../pages/Tenant/Profile'
 import Settings from '../pages/Tenant/Settings'
 
+import BecomeOwnerPage from '../pages/RoleChange/BecomeOwnerPage'
+
+
+
 
 function AppRoutes() {
     return (
@@ -37,6 +41,7 @@ function AppRoutes() {
             <ScrollToTop />
             <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/become-owner" element={<BecomeOwnerPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 

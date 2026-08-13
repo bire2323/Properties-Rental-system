@@ -7,6 +7,8 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import Testimonials from '../../components/common/Testimonials'
 
+import { useAuth } from '../../hooks/useAuth'
+
 const heroImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000'
 const property1 = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
 const property2 = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=800'
@@ -92,7 +94,19 @@ const stats = [
 
 function Home() {
   const navigate = useNavigate()
-
+  const { user } = useAuth()
+  const handlePostProperty = () => {
+    if (user) {
+      if (user.role === 'tenant') {
+        window.open('/become-owner', '_blank')
+      } else if (user.role === 'owner') {
+        navigate('/owner/properties/add')
+      }
+    }
+    else {
+      navigate('/login')
+    }
+  }
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       <Navbar />
@@ -432,7 +446,7 @@ function Home() {
             <Button
               size="lg"
               className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-slate-950 hover:opacity-90 shadow-lg hover:shadow-xl transition-all dark:text-slate-950"
-              onClick={() => navigate('/properties/create')}
+              onClick={handlePostProperty}
             >
               <Building2 className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               Post Properties

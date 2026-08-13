@@ -1,0 +1,604 @@
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import {
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle,
+  MapPin,
+  Calendar,
+  Phone,
+  User,
+  Upload,
+  Building2,
+  Shield,
+  Handshake
+} from 'lucide-react'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Card } from '../../components/ui/card'
+import { useAuth } from '../../hooks/useAuth'
+import { becomeOwner } from '../../api/roleChange/roleApi'
+import systemlogo from '../../assets/logo.jpg'
+
+export default function BecomeOwnerPage() {
+  const navigate = useNavigate()
+  const { user, updateUser } = useAuth()
+  const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [formData, setFormData] = useState({
+    // Step 1
+    city: '',
+    country: '',
+    address: '',
+    // Step 2
+    date_of_birth: '',
+    phone_number: '',
+    profile_image: null,
+    // Agreements
+    agree_to_terms: false,
+    agree_to_verification: false,
+  })
+  const [previewUrl, setPreviewUrl] = useState(null)
+
+  // ============================================================
+  // 1. VALIDATION FUNCTIONS
+  // ============================================================
+
+  const validateStep1 = () => {
+    const newErrors = {}
+    if (!formData.city.trim()) newErrors.city = 'City is required.'
+    if (!formData.country.trim()) newErrors.country = 'Country is required.'
+    // Address is optional – no validation
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const validateStep2 = () => {
+    const newErrors = {}
+    if (!formData.date_of_birth) {
+      newErrors.date_of_birth = 'Date of birth is required.'
+    }
+    if (!formData.phone_number.trim()) {
+      newErrors.phone_number = 'Phone number is required.'
+    } else if (!/^\+?[0-9]{7,15}$/.test(formData.phone_number.replace(/\s/g, ''))) {
+      newErrors.phone_number = 'Enter a valid phone number (e.g., +251911234567).'
+    }
+    if (!formData.agree_to_terms) {
+      newErrors.agree_to_terms = 'You must agree to the Terms & Conditions.'
+    }
+    if (!formData.agree_to_verification) {
+      newErrors.agree_to_verification = 'You must agree to the verification process.'
+    }
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // ============================================================
+  // 2. HANDLERS
+  // ============================================================
+
+  const handleChange = (e) => {
+    const { name, value, type, checked, files } = e.target
+    // Clear error for this field when user types
+    setErrors((prev) => ({ ...prev, [name]: '' }))
+
+    if (type === 'file') {
+      const file = files[0]
+      setFormData((prev) => ({ ...prev, profile_image: file }))
+      if (file) {
+        const reader = new FileReader()
+        reader.onloadend = () => setPreviewUrl(reader.result)
+        reader.readAsDataURL(file)
+      } else {
+        setPreviewUrl(null)
+      }
+    } else if (type === 'checkbox') {
+      setFormData((prev) => ({ ...prev, [name]: checked }))
+      // Clear checkbox errors
+      setErrors((prev) => ({ ...prev, [name]: '' }))
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
+  }
+
+  // Enter key navigation: move to next input or trigger action
+  const handleKeyDown = (e, stepFields) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const form = e.target.closest('form')
+      if (!form) return
+
+      const focusable = form.querySelectorAll(
+        'input:not([type="file"]), button:not([disabled])'
+      )
+      const currentIdx = Array.from(focusable).indexOf(e.target)
+
+      // If current is the last focusable, trigger primary action
+      if (currentIdx === focusable.length - 1) {
+        if (step === 1) {
+          handleNext()
+        } else {
+          handleSubmit(e)
+        }
+        return
+      }
+
+      // Move to next focusable
+      const nextElement = focusable[currentIdx + 1]
+      if (nextElement) {
+        if (nextElement.type === 'checkbox') {
+          // Checkboxes need click to toggle, but we focus them
+          nextElement.focus()
+          // Optionally toggle: nextElement.click()
+        } else {
+          nextElement.focus()
+          nextElement.select?.()
+        }
+      }
+    }
+  }
+
+  const handleNext = () => {
+    if (validateStep1()) {
+      setStep(2)
+      // Scroll to top of card
+      document.querySelector('.scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const handleBack = () => {
+    setStep(1)
+    setErrors({})
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    // Validate step 2
+    if (!validateStep2()) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0]
+      if (firstErrorField) {
+        const el = document.querySelector(`[name="${firstErrorField}"]`)
+        if (el) el.focus()
+      }
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      // Build FormData payload
+      const payload = new FormData()
+      payload.append('city', formData.city)
+      payload.append('country', formData.country)
+      payload.append('address', formData.address)
+      payload.append('date_of_birth', formData.date_of_birth)
+      payload.append('phone_number', formData.phone_number)
+      if (formData.profile_image) {
+        payload.append('profile_image', formData.profile_image)
+      }
+      payload.append('agree_to_terms', formData.agree_to_terms)
+      payload.append('agree_to_verification', formData.agree_to_verification)
+
+      // ✅ Use the fetch API function
+      const response = await becomeOwner(payload)
+
+      // Update user context with new role
+      if (updateUser) {
+        updateUser({ ...user, role: 'owner' })
+      }
+
+      // Redirect to property creation page
+      navigate('/owner/properties/add')
+    } catch (error) {
+      console.error('Error becoming owner:', error)
+      // Display API error
+      const errorMsg = error.message || error.data?.error || 'Something went wrong. Please try again.'
+      setErrors((prev) => ({
+        ...prev,
+        general: errorMsg,
+      }))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ============================================================
+  // 3. ANIMATION VARIANTS
+  // ============================================================
+
+  const slideVariants = {
+    enter: (direction) => ({
+      x: direction > 0 ? 40 : -40,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+    },
+    exit: (direction) => ({
+      x: direction > 0 ? -40 : 40,
+      opacity: 0,
+      transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+    }),
+  }
+
+  // ============================================================
+  // 4. RENDER
+  // ============================================================
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 py-12 sm:py-16 lg:py-20">
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+        {/* Header with Logo + Handshake */}
+        <div className="text-center">
+          {/* Logo Container with Handshake Badge */}
+          <div className="relative mx-auto mb-4 inline-block">
+            {/* Main Logo Circle */}
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#c99b43]/20 to-[#f3c96d]/20 shadow-lg ring-4 ring-[#c99b43]/10 sm:h-24 sm:w-24">
+              <img
+                src={systemlogo}
+                alt="NexaSpace Logo"
+                className="h-12 w-12 object-contain sm:h-16 sm:w-16"
+              />
+            </div>
+
+            {/* Handshake Badge - positioned at bottom-right */}
+            <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#c99b43] to-[#f3c96d] shadow-lg sm:h-10 sm:w-10">
+              <Handshake className="h-4 w-4 text-slate-950 sm:h-5 sm:w-5" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl lg:text-4xl">
+            Become a Property Owner
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+            Unlock the ability to list properties and start earning.
+          </p>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mt-8 flex items-center gap-4">
+          <div className="flex flex-1 items-center gap-2">
+            <div
+              className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 1 ? 'bg-[#c99b43]' : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+            />
+            <div
+              className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 2 ? 'bg-[#c99b43]' : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+            />
+          </div>
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+            Step {step} of 2
+          </span>
+        </div>
+
+        {/* Card Container */}
+        <Card className="mt-6 overflow-hidden border-slate-200 bg-white/90 shadow-xl backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90">
+          <div className="scroll-container max-h-[70vh] overflow-y-auto p-6 sm:p-8 lg:p-10">
+            <AnimatePresence mode="wait" custom={step}>
+              {/* ============================================ */}
+              {/* STEP 1: LOCATION */}
+              {/* ============================================ */}
+              {step === 1 && (
+                <motion.div
+                  key="step1"
+                  custom={1}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  className="space-y-5"
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-[#c99b43]" />
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Where are your properties located?
+                    </h2>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => e.preventDefault()}
+                    onKeyDown={(e) => handleKeyDown(e, ['city', 'country', 'address'])}
+                  >
+                    {/* City */}
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        City <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        placeholder="e.g., Addis Ababa"
+                        className="h-12 w-full"
+                        required
+                      />
+                      {errors.city && (
+                        <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                          {errors.city}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Country */}
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Country <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        name="country"
+                        value={formData.country}
+                        onChange={handleChange}
+                        placeholder="e.g., Ethiopia"
+                        className="h-12 w-full"
+                        required
+                      />
+                      {errors.country && (
+                        <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                          {errors.country}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Address (optional) */}
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Address <span className="text-slate-400">(optional)</span>
+                      </label>
+                      <Input
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        placeholder="e.g., 123 Bole Road"
+                        className="h-12 w-full"
+                      />
+                      {errors.address && (
+                        <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                          {errors.address}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="pt-4">
+                      <Button
+                        type="button"
+                        onClick={handleNext}
+                        className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] py-3 text-base font-semibold text-slate-950 hover:opacity-90"
+                      >
+                        Next Step
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* ============================================ */}
+              {/* STEP 2: PERSONAL DETAILS & PROFILE */}
+              {/* ============================================ */}
+              {step === 2 && (
+                <motion.div
+                  key="step2"
+                  custom={-1}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  className="space-y-5"
+                >
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-[#c99b43]" />
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Personal Details
+                    </h2>
+                  </div>
+
+                  <form
+                    onSubmit={handleSubmit}
+                    onKeyDown={(e) =>
+                      handleKeyDown(e, [
+                        'date_of_birth',
+                        'phone_number',
+                        'agree_to_terms',
+                        'agree_to_verification',
+                      ])
+                    }
+                  >
+                    {/* Date of Birth */}
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Date of Birth <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="date"
+                        name="date_of_birth"
+                        value={formData.date_of_birth}
+                        onChange={handleChange}
+                        className="h-12 w-full"
+                        required
+                      />
+                      {errors.date_of_birth && (
+                        <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                          {errors.date_of_birth}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Phone Number */}
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="tel"
+                        name="phone_number"
+                        value={formData.phone_number}
+                        onChange={handleChange}
+                        placeholder="+251911234567"
+                        className="h-12 w-full"
+                        required
+                      />
+                      {errors.phone_number && (
+                        <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                          {errors.phone_number}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Profile Picture Upload */}
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Profile Picture <span className="text-slate-400">(optional)</span>
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <label
+                            htmlFor="profile_image"
+                            className="flex h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 px-4 text-sm transition hover:border-[#c99b43] hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-[#c99b43] dark:hover:bg-slate-800"
+                          >
+                            <Upload className="mr-2 h-5 w-5 text-slate-400" />
+                            <span className="text-slate-600 dark:text-slate-400">
+                              {formData.profile_image
+                                ? formData.profile_image.name
+                                : 'Upload image'}
+                            </span>
+                            <input
+                              id="profile_image"
+                              type="file"
+                              name="profile_image"
+                              accept="image/*"
+                              onChange={handleChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        {previewUrl && (
+                          <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-[#c99b43]">
+                            <img
+                              src={previewUrl}
+                              alt="Preview"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      {errors.profile_image && (
+                        <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                          {errors.profile_image}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Agreements */}
+                    <div className="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50">
+                      <div>
+                        <label className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            name="agree_to_terms"
+                            checked={formData.agree_to_terms}
+                            onChange={handleChange}
+                            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#c99b43] focus:ring-[#c99b43]/20"
+                          />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            I agree to the{' '}
+                            <button className="text-[#c99b43] hover:underline" type="button">
+                              Terms & Conditions
+                            </button>{' '}
+                            for property owners.
+                          </span>
+                        </label>
+                        {errors.agree_to_terms && (
+                          <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                            {errors.agree_to_terms}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            name="agree_to_verification"
+                            checked={formData.agree_to_verification}
+                            onChange={handleChange}
+                            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#c99b43] focus:ring-[#c99b43]/20"
+                          />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            I agree to provide verification documents if requested.
+                          </span>
+                        </label>
+                        {errors.agree_to_verification && (
+                          <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                            {errors.agree_to_verification}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Info Box */}
+                    <div className="flex items-start gap-3 rounded-xl bg-blue-50 p-3 dark:bg-blue-950/30">
+                      <Shield className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        Your account will be reviewed. You can start posting properties immediately, but a{' '}
+                        <span className="font-semibold">"Verified Owner"</span> badge appears after
+                        verification.
+                      </p>
+                    </div>
+
+                    {/* Global API Error */}
+                    {errors.general && (
+                      <div className="rounded-xl bg-red-50 p-3 dark:bg-red-950/30">
+                        <p className="text-sm text-red-600 dark:text-red-400">{errors.general}</p>
+                      </div>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex flex-col gap-3 pt-4 sm:flex-row-reverse sm:gap-4">
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] py-3 text-base font-semibold text-slate-950 hover:opacity-90 disabled:opacity-70"
+                      >
+                        {isSubmitting ? (
+                          <span className="flex items-center gap-2">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />
+                            Submitting...
+                          </span>
+                        ) : (
+                          <>
+                            <CheckCircle className="mr-2 h-5 w-5" />
+                            Become Owner
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleBack}
+                        className="flex-1 border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back
+                      </Button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Card>
+
+        {/* Footer hint */}
+        <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
+          All information is secure and will only be used for verification purposes.
+        </p>
+      </div>
+    </div>
+  )
+}

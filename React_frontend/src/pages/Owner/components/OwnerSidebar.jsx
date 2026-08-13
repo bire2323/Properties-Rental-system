@@ -33,7 +33,7 @@ export default function OwnerSidebar({ isOpen, onClose }) {
     return (
         <aside
             className={cn(
-                'sticky top-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950  lg:translate-x-0 max-h-screen ',
+                'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 overflow-y-auto lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
                 isOpen ? 'translate-x-0' : '-translate-x-full'
             )}
         >
@@ -56,7 +56,7 @@ export default function OwnerSidebar({ isOpen, onClose }) {
                 </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-4 py-6 bg-slate-50 dark:bg-slate-950">
+            <nav className="flex-1 px-4 py-6 bg-slate-50 dark:bg-slate-950">
                 <div className="space-y-1">
                     {links.map((item) => {
                         const Icon = item.icon
