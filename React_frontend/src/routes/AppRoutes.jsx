@@ -3,6 +3,15 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import AdminDashboard from '../pages/Admin/AdminDashboard'
 import OwnerDashboard from '../pages/Owner/OwnerDashboard'
+import OwnerLayout from '../pages/Owner/OwnerLayout'
+import OwnerBookings from '../pages/Owner/OwnerBookings'
+import OwnerFavorites from '../pages/Owner/OwnerFavorites'
+import OwnerMessages from '../pages/Owner/OwnerMessages'
+import OwnerPayments from '../pages/Owner/OwnerPayments'
+import OwnerProperties from '../pages/Owner/OwnerProperties'
+import OwnerReports from '../pages/Owner/OwnerReports'
+import OwnerSettings from '../pages/Owner/OwnerSettings'
+import AddProperty from '../pages/Owner/AddProperty'
 import TenantDashboard from '../pages/Tenant/TenantDashboard'
 import Home from '../pages/Home/Home'
 import Login from '../pages/Auth/Login'
@@ -20,6 +29,7 @@ import TenantPayments from '../pages/Tenant/TenantPayments' // create a simple p
 import TenantMessages from '../pages/Tenant/TenantMessages' // placeholder if missing
 import Profile from '../pages/Tenant/Profile'
 import Settings from '../pages/Tenant/Settings'
+
 
 function AppRoutes() {
     return (
@@ -53,14 +63,27 @@ function AppRoutes() {
                     <Route path="profile" element={<Profile />} />
                     <Route path="settings" element={<Settings />} />
                 </Route>
+
+
                 <Route
-                    path="/owner-dashboard"
+                    path="/owner"
                     element={
                         <ProtectedRoute>
-                            <OwnerDashboard />
+                            <OwnerLayout />
                         </ProtectedRoute>
                     }
-                />
+                >
+                    <Route index element={<OwnerDashboard />} />
+                    <Route path="dashboard" element={<OwnerDashboard />} />
+                    <Route path="properties" element={<OwnerProperties />} />
+                    <Route path="properties/add" element={<AddProperty />} />
+                    <Route path="bookings" element={<OwnerBookings />} />
+                    <Route path="favorites" element={<OwnerFavorites />} />
+                    <Route path="payments" element={<OwnerPayments />} />
+                    <Route path="messages" element={<OwnerMessages />} />
+                    <Route path="reports" element={<OwnerReports />} />
+                    <Route path="settings" element={<OwnerSettings />} />
+                </Route>
                 <Route
                     path="/admin-dashboard"
                     element={

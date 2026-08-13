@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { Home, Bookmark, Calendar, CreditCard, MessageSquare, User, Settings, LogOut, Menu } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 import { cn } from '@/lib/utils'
+import { useNavigate } from 'react-router-dom'
 
 const links = [
     { label: 'Dashboard', path: '/tenant/dashboard', icon: Home },
@@ -15,14 +16,18 @@ const links = [
 
 export default function TenantSidebar({ isOpen, onClose }) {
     const { logout } = useAuth()
-
+    const navigate = useNavigate()
     return (
         <aside className={cn('fixed top-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 lg:static lg:translate-x-0', isOpen ? 'translate-x-0' : '-translate-x-full')}>
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-                <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Tenant Portal</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">My Rentals</p>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                >
+                    <Home onClick={() => navigate('/')} className="h-4 w-4" />
+                    Home
+                </button>
                 <button onClick={onClose} className="lg:hidden inline-flex items-center justify-center rounded-lg p-2 text-slate-700 dark:text-slate-200">
                     <Menu />
                 </button>
