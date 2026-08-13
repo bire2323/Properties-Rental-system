@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  MapPin, Star, Bed, Bath, Maximize2, Heart, Share2, Calendar,
+  MapPin, Star, Bed, Bath, Maximize2, Heart, Calendar,
   CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car,
   X, Loader2
 } from 'lucide-react'
@@ -11,30 +11,28 @@ import { getImageUrl } from '../../lib/utils'
 import { getFeatureIcon } from '../../lib/featureIcons'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { getPropertyById } from '../../api/property/propertyApi'
+import { getPropertyById, addFavorite, removeFavorite, rateProperty } from '../../api/property/propertyApi'
+import { useAuth } from '../../hooks/useAuth'
+import ShareButton from '../../components/common/ShareButton'
 
 // ─── Map API Property to Card Format ──────────────────────────────
 function mapPropertyToCard(property) {
-  // Resolve the main image — first image by order, or a placeholder
   const images = property.images || []
   const mainImageUrl = images.length > 0
     ? (images[0].image || getImageUrl(images[0].image_url) || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800')
     : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
 
-  // Extract house-specific fields from the nested 'specific' object
   const specific = property.specific || {}
   const beds = specific.bedrooms ?? '-'
   const baths = specific.bathrooms ?? '-'
   const area = specific.area_sqft ?? '-'
 
-  // Format price with commas for display
   const priceNum = parseFloat(property.price) || 0
   const priceFormatted = priceNum.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })
 
-  // Capitalize property_type for display
   const typeDisplay = property.property_type
     ? property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)
     : 'Property'
@@ -53,9 +51,9 @@ function mapPropertyToCard(property) {
     area,
     type: typeDisplay,
     status: property.is_available ? 'For Rent' : 'Not Available',
-    is_available: property.is_available,
-    created_at: property.created_at,
-    rating: 4.5, // You can calculate from reviews if available
+    is_favorite: property.is_favorite || false,
+    rating_summary: property.rating_summary || { average_rating: 4.5, rating_count: 0, user_rating: null },
+    rating: property.rating_summary?.average_rating || 4.5,
     furnished: specific.furnishing_status || 'Standard',
     propertyId: `NX-${String(property.id).padStart(4, '0')}`,
     datePosted: property.created_at
@@ -80,14 +78,18 @@ function mapPropertyToCard(property) {
 
 // ─── Main Component ────────────────────────────────────────────────
 function PropertyDetails() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const { id } = useParams()
   const [property, setProperty] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false)
+  const [hoverRating, setHoverRating] = useState(0)
+  const [isRatingLoading, setIsRatingLoading] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const { user } = useAuth()
 
   // ─── Fetch Property ──────────────────────────────────────────────
   useEffect(() => {
@@ -101,13 +103,12 @@ function PropertyDetails() {
       try {
         setLoading(true)
         setError(null)
-
-        // ✅ Use your actual API function
         const data = await getPropertyById(id)
 
         if (data) {
           const formatted = mapPropertyToCard(data)
           setProperty(formatted)
+          setIsFavorite(formatted.is_favorite)
         } else {
           setError('Property not found')
         }
@@ -135,7 +136,59 @@ function PropertyDetails() {
     }
   }
 
-  // ─── Loading State ────────────────────────────────────────────────
+  // ─── Interaction Handlers ──────────────────────────────────────────
+  const handleFavoriteClick = async () => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    if (isFavoriteLoading) return
+
+    try {
+      setIsFavoriteLoading(true)
+      if (isFavorite) {
+        await removeFavorite(property.id)
+        setIsFavorite(false)
+        setProperty(prev => ({ ...prev, is_favorite: false }))
+      } else {
+        await addFavorite(property.id)
+        setIsFavorite(true)
+        setProperty(prev => ({ ...prev, is_favorite: true }))
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite', err)
+    } finally {
+      setIsFavoriteLoading(false)
+    }
+  }
+
+  const handleRating = async (ratingValue) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    if (isRatingLoading) return
+
+    try {
+      setIsRatingLoading(true)
+
+      // ✅ Optimistic UI update (prevents blinking/re-fetching page state)
+      setProperty(prev => ({
+        ...prev,
+        rating_summary: {
+          ...prev.rating_summary,
+          user_rating: ratingValue
+        }
+      }))
+
+      await rateProperty(property.id, ratingValue)
+    } catch (err) {
+      console.error('Failed to rate property', err)
+    } finally {
+      setIsRatingLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -151,7 +204,6 @@ function PropertyDetails() {
     )
   }
 
-  // ─── Error State ──────────────────────────────────────────────────
   if (error || !property) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -161,12 +213,8 @@ function PropertyDetails() {
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/30">
               <X className="h-10 w-10 text-red-500" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Property Not Found
-            </h2>
-            <p className="mt-2 text-slate-600 dark:text-slate-400">
-              {error || 'The property you are looking for does not exist.'}
-            </p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Property Not Found</h2>
+            <p className="mt-2 text-slate-600 dark:text-slate-400">{error || 'The property does not exist.'}</p>
             <Button
               onClick={() => navigate('/properties')}
               className="mt-6 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"
@@ -181,10 +229,8 @@ function PropertyDetails() {
     )
   }
 
-  // ─── Similar Properties (placeholder - you can fetch from API) ──
   const similarProperties = []
 
-  // ─── Render ────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar />
@@ -205,14 +251,19 @@ function PropertyDetails() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setIsFavorite(!isFavorite)}
+                onClick={handleFavoriteClick}
+                disabled={isFavoriteLoading}
                 className={isFavorite ? 'border-red-500 text-red-500' : ''}
               >
-                <Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
+                {isFavoriteLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
+                )}
               </Button>
-              <Button variant="outline" size="icon">
-                <Share2 className="h-5 w-5" />
-              </Button>
+
+              {/* ✅ FIX: Render ShareButton directly without wrapping in another Button tag */}
+              <ShareButton propertyId={property.id} title={property.title} />
             </div>
           </div>
         </div>
@@ -310,13 +361,33 @@ function PropertyDetails() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 justify-end">
                       <Star className="h-5 w-5 fill-[#c99b43] text-[#c99b43]" />
                       <span className="text-lg font-semibold text-slate-900 dark:text-white">
                         {property.rating}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Excellent</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                      {property.rating_summary?.rating_count || 0} ratings
+                    </p>
+                    <div className="flex flex-col items-end">
+                      <p className="text-xs text-slate-500 mb-1">
+                        {property.rating_summary?.user_rating ? 'Your rating:' : 'Rate this:'}
+                      </p>
+                      <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(0)}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`h-5 w-5 cursor-pointer transition-colors ${(hoverRating || property.rating_summary?.user_rating) >= star
+                              ? 'fill-[#c99b43] text-[#c99b43]'
+                              : 'text-slate-300 dark:text-slate-600'
+                              }`}
+                            onMouseEnter={() => setHoverRating(star)}
+                            onClick={() => handleRating(star)}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -427,47 +498,11 @@ function PropertyDetails() {
                   )}
                 </div>
               </Card>
-
-              {/* ─── Similar Properties ────────────────────────────── */}
-              {similarProperties.length > 0 && (
-                <Card className="mt-8 border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Similar Properties</h2>
-                  <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {similarProperties.map((prop) => (
-                      <div
-                        key={prop.id}
-                        className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"
-                      >
-                        <img
-                          src={prop.images[0]}
-                          alt={prop.title}
-                          className="h-40 w-full object-cover transition-transform group-hover:scale-110"
-                        />
-                        <div className="p-4">
-                          <h3 className="font-semibold text-slate-900 dark:text-white">{prop.title}</h3>
-                          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{prop.location}</p>
-                          <div className="mt-3 flex items-center justify-between">
-                            <span className="text-lg font-bold text-[#c99b43]">{prop.price} ETB</span>
-                            <Button
-                              size="sm"
-                              onClick={() => navigate(`/properties/${prop.id}`)}
-                              className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"
-                            >
-                              View
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
             </div>
 
             {/* ─── Sidebar ───────────────────────────────────────────── */}
             <div className="lg:col-span-1">
               <div className="sticky top-32 space-y-6">
-                {/* ─── Property Snapshot ────────────────────────────── */}
                 <Card className="border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95">
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white">Property Snapshot</h3>
                   <div className="mt-5 space-y-4">
@@ -490,7 +525,7 @@ function PropertyDetails() {
                   </div>
                 </Card>
 
-                {/* ─── Booking Card ────────────────────────────────── */}
+                {/* Booking Card */}
                 <div className="w-full rounded-xl border-2 border-red-500 bg-white p-6 shadow-xl dark:bg-slate-900">
                   <h2 className="text-2xl font-bold text-red-500">BOOKING CARD</h2>
                   <p className="mt-2 text-slate-700 dark:text-slate-300">Monthly Rent</p>
@@ -507,40 +542,13 @@ function PropertyDetails() {
                   </Button>
                   <Button variant="outline" className="mt-3 w-full">Contact Owner</Button>
                 </div>
-
-                {/* ─── Why This Property ────────────────────────────── */}
-                <Card className="overflow-hidden border-[#c99b43]/20 bg-gradient-to-br from-[#fff8eb] via-white to-[#fff3d3] p-6 shadow-[0_24px_80px_rgba(201,155,67,0.16)] dark:border-[#c99b43]/20 dark:from-[#1f1a10] dark:via-slate-900 dark:to-[#1a1308]">
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Why This Property Stands Out</h3>
-                  <div className="mt-5 space-y-3">
-                    <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 dark:bg-slate-950/40">
-                      <CheckCircle className="mt-0.5 h-5 w-5 text-[#c99b43]" />
-                      <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">
-                        Well-balanced layout with {property.beds} bedrooms, {property.baths} bathrooms, and {property.area} m² of usable space.
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 dark:bg-slate-950/40">
-                      <CheckCircle className="mt-0.5 h-5 w-5 text-[#c99b43]" />
-                      <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">
-                        Located in {property.location}, giving quick access to a strong residential area and everyday conveniences.
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 dark:bg-slate-950/40">
-                      <CheckCircle className="mt-0.5 h-5 w-5 text-[#c99b43]" />
-                      <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">
-                        {property.features?.length
-                          ? `Comes with sought-after amenities like ${property.features.slice(0, 3).map((f) => f.name).join(', ')} and more.`
-                          : 'Contact the owner to learn more about available amenities.'}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── Lightbox ──────────────────────────────────────────────── */}
+      {/* Lightbox */}
       {lightboxOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"

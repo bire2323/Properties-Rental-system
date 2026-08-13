@@ -118,3 +118,54 @@ export async function updateProperty(id, payload) {
         body: payload,
     })
 }
+
+/**
+ * POST /api/interactions/properties/:id/rating/
+ * Rates a property (1-5 stars) for the authenticated user.
+ */
+export async function rateProperty(propertyId, rating) {
+    return request(`/api/interactions/properties/${propertyId}/rating/`, {
+        method: 'POST',
+        body: JSON.stringify({ rating }),
+    })
+}
+
+/**
+ * DELETE /api/interactions/properties/:id/rating/
+ * Removes the authenticated user's rating for a property.
+ */
+export async function removeRating(propertyId) {
+    return request(`/api/interactions/properties/${propertyId}/rating/`, {
+        method: 'DELETE',
+    })
+}
+
+/**
+ * POST /api/interactions/properties/:id/favorite/
+ * Adds a property to the authenticated user's favorites.
+ */
+export async function addFavorite(propertyId) {
+    return request(`/api/interactions/properties/${propertyId}/favorite/`, {
+        method: 'POST',
+    })
+}
+
+/**
+ * DELETE /api/interactions/properties/:id/favorite/
+ * Removes a property from the authenticated user's favorites.
+ */
+export async function removeFavorite(propertyId) {
+    return request(`/api/interactions/properties/${propertyId}/favorite/`, {
+        method: 'DELETE',
+    })
+}
+
+/**
+ * GET /api/interactions/favorites/
+ * Retrieves the authenticated user's favorited properties.
+ */
+export async function getFavorites() {
+    return request(`/api/interactions/favorites/`, {
+        method: 'GET',
+    })
+}

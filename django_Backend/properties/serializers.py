@@ -56,6 +56,8 @@ class PropertySerializer(serializers.ModelSerializer):
     main_image = serializers.SerializerMethodField()
     images = PropertyImageSerializer(many=True, read_only=True)
     features = FeatureSerializer(many=True, read_only=True)
+    rating_summary = serializers.SerializerMethodField()
+    is_favorite = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
@@ -74,6 +76,8 @@ class PropertySerializer(serializers.ModelSerializer):
             'is_available',
             'specific',      # Dynamically returns house or car fields
             'images',        # List of all property images
+            'rating_summary',
+            'is_favorite',
             'created_at',
             'updated_at'
         ]
@@ -108,6 +112,36 @@ class PropertySerializer(serializers.ModelSerializer):
             # House/Car companion record. The API should not die while serializing.
             return None
         return None
+
+    def get_rating_summary(self, obj):
+        average = getattr(obj, 'average_rating', None)
+        count = getattr(obj, 'rating_count', 0)
+        
+        user_rating = None
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # We assume a Prefetch was used with to_attr='user_ratings'
+            if hasattr(obj, 'user_ratings'):
+                if obj.user_ratings:
+                    user_rating = obj.user_ratings[0].rating
+            else:
+                user_rating_obj = obj.ratings.filter(user=request.user).first()
+                if user_rating_obj:
+                    user_rating = user_rating_obj.rating
+
+        return {
+            "average_rating": round(average, 2) if average else None,
+            "rating_count": count,
+            "user_rating": user_rating
+        }
+
+    def get_is_favorite(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if hasattr(obj, 'user_favorites'):
+                return len(obj.user_favorites) > 0
+            return obj.favorited_by.filter(user=request.user).exists()
+        return False
 
 
 

@@ -2,7 +2,8 @@ from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
-from django.db.models import Q
+from django.db.models import Q, Avg, Count, Prefetch
+from interactions.models import PropertyRating, Favorite
 from .models import Property, Feature
 from .permissions import PropertyPermission
 from .serializers import PropertySerializer, PropertyCreateSerializer, FeatureSerializer
@@ -30,7 +31,24 @@ class PropertyViewSet(viewsets.ModelViewSet):
         - select_related('owner'): Fetches owner data in the same query.
         - prefetch_related('images'): Fetches all images in a separate efficient query.
         """
-        queryset = Property.objects.select_related('owner').prefetch_related('images', 'features')
+        queryset = Property.objects.select_related('owner').prefetch_related('images', 'features').annotate(
+            average_rating=Avg('ratings__rating'),
+            rating_count=Count('ratings', distinct=True)
+        )
+
+        if self.request.user.is_authenticated:
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    'ratings',
+                    queryset=PropertyRating.objects.filter(user=self.request.user),
+                    to_attr='user_ratings'
+                ),
+                Prefetch(
+                    'favorited_by',
+                    queryset=Favorite.objects.filter(user=self.request.user),
+                    to_attr='user_favorites'
+                )
+            )
 
         # --- FILTERING LOGIC (for search/query params) ---
         # Example: /api/properties/?location=Addis&min_price=500&max_price=2000&type=house&bedrooms=3
