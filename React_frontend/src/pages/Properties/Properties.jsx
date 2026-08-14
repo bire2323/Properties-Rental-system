@@ -1,21 +1,22 @@
+// src/pages/Properties.jsx
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Building2, MapPin, Search, SlidersHorizontal, Star, Heart, Grid3x3, List, ChevronDown, Bed, Bath, Maximize2, AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
+import {
+  Grid3x3, List, ChevronDown, Loader2,
+  AlertCircle, RefreshCw, Building2
+} from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
-import { Card } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
 import { getAllProperties, getFavorites, addFavorite, removeFavorite } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
+import { PropertyFilters } from './PropertyFilters'
+import { PropertyCard } from './PropertyCard'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
-/**
- * Build a full image URL from the backend response.
- * If the image path is already absolute (http/https), return as-is.
- * Otherwise, prepend the API base URL.
- */
+// ─── Helpers ──────────────────────────────────────────────────────────
+
 function resolveImageUrl(imagePath) {
   if (!imagePath) return null
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
@@ -24,9 +25,6 @@ function resolveImageUrl(imagePath) {
   return `${API_BASE_URL}${imagePath}`
 }
 
-/**
- * Map a single backend property object to the shape the UI cards expect.
- */
 function mapPropertyToCard(property) {
   const mainImageUrl = property.main_image?.image
     ? resolveImageUrl(property.main_image.image)
@@ -62,12 +60,9 @@ function mapPropertyToCard(property) {
   }
 }
 
-/**
- * Loading skeleton card component.
- */
 function PropertyCardSkeleton() {
   return (
-    <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="h-56 animate-pulse bg-slate-200 dark:bg-slate-800" />
       <div className="space-y-3 p-5">
         <div className="h-5 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
@@ -82,32 +77,36 @@ function PropertyCardSkeleton() {
           <div className="h-9 w-28 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
         </div>
       </div>
-    </Card>
+    </div>
   )
 }
 
+// ─── Main Component ──────────────────────────────────────────────────
+
 function Properties() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [propertyType, setPropertyType] = useState('all')
   const [priceRange, setPriceRange] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid')
 
-  // API state
+  // Data
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Favorites state
+  // Favorites
   const [favorites, setFavorites] = useState([])
-  const [favoriteLoading, setFavoriteLoading] = useState({}) // { propertyId: true/false }
-  const { user } = useAuth()
+  const [favoriteLoading, setFavoriteLoading] = useState({})
 
-  // Fetch properties from the backend on mount
   const fetchedRef = useRef(false)
 
+  // ─── Fetch Properties ──────────────────────────────────────────────
   useEffect(() => {
     if (!fetchedRef.current) {
       fetchedRef.current = true
@@ -115,7 +114,6 @@ function Properties() {
     }
   }, [])
 
-  // Fetch user's favorite IDs when user logs in or changes
   useEffect(() => {
     if (user) {
       fetchFavorites()
@@ -141,8 +139,6 @@ function Properties() {
   async function fetchFavorites() {
     try {
       const data = await getFavorites()
-      // Assume data is an array of favorite objects with 'property' field or just property IDs
-      // Adjust based on your actual API response
       const favoriteIds = data.map(fav => fav.property?.id || fav.property_id || fav)
       setFavorites(favoriteIds)
     } catch (err) {
@@ -150,19 +146,15 @@ function Properties() {
     }
   }
 
-  // Toggle favorite
   const toggleFavorite = async (propertyId) => {
     if (!user) {
       navigate('/login')
       return
     }
-
-    // Prevent double-click
     if (favoriteLoading[propertyId]) return
 
     const isFavorite = favorites.includes(propertyId)
 
-    // Optimistic update
     setFavorites(prev =>
       isFavorite ? prev.filter(id => id !== propertyId) : [...prev, propertyId]
     )
@@ -175,7 +167,6 @@ function Properties() {
         await addFavorite(propertyId)
       }
     } catch (err) {
-      // Revert on error
       setFavorites(prev =>
         isFavorite ? [...prev, propertyId] : prev.filter(id => id !== propertyId)
       )
@@ -217,7 +208,7 @@ function Properties() {
     return `${propertyType}s`
   }
 
-  // Filter and sort properties
+
   const filteredProperties = properties.filter((property) => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.location.toLowerCase().includes(searchTerm.toLowerCase())
@@ -243,110 +234,21 @@ function Properties() {
     }
   })
 
+  // ─── Render ──────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar />
 
-      {/* Search and Filter Section - same as before */}
-      <section className="sticky top-24 z-40 border-b border-slate-200 bg-white py-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="hidden gap-3 lg:flex">
-            <div className="relative flex-[2]">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-              <Input
-                placeholder="Search by property name or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-12 w-full rounded-xl border-slate-300 bg-white pl-11 pr-4 text-sm shadow-sm transition-all placeholder:text-slate-400 hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
-              />
-            </div>
-            <div className="relative flex-1">
-              <Building2 className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-              <select
-                value={propertyType}
-                onChange={(e) => {
-                  const nextType = e.target.value
-                  setPropertyType(nextType)
-                  if (nextType !== 'all') {
-                    setSearchParams({ type: nextType.toLowerCase() })
-                  } else {
-                    setSearchParams({})
-                  }
-                }}
-                className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm shadow-sm transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="all">All Types</option>
-                <option value="House">House</option>
-                <option value="Car">Car</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            </div>
-            <div className="relative flex-1">
-              <SlidersHorizontal className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-              <select
-                value={priceRange}
-                onChange={(e) => setPriceRange(e.target.value)}
-                className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm shadow-sm transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="all">All Prices</option>
-                <option value="low">Under 30,000 ETB</option>
-                <option value="mid">30,000 - 50,000 ETB</option>
-                <option value="high">Above 50,000 ETB</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            </div>
-          </div>
-
-          <div className="space-y-3 lg:hidden">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="Search properties..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-12 w-full rounded-xl border-slate-300 pl-10 pr-4 shadow-sm"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={propertyType}
-                  onChange={(e) => {
-                    const nextType = e.target.value
-                    setPropertyType(nextType)
-                    if (nextType !== 'all') {
-                      setSearchParams({ type: nextType.toLowerCase() })
-                    } else {
-                      setSearchParams({})
-                    }
-                  }}
-                  className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-10 pr-8 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="all">All Types</option>
-                  <option value="House">House</option>
-                  <option value="Car">Car</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              </div>
-              <div className="relative">
-                <SlidersHorizontal className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={priceRange}
-                  onChange={(e) => setPriceRange(e.target.value)}
-                  className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-10 pr-8 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="all">All Prices</option>
-                  <option value="low">&lt; 30K</option>
-                  <option value="mid">30K - 50K</option>
-                  <option value="high">&gt; 50K</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PropertyFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        propertyType={propertyType}
+        setPropertyType={setPropertyType}
+        priceRange={priceRange}
+        setPriceRange={setPriceRange}
+        setSearchParams={setSearchParams}
+      />
 
       {/* Toolbar */}
       <section className="border-b border-slate-200 bg-white py-4 dark:border-slate-800 dark:bg-slate-900">
@@ -410,7 +312,7 @@ function Properties() {
         </div>
       </section>
 
-      {/* Properties Grid */}
+      {/* Properties Grid / List */}
       <section className="bg-slate-50 py-8 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {loading && (
@@ -443,105 +345,17 @@ function Properties() {
           )}
 
           {!loading && !error && sortedProperties.length > 0 && (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedProperties.map((property) => {
-                const isFav = favorites.includes(property.id)
-                const isLoading = favoriteLoading[property.id]
-
-                return (
-                  <Card
-                    key={property.id}
-                    className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900"
-                  >
-                    <div className="relative h-56 overflow-hidden">
-                      <img
-                        src={property.image}
-                        alt={property.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => {
-                          e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
-                        }}
-                      />
-                      <div className="absolute left-4 top-4">
-                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold shadow-md ${property.is_available
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-slate-500 text-white'
-                          }`}>
-                          {property.is_available ? 'Available' : 'Rented'}
-                        </span>
-                      </div>
-                      <div className="absolute left-4 bottom-4">
-                        <span className="inline-flex rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-md backdrop-blur-sm dark:bg-slate-900/95 dark:text-slate-300">
-                          {property.type}
-                        </span>
-                      </div>
-                      {/* Favorite Button */}
-                      <button
-                        onClick={() => toggleFavorite(property.id)}
-                        disabled={isLoading}
-                        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-white dark:bg-slate-900/95 dark:hover:bg-slate-900 disabled:opacity-50"
-                        aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-slate-600 dark:text-slate-400" />
-                        ) : (
-                          <Heart
-                            className={`h-5 w-5 transition-colors ${isFav
-                              ? 'fill-red-500 text-red-500'
-                              : 'text-slate-600 dark:text-slate-400'
-                              }`}
-                          />
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="p-5">
-                      <h3 className="text-lg font-semibold text-slate-900 transition-colors group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d]">
-                        {property.title}
-                      </h3>
-                      <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-                        <MapPin className="h-4 w-4 text-slate-400" />
-                        {property.location}
-                      </p>
-
-                      {property.type === 'House' && (
-                        <div className="mt-4 flex items-center gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
-                          <div className="flex items-center gap-1.5">
-                            <Bed className="h-4 w-4" />
-                            <span>{property.beds}</span>
-                          </div>
-                          <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
-                          <div className="flex items-center gap-1.5">
-                            <Bath className="h-4 w-4" />
-                            <span>{property.baths}</span>
-                          </div>
-                          <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
-                          <div className="flex items-center gap-1.5">
-                            <Maximize2 className="h-4 w-4" />
-                            <span>{property.area} sqft</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className={`flex items-center justify-between ${property.type === 'House' ? 'mt-4' : 'mt-4 border-t border-slate-200 pt-4 dark:border-slate-800'}`}>
-                        <div>
-                          <span className="text-2xl font-bold text-[#c99b43]">
-                            {property.price}
-                          </span>
-                          <span className="text-sm text-slate-500 dark:text-slate-400"> ETB/mo</span>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="rounded-lg bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:opacity-90"
-                          onClick={() => navigate(`/properties/${property.id}`)}
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
+            <div className={viewMode === 'grid' ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-4' : 'flex flex-col gap-4'}>
+              {sortedProperties.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  isFav={favorites.includes(property.id)}
+                  isLoading={favoriteLoading[property.id]}
+                  toggleFavorite={toggleFavorite}
+                  layout={viewMode}
+                />
+              ))}
             </div>
           )}
 
