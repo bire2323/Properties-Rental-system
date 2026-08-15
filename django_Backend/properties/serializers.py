@@ -1,63 +1,59 @@
 from rest_framework import serializers
+from django.db import transaction
 import logging
 from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger(__name__)
-from .models import Property, House, Car, PropertyImage, Feature
-
+from .models import Property, HouseDetail, CarDetail, PropertyImage, Feature
 
 class FeatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feature
         fields = ['id', 'name']
 
-
 class PropertyImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyImage
         fields = ['id', 'image', 'order']
 
-
-
-class HouseSerializer(serializers.ModelSerializer):
+class HouseDetailSerializer(serializers.ModelSerializer):
     class Meta:
-        model = House
+        model = HouseDetail
         fields = [
             'bedrooms', 
             'bathrooms', 
             'area_sqft', 
-            'has_garage', 
-            'furnishing_status'
+            'furnishing',
+            'floor_number',
+            'room_number'
         ]
 
-
-class CarSerializer(serializers.ModelSerializer):
+class CarDetailSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Car
+        model = CarDetail
         fields = [
             'brand', 
-            'car_model', 
+            'model', 
             'year', 
             'mileage', 
             'fuel_type', 
-            'transmission', 
             'seating_capacity'
         ]
-
 
 class PropertySerializer(serializers.ModelSerializer):
     """
     Used for retrieving property data (list and detail views).
-    Nests the specific child data (house or car) and all associated images.
-    The first image (by order) is surfaced as 'main_image'.
+    Nests the specific detail data (house or car) and all associated images.
     """
     owner_email = serializers.EmailField(source='owner.email', read_only=True)
-    specific = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
     images = PropertyImageSerializer(many=True, read_only=True)
     features = FeatureSerializer(many=True, read_only=True)
     rating_summary = serializers.SerializerMethodField()
     is_favorite = serializers.SerializerMethodField()
+    
+    house_detail = HouseDetailSerializer(read_only=True)
+    car_detail = CarDetailSerializer(read_only=True)
 
     class Meta:
         model = Property
@@ -65,17 +61,24 @@ class PropertySerializer(serializers.ModelSerializer):
             'id',
             'owner',
             'owner_email',
-            'title',
+            'property_name',
             'description',
+            'listing_type',
             'price',
+            'rental_unit',
             'security_deposit',
-            'property_type',
-            'location',
+            'address',
+            'city',
+            'country',
+            'latitude',
+            'longitude',
+            'status',
             'main_image',
             'features',
             'is_available',
-            'specific',      # Dynamically returns house or car fields
-            'images',        # List of all property images
+            'house_detail',
+            'car_detail',
+            'images',
             'rating_summary',
             'is_favorite',
             'created_at',
@@ -84,33 +87,9 @@ class PropertySerializer(serializers.ModelSerializer):
         read_only_fields = ['owner', 'owner_email']
 
     def get_main_image(self, obj):
-        """
-        Return the first image (ordered by 'order') as the main image.
-        The PropertyImage.Meta.ordering = ['order'] ensures correct ordering.
-        """
         first_image = obj.images.first()
         if first_image:
             return PropertyImageSerializer(first_image, context=self.context).data
-        return None
-
-    def get_specific(self, obj):
-        """
-        Dynamically return the correct child serializer data
-        based on the property_type.
-        """
-        try:
-            if obj.property_type == 'house':
-                if isinstance(obj, House):
-                    return HouseSerializer(obj).data
-                return HouseSerializer(obj.house).data
-            elif obj.property_type == 'car':
-                if isinstance(obj, Car):
-                    return CarSerializer(obj).data
-                return CarSerializer(obj.car).data
-        except Exception:
-            # Some legacy or incomplete rows may exist without a concrete
-            # House/Car companion record. The API should not die while serializing.
-            return None
         return None
 
     def get_rating_summary(self, obj):
@@ -120,7 +99,6 @@ class PropertySerializer(serializers.ModelSerializer):
         user_rating = None
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            # We assume a Prefetch was used with to_attr='user_ratings'
             if hasattr(obj, 'user_ratings'):
                 if obj.user_ratings:
                     user_rating = obj.user_ratings[0].rating
@@ -144,23 +122,18 @@ class PropertySerializer(serializers.ModelSerializer):
         return False
 
 
-
 class PropertyCreateSerializer(serializers.ModelSerializer):
     """
     Used for creating and updating properties.
-    Accepts nested 'specific' data (house or car fields)
-    and a list of uploaded image files via 'images'.
-    The first uploaded image (order=0) will serve as the main image.
     """
-    # Use JSONField so incoming JSON strings in multipart FormData are parsed
-    # automatically into Python dicts. DictField would reject JSON strings.
-    # Explicitly declare numeric fields to ensure proper validation/coercion
-    price = serializers.DecimalField(max_digits=10, decimal_places=2)
-    security_deposit = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+    price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    security_deposit = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
 
-    # Use JSONField so incoming JSON strings in multipart FormData are parsed
-    # automatically into Python dicts. DictField would reject JSON strings.
-    specific = serializers.JSONField(write_only=True)
+    house_detail = serializers.JSONField(write_only=True, required=False, allow_null=True)
+    car_detail = serializers.JSONField(write_only=True, required=False, allow_null=True)
+    
     feature_ids = serializers.JSONField(
         write_only=True,
         required=False,
@@ -176,13 +149,21 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = [
-            'title',
+            'property_name',
             'description',
+            'listing_type',
             'price',
+            'rental_unit',
             'security_deposit',
-            'property_type',
-            'location',
-            'specific',
+            'address',
+            'city',
+            'country',
+            'latitude',
+            'longitude',
+            'status',
+            'is_available',
+            'house_detail',
+            'car_detail',
             'feature_ids',
             'images'
         ]
@@ -207,123 +188,91 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         return unique_ids
 
     def validate(self, data):
-        # Ensure price is provided and coercible to Decimal
-        # Debug print to trace incoming validated input
-        try:
-            print('*** PropertyCreateSerializer.validate incoming data ->', data)
-        except Exception:
-            pass
-
         price = data.get('price')
         if price in (None, ''):
             raise serializers.ValidationError({'price': 'This field is required.'})
-        # coerce string prices to Decimal early so create() sees a Decimal
         if isinstance(price, str):
             try:
                 data['price'] = Decimal(price)
             except InvalidOperation:
                 raise serializers.ValidationError({'price': 'Enter a valid decimal value.'})
+                
+        listing_type = data.get('listing_type') or (self.instance.listing_type if self.instance else None)
+        house_detail = data.get('house_detail')
+        car_detail = data.get('car_detail')
+
+        if listing_type == 'house':
+            if not house_detail and not self.instance:
+                raise serializers.ValidationError({'house_detail': 'House detail is required for a house listing.'})
+            if car_detail:
+                raise serializers.ValidationError({'car_detail': 'Car detail should not be provided for a house listing.'})
+        elif listing_type == 'car':
+            if not car_detail and not self.instance:
+                raise serializers.ValidationError({'car_detail': 'Car detail is required for a car listing.'})
+            if house_detail:
+                raise serializers.ValidationError({'house_detail': 'House detail should not be provided for a car listing.'})
+
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
-        """
-        Create the base Property, then create the specific child
-        (House or Car), and finally create all PropertyImage records.
-        The first image (order=0) becomes the main image.
-        """
-        # Be defensive: allow 'specific' to be optional and default to empty dict
-        # Debug print and log validated_data to help debug missing fields
-        try:
-            print('*** PropertyCreateSerializer.create validated_data ->', validated_data)
-        except Exception:
-            pass
-        logger.debug('PropertyCreateSerializer.create validated_data: %s', validated_data)
-
-        specific_data = validated_data.pop('specific', {}) or {}
+        house_detail_data = validated_data.pop('house_detail', None)
+        car_detail_data = validated_data.pop('car_detail', None)
         feature_ids = validated_data.pop('feature_ids', [])
         uploaded_images = validated_data.pop('images', [])
-        property_type = validated_data.get('property_type')
+        listing_type = validated_data.get('listing_type')
 
-        # 1. Create the base Property
         property_instance = Property.objects.create(**validated_data)
 
-        # 2. Assign features (M2M must happen after the property exists)
         if feature_ids:
             features = Feature.objects.filter(id__in=feature_ids)
             property_instance.features.set(features)
 
-        # 3. Create the specific child based on property_type
-        # Use the parent's primary key (id) when creating multi-table-inherited
-        # child records. Passing `property_ptr` can lead to parent fields being
-        # overwritten with empty values during the child's save. Creating the
-        # child with the same `id` ensures Django links the rows correctly.
-        if property_type == 'house':
-            # Build a House instance, attach the parent Property, copy parent
-            # concrete field values onto the child so any parent-save during
-            # the child's save won't overwrite columns with NULLs.
-            house = House(**specific_data)
-            house.property_ptr = property_instance
-            for field in Property._meta.concrete_fields:
-                try:
-                    setattr(house, field.attname, getattr(property_instance, field.attname))
-                except AttributeError:
-                    pass
-            house.save()
-        elif property_type == 'car':
-            car = Car(**specific_data)
-            car.property_ptr = property_instance
-            for field in Property._meta.concrete_fields:
-                try:
-                    setattr(car, field.attname, getattr(property_instance, field.attname))
-                except AttributeError:
-                    pass
-            car.save()
+        if listing_type == 'house' and house_detail_data:
+            HouseDetail.objects.create(property=property_instance, **house_detail_data)
+        elif listing_type == 'car' and car_detail_data:
+            CarDetail.objects.create(property=property_instance, **car_detail_data)
 
-        # 4. Create PropertyImage records from uploaded files
         for index, image_file in enumerate(uploaded_images):
             PropertyImage.objects.create(
                 property=property_instance,
                 image=image_file,
-                order=index  # First image (order=0) is the main image
+                order=index
             )
 
         return property_instance
 
+    @transaction.atomic
     def update(self, instance, validated_data):
-        """
-        Update the base Property, update the specific child,
-        and handle image replacements (if provided).
-        """
-        specific_data = validated_data.pop('specific', None) or None
+        house_detail_data = validated_data.pop('house_detail', None)
+        car_detail_data = validated_data.pop('car_detail', None)
         feature_ids = validated_data.pop('feature_ids', None)
         uploaded_images = validated_data.pop('images', None)
 
-        # 1. Update base Property fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # 2. Update features if provided (replaces existing relationships)
         if feature_ids is not None:
             features = Feature.objects.filter(id__in=feature_ids)
             instance.features.set(features)
 
-        # 3. Update the specific child (if provided)
-        if specific_data:
-            property_type = instance.property_type
-            if property_type == 'house':
-                # Get the related House instance and update it
-                house_instance = instance.house
-                for attr, value in specific_data.items():
-                    setattr(house_instance, attr, value)
-                house_instance.save()
-            elif property_type == 'car':
-                car_instance = instance.car
-                for attr, value in specific_data.items():
-                    setattr(car_instance, attr, value)
-                car_instance.save()
+        listing_type = instance.listing_type
+        if listing_type == 'house' and house_detail_data:
+            if hasattr(instance, 'house_detail'):
+                for attr, value in house_detail_data.items():
+                    setattr(instance.house_detail, attr, value)
+                instance.house_detail.save()
+            else:
+                HouseDetail.objects.create(property=instance, **house_detail_data)
+        elif listing_type == 'car' and car_detail_data:
+            if hasattr(instance, 'car_detail'):
+                for attr, value in car_detail_data.items():
+                    setattr(instance.car_detail, attr, value)
+                instance.car_detail.save()
+            else:
+                CarDetail.objects.create(property=instance, **car_detail_data)
 
-        # 4. Replace images if new ones are provided
         if uploaded_images is not None:
             instance.images.all().delete()
             for index, image_file in enumerate(uploaded_images):

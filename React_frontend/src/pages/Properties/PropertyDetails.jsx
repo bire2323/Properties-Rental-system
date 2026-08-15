@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   MapPin, Star, Bed, Bath, Maximize2, Heart, Calendar,
@@ -22,10 +22,12 @@ function mapPropertyToCard(property) {
     ? (images[0].image || getImageUrl(images[0].image_url) || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800')
     : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
 
-  const specific = property.specific || {}
-  const beds = specific.bedrooms ?? '-'
-  const baths = specific.bathrooms ?? '-'
-  const area = specific.area_sqft ?? '-'
+  const isHouse = property.listing_type === 'house'
+  const detail = isHouse ? (property.house_detail || {}) : (property.car_detail || {})
+  
+  const beds = isHouse ? (detail.bedrooms ?? '-') : '-'
+  const baths = isHouse ? (detail.bathrooms ?? '-') : '-'
+  const area = isHouse ? (detail.area_sqft ?? '-') : '-'
 
   const priceNum = parseFloat(property.price) || 0
   const priceFormatted = priceNum.toLocaleString('en-US', {
@@ -33,28 +35,31 @@ function mapPropertyToCard(property) {
     maximumFractionDigits: 0,
   })
 
-  const typeDisplay = property.property_type
-    ? property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)
+  const typeDisplay = property.listing_type
+    ? property.listing_type.charAt(0).toUpperCase() + property.listing_type.slice(1)
     : 'Property'
+    
+  const locationDisplay = [property.city, property.country].filter(Boolean).join(", ") || 'Location Unspecified'
 
   return {
     id: property.id,
     images: images.map(img => img.image || img.image_url),
     mainImage: mainImageUrl,
-    title: property.title,
-    location: property.location,
-    address: property.address || property.location,
+    title: property.property_name,
+    location: locationDisplay,
+    address: property.address || locationDisplay,
     price: priceFormatted,
     priceRaw: priceNum,
+    rental_unit: property.rental_unit || 'monthly',
     beds,
     baths,
     area,
     type: typeDisplay,
-    status: property.is_available ? 'For Rent' : 'Not Available',
+    status: property.status === 'active' ? 'For Rent' : 'Not Available',
     is_favorite: property.is_favorite || false,
     rating_summary: property.rating_summary || { average_rating: 4.5, rating_count: 0, user_rating: null },
     rating: property.rating_summary?.average_rating || 4.5,
-    furnished: specific.furnishing_status || 'Standard',
+    furnished: detail.furnishing || 'Standard',
     propertyId: `NX-${String(property.id).padStart(4, '0')}`,
     datePosted: property.created_at
       ? new Date(property.created_at).toLocaleDateString('en-US', {
@@ -64,7 +69,7 @@ function mapPropertyToCard(property) {
       })
       : 'Recently',
     features: property.features || [],
-    parking: specific.parking_spaces || 1,
+    parking: detail.has_garage ? 1 : (property.listing_type === 'car' ? 0 : 1),
     description: property.description || 'No description available.',
     owner: {
       name: property.owner?.first_name + ' ' + property.owner?.last_name || 'Owner',
@@ -72,7 +77,8 @@ function mapPropertyToCard(property) {
       phone: property.owner?.phone_number || '+251 911 000 000',
       email: property.owner?.email || 'owner@nexaspace.com'
     },
-    specific: specific
+    detail: detail,
+    listing_type: property.listing_type
   }
 }
 
@@ -182,6 +188,13 @@ function PropertyDetails() {
       }))
 
       await rateProperty(property.id, ratingValue)
+      
+      // ✅ Fetch the updated property to reflect the new average rating and count
+      const data = await getPropertyById(property.id)
+      if (data) {
+        setProperty(mapPropertyToCard(data))
+      }
+
     } catch (err) {
       console.error('Failed to rate property', err)
     } finally {
@@ -394,9 +407,9 @@ function PropertyDetails() {
                 {/* ─── Stats Grid ──────────────────────────────────── */}
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                   <div className="rounded-2xl border border-[#c99b43]/20 bg-gradient-to-br from-[#fff7e8] to-white p-5 shadow-sm dark:border-[#c99b43]/20 dark:from-[#1e1a11] dark:to-slate-900">
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Monthly Price</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Price ({property.rental_unit})</p>
                     <p className="mt-2 text-3xl font-bold text-[#c99b43]">{property.price}</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ETB / month</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ETB / {property.rental_unit}</p>
                   </div>
 
                   <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
@@ -528,10 +541,10 @@ function PropertyDetails() {
                 {/* Booking Card */}
                 <div className="w-full rounded-xl border-2 border-red-500 bg-white p-6 shadow-xl dark:bg-slate-900">
                   <h2 className="text-2xl font-bold text-red-500">BOOKING CARD</h2>
-                  <p className="mt-2 text-slate-700 dark:text-slate-300">Monthly Rent</p>
+                  <p className="mt-2 text-slate-700 dark:text-slate-300">Rent ({property.rental_unit})</p>
                   <p className="mt-1 text-2xl font-bold text-[#c99b43]">
                     ETB {property.price}
-                    <span className="ml-1 text-sm font-normal">/ month</span>
+                    <span className="ml-1 text-sm font-normal">/ {property.rental_unit}</span>
                   </p>
                   <Button
                     disabled={property.status !== 'For Rent'}

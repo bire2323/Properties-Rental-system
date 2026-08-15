@@ -53,14 +53,15 @@ export default function OwnerProperties() {
 
     const filteredProperties = useMemo(() => {
         return ownerProperties.filter((property) => {
-            const matchesSearch = [property.title, property.location, property.property_type]
+            const matchesSearch = [property.property_name, property.city, property.country, property.listing_type]
                 .filter(Boolean)
                 .some((field) => field.toLowerCase().includes(searchTerm.toLowerCase()))
-            const matchesType = propertyType === 'all' || property.property_type === propertyType
+            const matchesType = propertyType === 'all' || property.listing_type === propertyType
+            const isAvail = property.status === 'active'
             const matchesAvailability =
                 availability === 'all' ||
-                (availability === 'available' && property.is_available) ||
-                (availability === 'unavailable' && !property.is_available)
+                (availability === 'available' && isAvail) ||
+                (availability === 'unavailable' && !isAvail)
             return matchesSearch && matchesType && matchesAvailability
         })
     }, [ownerProperties, searchTerm, propertyType, availability])

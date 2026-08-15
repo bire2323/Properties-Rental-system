@@ -11,7 +11,7 @@ export default function PropertyCard({ property, onDelete }) {
             <div className="h-64 overflow-hidden bg-slate-100">
                 <img
                     src={imageUrl}
-                    alt={property.title}
+                    alt={property.property_name}
                     onError={(e) => {
                         e.currentTarget.onerror = null
                         e.currentTarget.src = 'https://via.placeholder.com/600x400?text=No+Image'
@@ -23,20 +23,20 @@ export default function PropertyCard({ property, onDelete }) {
                 <div className="flex items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400">
                     <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs uppercase tracking-[0.25em] dark:bg-slate-800">
                         <Building2 className="h-4 w-4" />
-                        {property.property_type}
+                        {property.listing_type}
                     </span>
-                    <span className={property.is_available ? 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>
-                        {property.is_available ? 'Available' : 'Unavailable'}
+                    <span className={property.status === 'active' ? 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>
+                        {property.status === 'active' ? 'Available' : 'Unavailable'}
                     </span>
                 </div>
                 <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{property.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{property.location}</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{[property.city, property.country].filter(Boolean).join(", ")}</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <MapPin className="h-4 w-4" />
-                        {property.location}
+                        {[property.city, property.country].filter(Boolean).join(", ")}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <DollarSign className="h-4 w-4" />
@@ -61,7 +61,7 @@ export default function PropertyCard({ property, onDelete }) {
 
                     <button type="button"
                         onClick={async () => {
-                            const ok = window.confirm(`Delete property \"${property.title}\"?`)
+                            const ok = window.confirm(`Delete property \"${property.property_name}\"?`)
                             if (!ok) return
                             try {
                                 await (typeof onDelete === 'function' ? onDelete(property.id) : Promise.resolve())

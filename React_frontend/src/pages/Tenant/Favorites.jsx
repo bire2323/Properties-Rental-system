@@ -93,7 +93,7 @@ export default function Favorites() {
               <div className="relative h-48 w-full overflow-hidden">
                 <img
                   src={mainImage}
-                  alt={property.title}
+                  alt={property.property_name}
                   className="h-full w-full object-cover transition-transform group-hover:scale-110"
                 />
                 <div className="absolute right-3 top-3">
@@ -109,10 +109,10 @@ export default function Favorites() {
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-slate-900 dark:text-white">{property.title}</h3>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
                     <p className="mt-1 flex items-center text-sm text-slate-600 dark:text-slate-400">
                       <MapPin className="mr-1 h-3 w-3" />
-                      {property.location}
+                      {[property.city, property.country].filter(Boolean).join(", ")}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 rounded bg-[#c99b43]/10 px-2 py-1">
@@ -126,7 +126,7 @@ export default function Favorites() {
                   <span className="text-lg font-bold text-[#c99b43]">
                     ETB {parseFloat(property.price).toLocaleString()}
                   </span>
-                  <span className="text-xs text-slate-500">{property.property_type}</span>
+                  <span className="text-xs text-slate-500">{property.listing_type}</span>
                 </div>
               </div>
             </div>

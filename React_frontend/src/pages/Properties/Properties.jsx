@@ -1,16 +1,16 @@
-// src/pages/Properties.jsx
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Grid3x3, List, ChevronDown, Loader2,
-  AlertCircle, RefreshCw, Building2
+  AlertCircle, RefreshCw, Building2, Filter, X
 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { getAllProperties, getFavorites, addFavorite, removeFavorite } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
-import { PropertyFilters } from './PropertyFilters'
+import { PropertySidebarFilters } from './PropertySidebarFilters'
 import { PropertyCard } from './PropertyCard'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -30,10 +30,12 @@ function mapPropertyToCard(property) {
     ? resolveImageUrl(property.main_image.image)
     : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
 
-  const specific = property.specific || {}
-  const beds = specific.bedrooms ?? '-'
-  const baths = specific.bathrooms ?? '-'
-  const area = specific.area_sqft ?? '-'
+  const isHouse = property.listing_type === 'house'
+  const detail = isHouse ? (property.house_detail || {}) : (property.car_detail || {})
+  
+  const beds = isHouse ? (detail.bedrooms ?? '-') : '-'
+  const baths = isHouse ? (detail.bathrooms ?? '-') : '-'
+  const area = isHouse ? (detail.area_sqft ?? '-') : '-'
 
   const priceNum = parseFloat(property.price) || 0
   const priceFormatted = priceNum.toLocaleString('en-US', {
@@ -41,22 +43,28 @@ function mapPropertyToCard(property) {
     maximumFractionDigits: 0,
   })
 
-  const typeDisplay =
-    property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)
+  const typeDisplay = property.listing_type
+    ? property.listing_type.charAt(0).toUpperCase() + property.listing_type.slice(1)
+    : 'Property'
+
+  const locationDisplay = [property.city, property.country].filter(Boolean).join(", ") || 'Location Unspecified'
 
   return {
     id: property.id,
     image: mainImageUrl,
-    title: property.title,
-    location: property.location,
+    title: property.property_name,
+    location: locationDisplay,
     price: priceFormatted,
     priceRaw: priceNum,
+    rental_unit: property.rental_unit || 'monthly',
     beds,
     baths,
     area,
     type: typeDisplay,
-    is_available: property.is_available,
+    is_available: property.status === 'active',
     created_at: property.created_at,
+    listing_type: property.listing_type,
+    features: property.features || [],
   }
 }
 
@@ -88,25 +96,30 @@ function Properties() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('')
-  const [propertyType, setPropertyType] = useState('all')
-  const [priceRange, setPriceRange] = useState('all')
+  const defaultFilters = {
+    searchTerm: '',
+    propertyType: 'all',
+    priceRange: [0, 200000],
+    bedrooms: 'any',
+    bathrooms: 'any',
+    availability: 'all',
+    selectedFeatures: [],
+  };
+
+  const [filters, setFilters] = useState(defaultFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid')
 
-  // Data
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Favorites
   const [favorites, setFavorites] = useState([])
   const [favoriteLoading, setFavoriteLoading] = useState({})
 
   const fetchedRef = useRef(false)
 
-  // ─── Fetch Properties ──────────────────────────────────────────────
   useEffect(() => {
     if (!fetchedRef.current) {
       fetchedRef.current = true
@@ -121,6 +134,14 @@ function Properties() {
       setFavorites([])
     }
   }, [user])
+
+  // Sync specific URL params to filters
+  useEffect(() => {
+    const typeParam = searchParams.get('type')
+    if (typeParam && ['house', 'car', 'all'].includes(typeParam.toLowerCase())) {
+        setFilters(prev => ({ ...prev, propertyType: typeParam.toLowerCase() }))
+    }
+  }, [searchParams])
 
   async function fetchProperties() {
     setLoading(true)
@@ -176,50 +197,68 @@ function Properties() {
     }
   }
 
-  const typeMap = {
-    apartment: 'Apartment',
-    house: 'House',
-    villa: 'Villa',
-    studio: 'Studio',
-    condo: 'Condo',
-    penthouse: 'Penthouse',
-    townhouse: 'Townhouse',
-    mansion: 'Mansion',
-    commercial: 'Commercial',
-    office: 'Office',
-    land: 'Land',
-    warehouse: 'Warehouse',
-    shop: 'Shop',
-    car: 'Car',
-  }
+  const handleClearAll = () => {
+    setFilters(defaultFilters);
+    setSearchParams({});
+    setIsFilterOpen(false);
+  };
 
-  const selectedTypeParam = searchParams.get('type')
-  if (selectedTypeParam && selectedTypeParam !== 'all') {
-    const mappedType = typeMap[selectedTypeParam] || 'all'
-    if (mappedType !== propertyType) {
-      setPropertyType(mappedType)
-    }
-  } else if (selectedTypeParam === null && propertyType !== 'all') {
-    setPropertyType('all')
-  }
+  const activeFilterCount = 
+    (filters.searchTerm ? 1 : 0) +
+    (filters.propertyType !== 'all' ? 1 : 0) +
+    (filters.priceRange[0] > 0 || filters.priceRange[1] < 200000 ? 1 : 0) +
+    (filters.bedrooms !== 'any' ? 1 : 0) +
+    (filters.bathrooms !== 'any' ? 1 : 0) +
+    (filters.availability !== 'all' ? 1 : 0) +
+    filters.selectedFeatures.length;
 
   const getPageTitle = () => {
-    if (propertyType === 'all') return 'All Properties'
-    return `${propertyType}s`
+    if (filters.propertyType === 'all') return 'All Properties'
+    return `${filters.propertyType.charAt(0).toUpperCase() + filters.propertyType.slice(1)}s`
   }
 
-
   const filteredProperties = properties.filter((property) => {
-    const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.location.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = propertyType === 'all' || property.type === propertyType
-    const matchesPrice = priceRange === 'all' ||
-      (priceRange === 'low' && property.priceRaw < 30000) ||
-      (priceRange === 'mid' && property.priceRaw >= 30000 && property.priceRaw < 50000) ||
-      (priceRange === 'high' && property.priceRaw >= 50000)
+    // 1. Search Match
+    const searchMatch = !filters.searchTerm || 
+        property.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        property.location.toLowerCase().includes(filters.searchTerm.toLowerCase());
 
-    return matchesSearch && matchesType && matchesPrice
-  })
+    // 2. Type Match
+    const typeMatch = filters.propertyType === 'all' || property.listing_type === filters.propertyType;
+
+    // 3. Price Match
+    const priceMatch = property.priceRaw >= filters.priceRange[0] && property.priceRaw <= filters.priceRange[1];
+
+    // 4. Bedroom Match (houses only)
+    let bedMatch = true;
+    if (filters.propertyType !== 'car' && filters.bedrooms !== 'any' && property.listing_type === 'house') {
+        const reqBeds = parseInt(filters.bedrooms);
+        const propBeds = parseInt(property.beds);
+        bedMatch = !isNaN(propBeds) && propBeds >= reqBeds;
+    }
+
+    // 5. Bathroom Match (houses only)
+    let bathMatch = true;
+    if (filters.propertyType !== 'car' && filters.bathrooms !== 'any' && property.listing_type === 'house') {
+        const reqBaths = parseInt(filters.bathrooms);
+        const propBaths = parseInt(property.baths);
+        bathMatch = !isNaN(propBaths) && propBaths >= reqBaths;
+    }
+
+    // 6. Availability Match
+    let availabilityMatch = true;
+    if (filters.availability === 'available') availabilityMatch = property.is_available === true;
+    if (filters.availability === 'rented') availabilityMatch = property.is_available === false;
+
+    // 7. Features Match (AND logic)
+    let featureMatch = true;
+    if (filters.selectedFeatures.length > 0) {
+        const propFeatureIds = property.features.map(f => f.id);
+        featureMatch = filters.selectedFeatures.every(fId => propFeatureIds.includes(fId));
+    }
+
+    return searchMatch && typeMatch && priceMatch && bedMatch && bathMatch && availabilityMatch && featureMatch;
+  });
 
   const sortedProperties = [...filteredProperties].sort((a, b) => {
     switch (sortBy) {
@@ -240,18 +279,8 @@ function Properties() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar />
 
-      <PropertyFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        propertyType={propertyType}
-        setPropertyType={setPropertyType}
-        priceRange={priceRange}
-        setPriceRange={setPriceRange}
-        setSearchParams={setSearchParams}
-      />
-
       {/* Toolbar */}
-      <section className="border-b border-slate-200 bg-white py-4 dark:border-slate-800 dark:bg-slate-900">
+      <section className="sticky top-20 z-30 border-b border-slate-200 bg-white py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -272,7 +301,22 @@ function Properties() {
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                className="lg:hidden"
+                onClick={() => setIsFilterOpen(true)}
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#c99b43] text-xs font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+
               <div className="relative">
                 <select
                   value={sortBy}
@@ -285,7 +329,8 @@ function Properties() {
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               </div>
-              <div className="flex items-center gap-1 rounded-lg border border-slate-300 p-1 dark:border-slate-700">
+
+              <div className="hidden sm:flex items-center gap-1 rounded-lg border border-slate-300 p-1 dark:border-slate-700">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`rounded p-1.5 transition-colors ${viewMode === 'grid'
@@ -312,83 +357,133 @@ function Properties() {
         </div>
       </section>
 
-      {/* Properties Grid / List */}
+      {/* Main Layout */}
       <section className="bg-slate-50 py-8 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {loading && (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <PropertyCardSkeleton key={i} />
-              ))}
-            </div>
-          )}
+          <div className="flex gap-8">
+            
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:block w-[280px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
+              <PropertySidebarFilters 
+                filters={filters} 
+                setFilters={setFilters} 
+                onClearAll={handleClearAll} 
+              />
+            </aside>
 
-          {!loading && error && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="rounded-full bg-red-100 p-6 dark:bg-red-900/30">
-                <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400" />
-              </div>
-              <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
-                Failed to Load Properties
-              </h3>
-              <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
-                {error}
-              </p>
-              <Button
-                onClick={fetchProperties}
-                className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 shadow-sm hover:opacity-90"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Try Again
-              </Button>
-            </div>
-          )}
-
-          {!loading && !error && sortedProperties.length > 0 && (
-            <div className={viewMode === 'grid' ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-4' : 'flex flex-col gap-4'}>
-              {sortedProperties.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  isFav={favorites.includes(property.id)}
-                  isLoading={favoriteLoading[property.id]}
-                  toggleFavorite={toggleFavorite}
-                  layout={viewMode}
-                />
-              ))}
-            </div>
-          )}
-
-          {!loading && !error && sortedProperties.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="rounded-full bg-slate-100 p-6 dark:bg-slate-800">
-                <Building2 className="h-12 w-12 text-slate-400 dark:text-slate-600" />
-              </div>
-              <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
-                No Properties Found
-              </h3>
-              <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
-                {properties.length === 0
-                  ? 'There are no properties listed yet. Check back later!'
-                  : "We couldn't find any properties matching your search criteria. Try adjusting your filters."}
-              </p>
-              {properties.length > 0 && (
-                <Button
-                  onClick={() => {
-                    setSearchTerm('')
-                    setPropertyType('all')
-                    setPriceRange('all')
-                  }}
-                  variant="outline"
-                  className="mt-6 border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
-                >
-                  Clear Filters
-                </Button>
+            {/* Content Area */}
+            <main className="flex-1 min-w-0">
+              {loading && (
+                <div className={viewMode === 'grid' ? "grid gap-6 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <PropertyCardSkeleton key={i} />
+                  ))}
+                </div>
               )}
-            </div>
-          )}
+
+              {!loading && error && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="rounded-full bg-red-100 p-6 dark:bg-red-900/30">
+                    <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400" />
+                  </div>
+                  <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
+                    Failed to Load Properties
+                  </h3>
+                  <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
+                    {error}
+                  </p>
+                  <Button
+                    onClick={fetchProperties}
+                    className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 shadow-sm hover:opacity-90"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Try Again
+                  </Button>
+                </div>
+              )}
+
+              {!loading && !error && sortedProperties.length > 0 && (
+                <div className={viewMode === 'grid' ? 'grid gap-6 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-4'}>
+                  {sortedProperties.map((property) => (
+                    <PropertyCard
+                      key={property.id}
+                      property={property}
+                      isFav={favorites.includes(property.id)}
+                      isLoading={favoriteLoading[property.id]}
+                      toggleFavorite={toggleFavorite}
+                      layout={viewMode}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {!loading && !error && sortedProperties.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="rounded-full bg-slate-100 p-6 dark:bg-slate-800">
+                    <Building2 className="h-12 w-12 text-slate-400 dark:text-slate-600" />
+                  </div>
+                  <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
+                    No Properties Found
+                  </h3>
+                  <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
+                    {properties.length === 0
+                      ? 'There are no properties listed yet. Check back later!'
+                      : "We couldn't find any properties matching your search criteria. Try adjusting your filters."}
+                  </p>
+                  {properties.length > 0 && (
+                    <Button
+                      onClick={handleClearAll}
+                      variant="outline"
+                      className="mt-6 border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              )}
+            </main>
+          </div>
         </div>
       </section>
+
+      {/* Mobile/Tablet Drawer */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsFilterOpen(false)}
+              className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 z-50 flex w-[300px] flex-col bg-white shadow-2xl dark:bg-slate-900 sm:w-[350px] lg:hidden"
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Filters</h2>
+                <button
+                  onClick={() => setIsFilterOpen(false)}
+                  className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar">
+                <PropertySidebarFilters 
+                  filters={filters} 
+                  setFilters={setFilters} 
+                  onClearAll={handleClearAll} 
+                />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

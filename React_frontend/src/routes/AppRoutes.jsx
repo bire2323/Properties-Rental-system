@@ -33,6 +33,7 @@ import Profile from '../pages/Tenant/Profile'
 import Settings from '../pages/Tenant/Settings'
 
 import BecomeOwnerPage from '../pages/RoleChange/BecomeOwnerPage'
+import PendingApproval from '@/pages/Owner/PendingApproval'
 
 
 
@@ -52,6 +53,7 @@ function AppRoutes() {
 
                 <Route path="/vehicles" element={<Vehicles />} />
                 <Route path="/vehicles/:id" element={<VehicleDetails />} />
+                <Route path="/owner/pending" element={<PendingApproval />} />
 
                 <Route
                     path="/tenant"

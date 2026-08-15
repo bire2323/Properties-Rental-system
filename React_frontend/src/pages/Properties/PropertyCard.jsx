@@ -101,7 +101,7 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
                             {property.price}
                         </span>
                         <span className={`text-slate-500 dark:text-slate-400 ${isGrid ? 'text-[10px]' : 'text-sm'
-                            }`}> ETB/mo</span>
+                            }`}> ETB/{property.rental_unit}</span>
                     </div>
                     <Button
                         size={isGrid ? 'sm' : 'sm'}

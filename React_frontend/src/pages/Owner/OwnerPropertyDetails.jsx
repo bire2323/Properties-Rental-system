@@ -36,7 +36,7 @@ export default function OwnerPropertyDetails() {
 
     const handleDelete = async () => {
         if (!property) return
-        if (!window.confirm(`Delete property \"${property.title}\"? This cannot be undone.`)) {
+        if (!window.confirm(`Delete property \"${property.property_name}\"? This cannot be undone.`)) {
             return
         }
 
@@ -104,7 +104,7 @@ export default function OwnerPropertyDetails() {
                     <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-900">
                             {getImageUrl(imageUrl) ? (
-                                <img src={getImageUrl(imageUrl)} alt={property.title} onError={handleImgError} className="h-80 w-full object-cover" />
+                                <img src={getImageUrl(imageUrl)} alt={property.property_name} onError={handleImgError} className="h-80 w-full object-cover" />
                             ) : (
                                 <div className="flex h-80 items-center justify-center bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400">No image available</div>
                             )}
@@ -113,7 +113,7 @@ export default function OwnerPropertyDetails() {
                             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
                                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
                                     <MapPin className="h-4 w-4" />
-                                    {property.location}
+                                    {[property.city, property.country].filter(Boolean).join(", ")}
                                 </span>
                                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
                                     <DollarSign className="h-4 w-4" />
@@ -125,7 +125,7 @@ export default function OwnerPropertyDetails() {
                                 </span>
                             </div>
                             <div>
-                                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{property.title}</h2>
+                                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{property.property_name}</h2>
                                 <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{property.description}</p>
                             </div>
                         </div>
@@ -147,23 +147,26 @@ export default function OwnerPropertyDetails() {
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <div>
                                         <p className="text-slate-500 dark:text-slate-400">Type</p>
-                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">{property.property_type}</p>
+                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">{property.listing_type}</p>
                                     </div>
                                     <div>
                                         <p className="text-slate-500 dark:text-slate-400">Security deposit</p>
                                         <p className="mt-2 font-semibold text-slate-900 dark:text-white">ETB {parseFloat(property.security_deposit || 0).toLocaleString()}</p>
                                     </div>
                                 </div>
-                                {property.specific && (
+                                {(property.house_detail || property.car_detail) && (
                                     <div className="space-y-3">
                                         <p className="text-slate-500 dark:text-slate-400">Specific details</p>
                                         <div className="grid gap-3 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2">
-                                            {Object.entries(property.specific).map(([key, value]) => (
-                                                <div key={key} className="rounded-3xl bg-slate-50 p-4 dark:bg-slate-900">
-                                                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{key.replace('_', ' ')}</p>
-                                                    <p className="mt-2 font-semibold text-slate-900 dark:text-white">{String(value)}</p>
-                                                </div>
-                                            ))}
+                                            {Object.entries(property.listing_type === 'house' ? property.house_detail : property.car_detail).map(([key, value]) => {
+                                                if (key === 'id' || key === 'property') return null;
+                                                return (
+                                                    <div key={key} className="rounded-3xl bg-slate-50 p-4 dark:bg-slate-900">
+                                                        <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{key.replace('_', ' ')}</p>
+                                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">{String(value)}</p>
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -175,7 +178,7 @@ export default function OwnerPropertyDetails() {
                             <div className="mt-5 grid gap-3">
                                 {property.images?.length ? (
                                     property.images.map((image) => (
-                                        <img key={image.id} src={getImageUrl(image)} alt={property.title} onError={handleImgError} className="h-28 w-full rounded-3xl object-cover" />
+                                        <img key={image.id} src={getImageUrl(image)} alt={property.property_name} onError={handleImgError} className="h-28 w-full rounded-3xl object-cover" />
                                     ))
                                 ) : (
                                     <div className="rounded-3xl bg-slate-100 p-8 text-center text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">No additional images</div>

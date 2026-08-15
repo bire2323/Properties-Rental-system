@@ -7,19 +7,23 @@ export default function ProtectedRoute({ children }) {
     const location = useLocation();
 
     if (loading) {
-        return null; // or a loading spinner
+        return null;
     }
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
 
-    if (
-        user?.role === 'owner' &&
-        !user?.owner_profile &&
-        location.pathname !== '/become-owner'
-    ) {
-        return <Navigate to="/become-owner" replace />;
+    const isOwner = user?.role === 'owner';
+    const isPendingOwner = isOwner && user?.owner_profile?.can_post_property === false;
+    const isOnPendingPage = location.pathname === '/owner/pending';
+
+    if (isPendingOwner && !isOnPendingPage) {
+        return <Navigate to="/owner/pending" replace />;
+    }
+
+    if (isOnPendingPage && isOwner && user?.owner_profile?.can_post_property === true) {
+        return <Navigate to="/owner/dashboard" replace />;
     }
 
     return children;

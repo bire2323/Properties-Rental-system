@@ -17,20 +17,20 @@ export default function PropertyList({ properties, onDelete }) {
                 {properties.map((property) => (
                     <div key={property.id} className="grid grid-cols-[1.2fr_1fr_1fr_1fr_120px] gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                         <div>
-                            <p className="font-semibold">{property.title}</p>
+                            <p className="font-semibold">{property.property_name}</p>
                             <p className="mt-1 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                                 <MapPin className="h-4 w-4" />
-                                {property.location}
+                                {[property.city, property.country].filter(Boolean).join(", ") || 'Location Unspecified'}
                             </p>
                         </div>
-                        <div>{property.property_type}</div>
+                        <div>{property.listing_type}</div>
                         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                             <DollarSign className="h-4 w-4" />
                             ETB {parseFloat(property.price || 0).toLocaleString()}
                         </div>
                         <div>
-                            <span className={property.is_available ? 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>
-                                {property.is_available ? 'Available' : 'Unavailable'}
+                            <span className={property.status === 'active' ? 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>
+                                {property.status === 'active' ? 'Available' : 'Unavailable'}
                             </span>
                         </div>
                         <div className="flex items-center justify-end gap-2">
@@ -51,7 +51,7 @@ export default function PropertyList({ properties, onDelete }) {
                             <button
                                 type="button"
                                 onClick={async () => {
-                                    const ok = window.confirm(`Delete property \"${property.title}\"?`)
+                                    const ok = window.confirm(`Delete property \"${property.property_name}\"?`)
                                     if (!ok) return
                                     try {
                                         await (typeof onDelete === 'function' ? onDelete(property.id) : Promise.resolve())

@@ -46,6 +46,14 @@ export async function getFeatures() {
 }
 
 /**
+ * GET /api/properties/features/
+ * Alias for getFeatures.
+ */
+export async function getAllFeatures() {
+    return getFeatures()
+}
+
+/**
  * GET /api/properties/
  *
  * Fetches all properties from the backend.

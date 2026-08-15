@@ -269,7 +269,7 @@ function Home() {
                 <div className="relative overflow-hidden">
                   <img
                     src={property.image}
-                    alt={property.title}
+                    alt={property.property_name}
                     className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 backdrop-blur-sm dark:bg-slate-900/95">
@@ -288,11 +288,11 @@ function Home() {
 
                 <div className="p-4 sm:p-5">
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
-                    {property.title}
+                    {property.property_name}
                   </h3>
                   <p className="mt-1.5 flex items-center text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
                     <MapPin className="mr-1 h-3.5 w-3.5" />
-                    {property.location}
+                    {[property.city, property.country].filter(Boolean).join(", ")}
                   </p>
 
                   <div className="mt-3 flex items-center gap-3 border-t border-slate-200 pt-3 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:text-sm">
@@ -356,7 +356,7 @@ function Home() {
                 <div className="relative overflow-hidden">
                   <img
                     src={property.image}
-                    alt={property.title}
+                    alt={property.property_name}
                     className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 backdrop-blur-sm dark:bg-slate-900/95">
@@ -366,10 +366,10 @@ function Home() {
                 </div>
 
                 <div className="p-6">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{property.title}</h3>
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
                   <p className="mt-2 flex items-center text-sm text-slate-600 dark:text-slate-400">
                     <MapPin className="mr-1 h-4 w-4" />
-                    {property.location}
+                    {[property.city, property.country].filter(Boolean).join(", ")}
                   </p>
 
                   <div className="mt-4 flex items-center gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">

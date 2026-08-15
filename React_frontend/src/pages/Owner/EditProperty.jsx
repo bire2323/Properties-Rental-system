@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getPropertyById, updateProperty } from '../../api/property/propertyApi'
@@ -7,7 +6,6 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
 
 export default function EditProperty() {
     const { id } = useParams()
@@ -26,13 +24,17 @@ export default function EditProperty() {
                 const data = await getPropertyById(id)
                 setProperty(data)
                 setForm({
-                    title: data.title || '',
+                    property_name: data.property_name || '',
                     description: data.description || '',
                     price: data.price || '',
                     security_deposit: data.security_deposit || '',
-                    property_type: data.property_type || 'house',
-                    location: data.location || '',
-                    specific: data.specific || {},
+                    listing_type: data.listing_type || 'house',
+                    rental_unit: data.rental_unit || 'monthly',
+                    address: data.address || '',
+                    city: data.city || '',
+                    country: data.country || '',
+                    house_detail: data.house_detail || {},
+                    car_detail: data.car_detail || {},
                     images: [],
                     selectedFeatures: data.features || [],
                 })
@@ -45,7 +47,7 @@ export default function EditProperty() {
         loadProperty()
     }, [id])
 
-    const isHouse = form?.property_type === 'house'
+    const isHouse = form?.listing_type === 'house'
 
     const specificFields = useMemo(() => {
         if (!form) return []
@@ -54,17 +56,17 @@ export default function EditProperty() {
                 { name: 'bedrooms', label: 'Bedrooms', type: 'number' },
                 { name: 'bathrooms', label: 'Bathrooms', type: 'number' },
                 { name: 'area_sqft', label: 'Area (sqft)', type: 'number' },
-                { name: 'has_garage', label: 'Garage', type: 'checkbox' },
-                { name: 'furnishing_status', label: 'Furnishing', type: 'text' },
+                { name: 'furnishing', label: 'Furnishing (e.g. furnished, unfurnished)', type: 'text' },
+                { name: 'floor_number', label: 'Floor Number', type: 'number' },
+                { name: 'room_number', label: 'Room Number', type: 'number' },
             ]
         }
         return [
             { name: 'brand', label: 'Brand', type: 'text' },
-            { name: 'car_model', label: 'Model', type: 'text' },
+            { name: 'model', label: 'Model', type: 'text' },
             { name: 'year', label: 'Year', type: 'number' },
             { name: 'mileage', label: 'Mileage', type: 'number' },
             { name: 'fuel_type', label: 'Fuel Type', type: 'text' },
-            { name: 'transmission', label: 'Transmission', type: 'text' },
             { name: 'seating_capacity', label: 'Seating Capacity', type: 'number' },
         ]
     }, [form, isHouse])
@@ -74,10 +76,11 @@ export default function EditProperty() {
     }
 
     const handleSpecificChange = (key, value) => {
+        const detailKey = isHouse ? 'house_detail' : 'car_detail'
         setForm((prev) => ({
             ...prev,
-            specific: {
-                ...prev.specific,
+            [detailKey]: {
+                ...prev[detailKey],
                 [key]: value,
             },
         }))
@@ -95,17 +98,27 @@ export default function EditProperty() {
 
         try {
             const payload = new FormData()
-            payload.append('title', form.title)
+            payload.append('property_name', form.property_name)
             payload.append('description', form.description)
             payload.append('price', form.price)
-            payload.append('security_deposit', form.security_deposit)
-            payload.append('property_type', form.property_type)
-            payload.append('location', form.location)
-            payload.append('specific', JSON.stringify(form.specific))
+            payload.append('security_deposit', form.security_deposit || '')
+            payload.append('listing_type', form.listing_type)
+            payload.append('rental_unit', form.rental_unit)
+            payload.append('address', form.address)
+            payload.append('city', form.city)
+            payload.append('country', form.country)
+            
+            if (isHouse) {
+                payload.append('house_detail', JSON.stringify(form.house_detail))
+            } else {
+                payload.append('car_detail', JSON.stringify(form.car_detail))
+            }
+            
             payload.append(
                 'feature_ids',
                 JSON.stringify(form.selectedFeatures.map((feature) => feature.id))
             )
+            
             if (form.images.length) {
                 form.images.forEach((file) => {
                     payload.append('images', file)
@@ -149,16 +162,18 @@ export default function EditProperty() {
                 <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <section className="space-y-4">
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Basic information</h3>
+                        
                         <div className="grid gap-4 sm:grid-cols-2">
                             <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Title
-                                <Input value={form.title} onChange={(event) => handleFieldChange('title', event.target.value)} placeholder="Property title" />
+                                Property Name
+                                <Input value={form.property_name} onChange={(event) => handleFieldChange('property_name', event.target.value)} placeholder="Property Name" />
                             </label>
                             <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Location
-                                <Input value={form.location} onChange={(event) => handleFieldChange('location', event.target.value)} placeholder="Addis Ababa" />
+                                City
+                                <Input value={form.city} onChange={(event) => handleFieldChange('city', event.target.value)} placeholder="City" />
                             </label>
                         </div>
+                        
                         <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
                             Description
                             <textarea
@@ -168,59 +183,86 @@ export default function EditProperty() {
                                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                             />
                         </label>
+                        
                         <div className="grid gap-4 sm:grid-cols-2">
                             <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Property type
+                                Address
+                                <Input value={form.address} onChange={(event) => handleFieldChange('address', event.target.value)} placeholder="Address" />
+                            </label>
+                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+                                Country
+                                <Input value={form.country} onChange={(event) => handleFieldChange('country', event.target.value)} placeholder="Country" />
+                            </label>
+                        </div>
+                        
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+                                Listing Type
                                 <select
-                                    value={form.property_type}
-                                    onChange={(event) => handleFieldChange('property_type', event.target.value)}
-                                    className="h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm transition focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                    value={form.listing_type}
+                                    disabled
+                                    className="h-12 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 cursor-not-allowed"
                                 >
                                     <option value="house">House</option>
                                     <option value="car">Car</option>
                                 </select>
+                                <p className="text-xs text-slate-500 mt-1">Listing type cannot be changed.</p>
                             </label>
                             <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
                                 Price
                                 <Input value={form.price} onChange={(event) => handleFieldChange('price', event.target.value)} type="number" placeholder="25000" />
                             </label>
                         </div>
+                        
                         <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+                                Rental Unit
+                                <select
+                                    value={form.rental_unit}
+                                    onChange={(event) => handleFieldChange('rental_unit', event.target.value)}
+                                    className="h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm transition focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                >
+                                    <option value="hourly">Per Hour</option>
+                                    <option value="daily">Per Day</option>
+                                    <option value="weekly">Per Week</option>
+                                    <option value="monthly">Per Month</option>
+                                    <option value="yearly">Per Year</option>
+                                </select>
+                            </label>
                             <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
                                 Security deposit
                                 <Input value={form.security_deposit} onChange={(event) => handleFieldChange('security_deposit', event.target.value)} type="number" placeholder="5000" />
                             </label>
+                        </div>
+                        
+                        <div>
                             <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
                                 Replace images
                                 <input type="file" accept="image/*" multiple onChange={handleImageChange} className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 transition focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                             </label>
                         </div>
                     </section>
+                    
                     <section className="space-y-4">
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">{isHouse ? 'House details' : 'Car details'}</h3>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {specificFields.map((field) => (
-                                <label key={field.name} className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                    {field.label}
-                                    {field.type === 'checkbox' ? (
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(form.specific[field.name])}
-                                            onChange={(event) => handleSpecificChange(field.name, event.target.checked)}
-                                            className="h-5 w-5 rounded border-slate-300 text-[#c99b43] focus:ring-[#c99b43] dark:border-slate-600"
-                                        />
-                                    ) : (
+                            {specificFields.map((field) => {
+                                const detailKey = isHouse ? 'house_detail' : 'car_detail'
+                                return (
+                                    <label key={field.name} className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+                                        {field.label}
                                         <Input
-                                            value={form.specific[field.name] ?? ''}
+                                            value={form[detailKey][field.name] ?? ''}
                                             onChange={(event) => handleSpecificChange(field.name, event.target.value)}
                                             type={field.type}
                                             placeholder={field.label}
                                         />
-                                    )}
-                                </label>
-                            ))}
+                                    </label>
+                                )
+                            })}
                         </div>
                     </section>
+                    
                     <section className="space-y-4">
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -234,6 +276,7 @@ export default function EditProperty() {
                         />
                     </section>
                 </div>
+                
                 <aside className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div>
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Update property</h3>
