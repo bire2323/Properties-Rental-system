@@ -1,3 +1,4 @@
+// src/context/auth-context.jsx (or src/providers/AuthProvider.jsx)
 import { useEffect, useMemo, useState } from 'react'
 import {
     getProfile,
@@ -39,6 +40,14 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         checkAuth()
     }, [])
+
+    // ─── ✅ NEW: updateUser function ──────────────────────────────
+    const updateUser = (newUserData) => {
+        setUser((prevUser) => ({
+            ...prevUser,
+            ...newUserData,
+        }))
+    }
 
     async function register(data) {
         setLoading(true)
@@ -97,9 +106,10 @@ export function AuthProvider({ children }) {
             logout,
             googleLogin,
             checkAuth,
+            updateUser,
             isAuthenticated: Boolean(user),
         }),
-        [user, loading]
+        [user, loading] // updateUser is stable, no need to add to deps
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -144,8 +144,10 @@ function Home() {
                   Explore Properties
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-2 border-white dark:text-white hover:bg-white hover:text-slate-900">
-                  List Property
+                <Button
+                  onClick={handlePostProperty}
+                  size="lg" variant="outline" className="border-2 border-white dark:text-white hover:bg-white hover:text-slate-900">
+                  Post Property
                 </Button>
               </div>
 
@@ -398,21 +400,21 @@ function Home() {
         </div>
       </section> */}
       <Testimonials />
-      {/* Call to Action - Post Properties */}
+
       <section className="relative flex overflow-hidden flex-wrap min-h-[70vh] w-full items-center mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
 
-        {/* LEFT SIDE - Golden Circles */}
+
         <div className="relative w-full lg:w-1/2 h-[300px] sm:h-[400px] lg:h-[500px] xl:h-[550px] overflow-hidden">
-          {/* NEW: Extra Large circle - deepest layer */}
+
           <div className="absolute -top-4 -left-24 rounded-full bg-gradient-to-br from-[#f3c96d]/10 to-[#c99b43]/5 h-[448px] w-[448px] sm:h-[500px] sm:w-[500px] lg:h-[600px] lg:w-[600px] dark:from-[#f3c96d]/5 dark:to-[#c99b43]/5" />
 
-          {/* Large circle */}
+
           <div className="absolute -top-8 -left-16 rounded-full bg-gradient-to-br from-[#f3c96d]/20 to-[#c99b43]/10 h-96 w-96 sm:h-[400px] sm:w-[400px] lg:h-[450px] lg:w-[450px] dark:from-[#f3c96d]/10 dark:to-[#c99b43]/5" />
 
-          {/* Medium-large circle */}
+
           <div className="absolute -top-16 -left-10 rounded-full bg-gradient-to-br from-[#c99b43]/30 to-[#f3c96d]/20 h-80 w-80 sm:h-[340px] sm:w-[340px] lg:h-[380px] lg:w-[380px] dark:from-[#c99b43]/20 dark:to-[#f3c96d]/10" />
 
-          {/* Medium circle */}
+
           <div className="absolute -top-20 -left-5 rounded-full bg-gradient-to-br from-[#b98227]/40 to-[#c99b43]/30 h-60 w-60 sm:h-[280px] sm:w-[280px] lg:h-[320px] lg:w-[320px] dark:from-[#b98227]/30 dark:to-[#c99b43]/20" />
 
           {/* Small circle - front layer */}

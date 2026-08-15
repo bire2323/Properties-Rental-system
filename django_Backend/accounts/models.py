@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.conf import settings
 
 
 class UserManager(BaseUserManager):
@@ -83,43 +84,10 @@ class User(AbstractUser):
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
-        default=Role.OWNER
+        default=Role.TENANT
     )
 
-    phone_number = models.CharField(
-        max_length=20,
-        blank=True,
-        null=True
-    )
-
-    profile_image = models.ImageField(
-        upload_to="profiles/",
-        blank=True,
-        null=True
-    )
-
-    date_of_birth = models.DateField(
-        blank=True,
-        null=True
-    )
-
-    address = models.TextField(
-        blank=True,
-        null=True
-    )
-
-    city = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True
-    )
-
-    country = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True
-    )
-
+   
     is_verified = models.BooleanField(
         default=False
     )
@@ -158,3 +126,166 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.email} ({self.role})"
+
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile"
+    )
+
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    profile_image = models.ImageField(
+        upload_to="profiles/",
+        blank=True,
+        null=True
+    )
+
+    date_of_birth = models.DateField(
+        blank=True,
+        null=True
+    )
+
+    address = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    country = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        verbose_name = "Profile"
+        verbose_name_plural = "Profiles"
+
+    def __str__(self):
+        return f"{self.user.email}'s Profile"
+
+
+class OwnerProfile(models.Model):
+    class VerificationStatus(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        SUSPENDED = "suspended", "Suspended"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="owner_profile"
+    )
+
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.PENDING
+    )
+
+    can_post_property = models.BooleanField(
+        default=False,
+        help_text="Controls whether the user is allowed to create property listings."
+    )
+
+    rejection_reason = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Reason for rejection, if status is rejected."
+    )
+
+    approved_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Timestamp when the owner was approved."
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        verbose_name = "Owner Profile"
+        verbose_name_plural = "Owner Profiles"
+
+    def __str__(self):
+        return f"{self.user.email} - {self.verification_status}"
+
+
+class OwnerVerificationDocument(models.Model):
+    """
+    Verification documents submitted by an owner.
+    One owner can have multiple documents.
+    """
+    class DocumentType(models.TextChoices):
+        NATIONAL_ID = "national_id", "National ID"
+        PASSPORT = "passport", "Passport"
+        DRIVING_LICENSE = "driving_license", "Driving License"
+        OTHER = "other", "Other"
+
+    owner_profile = models.ForeignKey(
+        OwnerProfile,
+        on_delete=models.CASCADE,
+        related_name="verification_documents"
+    )
+
+    document_type = models.CharField(
+        max_length=20,
+        choices=DocumentType.choices
+    )
+
+    document_number = models.CharField(
+        max_length=100,    
+        blank=True,
+        null=True
+    )
+
+    document_image = models.ImageField(
+        upload_to="owner_verification_documents/"
+    )
+
+    is_verified = models.BooleanField(
+        default=False
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        verbose_name = "Owner Verification Document"
+        verbose_name_plural = "Owner Verification Documents"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.owner_profile.user.email} - {self.get_document_type_display()}"
