@@ -32,7 +32,7 @@ function mapPropertyToCard(property) {
 
   const isHouse = property.listing_type === 'house'
   const detail = isHouse ? (property.house_detail || {}) : (property.car_detail || {})
-  
+
   const beds = isHouse ? (detail.bedrooms ?? '-') : '-'
   const baths = isHouse ? (detail.bathrooms ?? '-') : '-'
   const area = isHouse ? (detail.area_sqft ?? '-') : '-'
@@ -47,7 +47,7 @@ function mapPropertyToCard(property) {
     ? property.listing_type.charAt(0).toUpperCase() + property.listing_type.slice(1)
     : 'Property'
 
-  const locationDisplay = [property.city, property.country].filter(Boolean).join(", ") || 'Location Unspecified'
+  const locationDisplay = [property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
 
   return {
     id: property.id,
@@ -139,7 +139,7 @@ function Properties() {
   useEffect(() => {
     const typeParam = searchParams.get('type')
     if (typeParam && ['house', 'car', 'all'].includes(typeParam.toLowerCase())) {
-        setFilters(prev => ({ ...prev, propertyType: typeParam.toLowerCase() }))
+      setFilters(prev => ({ ...prev, propertyType: typeParam.toLowerCase() }))
     }
   }, [searchParams])
 
@@ -203,7 +203,7 @@ function Properties() {
     setIsFilterOpen(false);
   };
 
-  const activeFilterCount = 
+  const activeFilterCount =
     (filters.searchTerm ? 1 : 0) +
     (filters.propertyType !== 'all' ? 1 : 0) +
     (filters.priceRange[0] > 0 || filters.priceRange[1] < 200000 ? 1 : 0) +
@@ -219,9 +219,9 @@ function Properties() {
 
   const filteredProperties = properties.filter((property) => {
     // 1. Search Match
-    const searchMatch = !filters.searchTerm || 
-        property.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        property.location.toLowerCase().includes(filters.searchTerm.toLowerCase());
+    const searchMatch = !filters.searchTerm ||
+      property.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      property.location.toLowerCase().includes(filters.searchTerm.toLowerCase());
 
     // 2. Type Match
     const typeMatch = filters.propertyType === 'all' || property.listing_type === filters.propertyType;
@@ -232,17 +232,17 @@ function Properties() {
     // 4. Bedroom Match (houses only)
     let bedMatch = true;
     if (filters.propertyType !== 'car' && filters.bedrooms !== 'any' && property.listing_type === 'house') {
-        const reqBeds = parseInt(filters.bedrooms);
-        const propBeds = parseInt(property.beds);
-        bedMatch = !isNaN(propBeds) && propBeds >= reqBeds;
+      const reqBeds = parseInt(filters.bedrooms);
+      const propBeds = parseInt(property.beds);
+      bedMatch = !isNaN(propBeds) && propBeds >= reqBeds;
     }
 
     // 5. Bathroom Match (houses only)
     let bathMatch = true;
     if (filters.propertyType !== 'car' && filters.bathrooms !== 'any' && property.listing_type === 'house') {
-        const reqBaths = parseInt(filters.bathrooms);
-        const propBaths = parseInt(property.baths);
-        bathMatch = !isNaN(propBaths) && propBaths >= reqBaths;
+      const reqBaths = parseInt(filters.bathrooms);
+      const propBaths = parseInt(property.baths);
+      bathMatch = !isNaN(propBaths) && propBaths >= reqBaths;
     }
 
     // 6. Availability Match
@@ -253,8 +253,8 @@ function Properties() {
     // 7. Features Match (AND logic)
     let featureMatch = true;
     if (filters.selectedFeatures.length > 0) {
-        const propFeatureIds = property.features.map(f => f.id);
-        featureMatch = filters.selectedFeatures.every(fId => propFeatureIds.includes(fId));
+      const propFeatureIds = property.features.map(f => f.id);
+      featureMatch = filters.selectedFeatures.every(fId => propFeatureIds.includes(fId));
     }
 
     return searchMatch && typeMatch && priceMatch && bedMatch && bathMatch && availabilityMatch && featureMatch;
@@ -301,7 +301,7 @@ function Properties() {
                 )}
               </p>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="outline"
@@ -361,13 +361,13 @@ function Properties() {
       <section className="bg-slate-50 py-8 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex gap-8">
-            
+
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block w-[280px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
-              <PropertySidebarFilters 
-                filters={filters} 
-                setFilters={setFilters} 
-                onClearAll={handleClearAll} 
+              <PropertySidebarFilters
+                filters={filters}
+                setFilters={setFilters}
+                onClearAll={handleClearAll}
               />
             </aside>
 
@@ -474,10 +474,10 @@ function Properties() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar">
-                <PropertySidebarFilters 
-                  filters={filters} 
-                  setFilters={setFilters} 
-                  onClearAll={handleClearAll} 
+                <PropertySidebarFilters
+                  filters={filters}
+                  setFilters={setFilters}
+                  onClearAll={handleClearAll}
                 />
               </div>
             </motion.div>

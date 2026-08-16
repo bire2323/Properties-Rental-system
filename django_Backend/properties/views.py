@@ -4,9 +4,15 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from django.db.models import Q, Avg, Count, Prefetch
 from interactions.models import PropertyRating, Favorite
-from .models import Property, Feature
-from .permissions import PropertyPermission
-from .serializers import PropertySerializer, PropertyCreateSerializer, FeatureSerializer
+from .models import Property, Feature, Company
+from .permissions import PropertyPermission, CompanyPermission
+from .serializers import (
+    PropertySerializer,
+    PropertyCreateSerializer,
+    FeatureSerializer,
+    CompanySerializer,
+    CompanyWriteSerializer,
+)
 
 
 class FeatureListView(ListAPIView):
@@ -26,12 +32,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
     lookup_field = 'id'
 
     def get_queryset(self):
-        """
-        Optimize queries and apply filters.
-        """
-        queryset = Property.objects.select_related('owner', 'house_detail', 'car_detail').prefetch_related('images', 'features').annotate(
+        """Optimize queries and apply filters."""
+        queryset = Property.objects.select_related(
+            'owner',
+            'company',
+            'house_detail',
+            'car_detail',
+        ).prefetch_related(
+            'images',
+            'features',
+        ).annotate(
             average_rating=Avg('ratings__rating'),
-            rating_count=Count('ratings', distinct=True)
+            rating_count=Count('ratings', distinct=True),
         )
 
         if self.request.user.is_authenticated:
@@ -39,23 +51,23 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 Prefetch(
                     'ratings',
                     queryset=PropertyRating.objects.filter(user=self.request.user),
-                    to_attr='user_ratings'
+                    to_attr='user_ratings',
                 ),
                 Prefetch(
                     'favorited_by',
                     queryset=Favorite.objects.filter(user=self.request.user),
-                    to_attr='user_favorites'
-                )
+                    to_attr='user_favorites',
+                ),
             )
 
         # --- FILTERING LOGIC ---
-        
+
         location = self.request.query_params.get('location')
         if location:
             queryset = queryset.filter(
-                Q(city__icontains=location) | 
-                Q(address__icontains=location) | 
-                Q(country__icontains=location)
+                Q(city__icontains=location) |
+                Q(address__icontains=location) |
+                Q(region__icontains=location)
             )
 
         min_price = self.request.query_params.get('min_price')
@@ -95,3 +107,30 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save()
+
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for Company objects.
+
+    - List/retrieve: public
+    - Create: authenticated owner or admin; creator is automatically added
+              as a manager
+    - Update/delete: company managers or admin only
+    """
+    permission_classes = [CompanyPermission]
+    lookup_field = 'id'
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        return Company.objects.prefetch_related('managers').order_by('name')
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return CompanyWriteSerializer
+        return CompanySerializer
+
+    def perform_create(self, serializer):
+        company = serializer.save()
+        # Automatically make the creator a manager
+        company.managers.add(self.request.user)

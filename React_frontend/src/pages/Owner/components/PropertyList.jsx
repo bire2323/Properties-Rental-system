@@ -20,7 +20,7 @@ export default function PropertyList({ properties, onDelete }) {
                             <p className="font-semibold">{property.property_name}</p>
                             <p className="mt-1 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                                 <MapPin className="h-4 w-4" />
-                                {[property.city, property.country].filter(Boolean).join(", ") || 'Location Unspecified'}
+                                {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                             </p>
                         </div>
                         <div>{property.listing_type}</div>

@@ -24,7 +24,7 @@ function mapPropertyToCard(property) {
 
   const isHouse = property.listing_type === 'house'
   const detail = isHouse ? (property.house_detail || {}) : (property.car_detail || {})
-  
+
   const beds = isHouse ? (detail.bedrooms ?? '-') : '-'
   const baths = isHouse ? (detail.bathrooms ?? '-') : '-'
   const area = isHouse ? (detail.area_sqft ?? '-') : '-'
@@ -38,8 +38,8 @@ function mapPropertyToCard(property) {
   const typeDisplay = property.listing_type
     ? property.listing_type.charAt(0).toUpperCase() + property.listing_type.slice(1)
     : 'Property'
-    
-  const locationDisplay = [property.city, property.country].filter(Boolean).join(", ") || 'Location Unspecified'
+
+  const locationDisplay = [property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
 
   return {
     id: property.id,
@@ -72,10 +72,13 @@ function mapPropertyToCard(property) {
     parking: detail.has_garage ? 1 : (property.listing_type === 'car' ? 0 : 1),
     description: property.description || 'No description available.',
     owner: {
-      name: property.owner?.first_name + ' ' + property.owner?.last_name || 'Owner',
-      photo: `https://ui-avatars.com/api/?name=${property.owner?.first_name}+${property.owner?.last_name}&size=200&background=c99b43&color=fff`,
-      phone: property.owner?.phone_number || '+251 911 000 000',
-      email: property.owner?.email || 'owner@nexaspace.com'
+      name: property.company?.name || property.owner_email || 'Owner',
+      photo: property.company?.logo
+        ? (typeof property.company.logo === 'string' ? property.company.logo : property.company.logo.image || '')
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(property.owner_email || 'Owner')}&size=200&background=c99b43&color=fff`,
+      phone: property.company?.contact_phone || property.owner?.phone_number || '+251 911 000 000',
+      email: property.company?.contact_email || property.owner_email || 'owner@nexaspace.com',
+      isCompany: !!property.company
     },
     detail: detail,
     listing_type: property.listing_type
@@ -188,7 +191,7 @@ function PropertyDetails() {
       }))
 
       await rateProperty(property.id, ratingValue)
-      
+
       // ✅ Fetch the updated property to reflect the new average rating and count
       const data = await getPropertyById(property.id)
       if (data) {

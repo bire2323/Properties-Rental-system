@@ -34,40 +34,31 @@ async function request(endpoint, options = {}) {
     return payload
 }
 
+// ─── Features ──────────────────────────────────────────────────────────────
+
 /**
  * GET /api/properties/features/
- *
  * Fetches all available property features/amenities.
- *
- * @returns {Promise<Array<{id: number, name: string}>>}
  */
 export async function getFeatures() {
     return request('/api/properties/features/', { method: 'GET' })
 }
 
-/**
- * GET /api/properties/features/
- * Alias for getFeatures.
- */
+/** Alias for getFeatures */
 export async function getAllFeatures() {
     return getFeatures()
 }
 
+// ─── Properties ─────────────────────────────────────────────────────────────
+
 /**
  * GET /api/properties/
  *
- * Fetches all properties from the backend.
- * Accepts optional filter params that map to the Django ViewSet's
- * query_params filtering (location, min_price, max_price, type, bedrooms, brand).
+ * Accepts optional filter params:
+ *   location, min_price, max_price, type, bedrooms, brand
  *
- * @param {Object} [filters] - Optional query parameter filters
- * @param {string} [filters.location]  - Case-insensitive partial match
- * @param {number} [filters.min_price] - Minimum monthly rent
- * @param {number} [filters.max_price] - Maximum monthly rent
- * @param {string} [filters.type]      - 'house' or 'car'
- * @param {number} [filters.bedrooms]  - Exact bedroom count (houses only)
- * @param {string} [filters.brand]     - Car brand (cars only)
- * @returns {Promise<Array>} List of property objects
+ * NOTE: The backend filters location against city, address, region.
+ * There is no longer a `country` filter.
  */
 export async function getAllProperties(filters = {}) {
     const params = new URLSearchParams()
@@ -86,12 +77,8 @@ export async function getAllProperties(filters = {}) {
 
 /**
  * GET /api/properties/:id/
- *
- * Fetches a single property by its ID, including nested
- * 'specific' (house/car fields), 'images', and computed 'main_image'.
- *
- * @param {number|string} id - The property ID
- * @returns {Promise<Object>} Property detail object
+ * Fetches a single property by its ID, including nested house_detail/car_detail,
+ * images, features, and company info.
  */
 export async function getPropertyById(id) {
     return request(`/api/properties/${id}/`, { method: 'GET' })
@@ -99,7 +86,7 @@ export async function getPropertyById(id) {
 
 /**
  * DELETE /api/properties/:id/
- * Removes a property. Requires authenticated owner with permission.
+ * Removes a property. Requires authenticated owner/company manager/admin.
  */
 export async function deleteProperty(id) {
     return request(`/api/properties/${id}/`, { method: 'DELETE' })
@@ -107,7 +94,15 @@ export async function deleteProperty(id) {
 
 /**
  * POST /api/properties/
- * Create a new property. Expects the create serializer payload.
+ * Create a new property. Expects FormData payload matching
+ * PropertyCreateSerializer fields:
+ *
+ *   property_name, description, listing_type, price, rental_unit,
+ *   security_deposit, address, city, region, kebele, latitude, longitude,
+ *   status, is_available, house_detail (JSON), car_detail (JSON),
+ *   feature_ids (JSON array), images (files), company (id, optional)
+ *
+ * NOTE: Do NOT send `country` or `floor_number` — those fields no longer exist.
  */
 export async function createProperty(payload) {
     return request(`/api/properties/`, {
@@ -126,6 +121,69 @@ export async function updateProperty(id, payload) {
         body: payload,
     })
 }
+
+// ─── Companies ──────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/companies/
+ * Fetches all companies. Public endpoint.
+ */
+export async function getCompanies() {
+    return request('/api/companies/', { method: 'GET' })
+}
+
+/**
+ * GET /api/companies/:id/
+ * Fetches a single company by ID.
+ */
+export async function getCompany(id) {
+    return request(`/api/companies/${id}/`, { method: 'GET' })
+}
+
+/**
+ * POST /api/companies/
+ * Creates a new company. The authenticated user is automatically added
+ * as a manager by the backend.
+ * Accepts FormData (supports logo image upload).
+ */
+export async function createCompany(data) {
+    return request('/api/companies/', {
+        method: 'POST',
+        body: data,
+    })
+}
+
+/**
+ * PUT /api/companies/:id/
+ * Full update of a company. Requires manager or admin auth.
+ */
+export async function updateCompany(id, data) {
+    return request(`/api/companies/${id}/`, {
+        method: 'PUT',
+        body: data,
+    })
+}
+
+/**
+ * PATCH /api/companies/:id/
+ * Partial update of a company.
+ */
+export async function patchCompany(id, data) {
+    return request(`/api/companies/${id}/`, {
+        method: 'PATCH',
+        body: data,
+    })
+}
+
+/**
+ * DELETE /api/companies/:id/
+ * Deletes a company. Requires manager or admin auth.
+ */
+export async function deleteCompany(id) {
+    return request(`/api/companies/${id}/`, { method: 'DELETE' })
+}
+
+// ─── Interactions ────────────────────────────────────────────────────────────
 
 /**
  * POST /api/interactions/properties/:id/rating/

@@ -113,7 +113,7 @@ export default function OwnerPropertyDetails() {
                             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
                                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
                                     <MapPin className="h-4 w-4" />
-                                    {[property.city, property.country].filter(Boolean).join(", ")}
+                                    {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                                 </span>
                                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
                                     <DollarSign className="h-4 w-4" />
@@ -160,6 +160,7 @@ export default function OwnerPropertyDetails() {
                                         <div className="grid gap-3 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2">
                                             {Object.entries(property.listing_type === 'house' ? property.house_detail : property.car_detail).map(([key, value]) => {
                                                 if (key === 'id' || key === 'property') return null;
+                                                if (value === null || value === undefined || value === '') return null;
                                                 return (
                                                     <div key={key} className="rounded-3xl bg-slate-50 p-4 dark:bg-slate-900">
                                                         <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{key.replace('_', ' ')}</p>
@@ -168,6 +169,13 @@ export default function OwnerPropertyDetails() {
                                                 )
                                             })}
                                         </div>
+                                    </div>
+                                )}
+                                {property.company && (
+                                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+                                        <p className="text-slate-500 dark:text-slate-400">Company</p>
+                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">{property.company.name}</p>
+                                        {property.company.region && <p className="text-sm text-slate-600 dark:text-slate-300">{property.company.region}</p>}
                                     </div>
                                 )}
                             </div>

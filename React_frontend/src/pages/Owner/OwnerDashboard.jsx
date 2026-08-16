@@ -8,12 +8,15 @@ import PropertyGrid from './components/PropertyGrid'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
 
+const DRAFT_STORAGE_KEY = 'property_add_draft'
+
 export default function OwnerDashboard() {
     const navigate = useNavigate()
     const { user } = useAuth()
     const [properties, setProperties] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+
 
     useEffect(() => {
         async function loadProperties() {
@@ -46,8 +49,20 @@ export default function OwnerDashboard() {
 
     return (
         <div className="space-y-8">
-            <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+            <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#f8e6ba]/80 via-white/0 to-[#dfeaf7]/80 dark:from-[#201d17]/60 dark:via-slate-950/10 dark:to-[#0f172a]/60" aria-hidden="true" />
+                <img
+                    src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80"
+                    alt="Modern house"
+                    className="absolute -right-16 top-6 h-44 w-44 rounded-[2rem] object-cover opacity-30 blur-[1px] grayscale-[0.1] sm:h-56 sm:w-56 dark:opacity-35"
+                />
+                <img
+                    src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80"
+                    alt="Luxury car"
+                    className="absolute -left-14 bottom-2 h-36 w-36 rounded-[2rem] object-cover opacity-35 blur-[1px] grayscale-[0.1] sm:h-48 sm:w-48 dark:opacity-30"
+                />
+
+                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
                     <div className="max-w-2xl">
                         <p className="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Welcome back</p>
                         <h2 className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{user?.first_name ? `Welcome back, ${user.first_name}` : 'Welcome back'}</h2>
@@ -75,6 +90,8 @@ export default function OwnerDashboard() {
                 </div>
             </section>
 
+
+
             <section>
                 {loading ? (
                     <LoadingSkeleton />
@@ -93,7 +110,7 @@ export default function OwnerDashboard() {
                 )}
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+            <section className="grid gap-6 xl:grid-cols-[2fr_0.6fr]">
                 <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="flex items-center justify-between gap-4">
                         <div>

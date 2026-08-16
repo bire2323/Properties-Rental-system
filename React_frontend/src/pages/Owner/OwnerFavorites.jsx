@@ -112,7 +112,7 @@ export default function OwnerFavorites() {
                                         <h3 className="font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
                                         <p className="mt-1 flex items-center text-sm text-slate-600 dark:text-slate-400">
                                             <MapPin className="mr-1 h-3 w-3" />
-                                            {[property.city, property.country].filter(Boolean).join(", ")}
+                                            {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1 rounded bg-[#c99b43]/10 px-2 py-1">

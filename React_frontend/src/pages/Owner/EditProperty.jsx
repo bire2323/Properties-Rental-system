@@ -1,302 +1,709 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getPropertyById, updateProperty } from '../../api/property/propertyApi'
+import {
+    ChevronLeft, ChevronRight, Check,
+    Building2, Car, Plus, X, Loader2
+} from 'lucide-react'
+import { getPropertyById, updateProperty, getCompanies, createCompany } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
+import { useAuth } from '../../hooks/useAuth'
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const STEPS = [
+    { id: 1, label: 'Basic Info' },
+    { id: 2, label: 'Rental & Ownership' },
+    { id: 3, label: 'Location' },
+    { id: 4, label: 'Details' },
+    { id: 5, label: 'Features & Images' },
+]
+
+const selectClass =
+    'h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm transition focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
+const textareaClass =
+    'w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
+const labelClass = 'block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5'
+const errorClass = 'mt-1 text-xs text-red-500 dark:text-red-400'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+function resolveImageSrc(img) {
+    if (!img) return ''
+    const url = typeof img === 'object' ? img.image : img
+    if (!url) return ''
+    return url.startsWith('http') ? url : `${API_BASE}${url}`
+}
+
+// ─── Shared UI helpers ────────────────────────────────────────────────────────
+
+function FormField({ label, required, error, children }) {
+    return (
+        <div>
+            <label className={labelClass}>
+                {label}
+                {required && <span className="ml-0.5 text-red-500">*</span>}
+            </label>
+            {children}
+            {error && <p className={errorClass}>{error}</p>}
+        </div>
+    )
+}
+
+function StepProgress({ currentStep }) {
+    const progressWidth = ((currentStep - 1) / (STEPS.length - 1)) * 100
+
+    return (
+        <div className="mb-8">
+            <div className="flex items-center justify-between sm:hidden">
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Step {currentStep} of {STEPS.length}
+                </span>
+                <span className="text-sm text-slate-500">{STEPS[currentStep - 1]?.label}</span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800 sm:hidden">
+                <div
+                    className="h-full rounded-full bg-[#c99b43] transition-all duration-300"
+                    style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+                />
+            </div>
+
+            <div className="hidden sm:block">
+                <div className="relative px-2">
+                    <div className="absolute left-8 right-8 top-5 h-0.5 rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div
+                        className="absolute left-8 top-5 h-0.5 rounded-full bg-[#c99b43] transition-all duration-300"
+                        style={{ width: `calc(${progressWidth}% - 3.25rem)` }}
+                    />
+
+                    <div className="relative flex items-start justify-between gap-2">
+                        {STEPS.map((step) => {
+                            const isCompleted = currentStep > step.id
+                            const isCurrent = currentStep === step.id
+
+                            return (
+                                <div key={step.id} className="flex w-1/5 min-w-0 flex-col items-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 bg-white shadow-sm dark:bg-slate-950">
+                                        {isCompleted ? (
+                                            <Check className="h-4 w-4 text-[#c99b43]" />
+                                        ) : (
+                                            <span
+                                                className={`text-sm font-semibold ${isCurrent ? 'text-[#c99b43]' : 'text-slate-400'}`}
+                                            >
+                                                {step.id}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span
+                                        className={`mt-2 max-w-[90px] text-center text-[10px] font-medium leading-tight sm:text-[11px] ${isCurrent
+                                            ? 'text-[#c99b43]'
+                                            : isCompleted
+                                                ? 'text-slate-600 dark:text-slate-300'
+                                                : 'text-slate-400'
+                                            }`}
+                                    >
+                                        {step.label}
+                                    </span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── Validation ──────────────────────────────────────────────────────────────
+
+function validateStep(step, form) {
+    const errors = {}
+    if (step === 1) {
+        if (!form.property_name?.trim()) errors.property_name = 'Property name is required.'
+        else if (form.property_name.trim().length < 3) errors.property_name = 'Must be at least 3 characters.'
+    }
+    if (step === 2) {
+        if (!form.price || parseFloat(form.price) <= 0) errors.price = 'Enter a valid price greater than 0.'
+        if (form.ownership === 'company' && !form.company) errors.company = 'Please select a company.'
+    }
+    if (step === 3) {
+        if (!form.city?.trim()) errors.city = 'City is required.'
+        if (!form.region?.trim()) errors.region = 'Region is required.'
+    }
+    if (step === 4) {
+        if (form.listing_type === 'house') {
+            if (!form.house_detail?.bedrooms) errors['house_detail.bedrooms'] = 'Bedrooms is required.'
+            if (!form.house_detail?.bathrooms) errors['house_detail.bathrooms'] = 'Bathrooms is required.'
+            if (!form.house_detail?.area_sqft) errors['house_detail.area_sqft'] = 'Area is required.'
+        } else {
+            if (!form.car_detail?.brand?.trim()) errors['car_detail.brand'] = 'Brand is required.'
+            if (!form.car_detail?.model?.trim()) errors['car_detail.model'] = 'Model is required.'
+            if (!form.car_detail?.year) errors['car_detail.year'] = 'Year is required.'
+            if (!form.car_detail?.seating_capacity) errors['car_detail.seating_capacity'] = 'Seating capacity is required.'
+        }
+    }
+    return errors
+}
+
+// ─── Build update payload ─────────────────────────────────────────────────────
+
+function buildUpdatePayload(form) {
+    const fd = new FormData()
+    fd.append('property_name', form.property_name.trim())
+    fd.append('description', form.description?.trim() || '')
+    fd.append('listing_type', form.listing_type)
+    fd.append('price', parseFloat(form.price).toFixed(2))
+    fd.append('rental_unit', form.rental_unit)
+    if (form.security_deposit) fd.append('security_deposit', parseFloat(form.security_deposit).toFixed(2))
+    fd.append('is_available', form.is_available)
+    fd.append('status', form.status)
+    if (form.company) fd.append('company', form.company)
+    if (form.address?.trim()) fd.append('address', form.address.trim())
+    fd.append('city', form.city.trim())
+    fd.append('region', form.region.trim())
+    if (form.kebele?.trim()) fd.append('kebele', form.kebele.trim())
+    if (form.latitude) fd.append('latitude', form.latitude)
+    if (form.longitude) fd.append('longitude', form.longitude)
+
+    if (form.listing_type === 'house') {
+        const h = form.house_detail || {}
+        const hd = {}
+        if (h.bedrooms) hd.bedrooms = parseInt(h.bedrooms)
+        if (h.bathrooms) hd.bathrooms = parseInt(h.bathrooms)
+        if (h.area_sqft) hd.area_sqft = parseInt(h.area_sqft)
+        if (h.furnishing) hd.furnishing = h.furnishing
+        if (h.room_number) hd.room_number = parseInt(h.room_number)
+        if (h.total_rooms) hd.total_rooms = parseInt(h.total_rooms)
+        if (h.distance_from_main_road) hd.distance_from_main_road = h.distance_from_main_road
+        if (h.rules_to_follow) hd.rules_to_follow = h.rules_to_follow
+        fd.append('house_detail', JSON.stringify(hd))
+    } else {
+        const c = form.car_detail || {}
+        const cd = {}
+        if (c.brand) cd.brand = c.brand
+        if (c.model) cd.model = c.model
+        if (c.year) cd.year = parseInt(c.year)
+        if (c.mileage) cd.mileage = parseInt(c.mileage)
+        if (c.fuel_type) cd.fuel_type = c.fuel_type
+        if (c.seating_capacity) cd.seating_capacity = parseInt(c.seating_capacity)
+        fd.append('car_detail', JSON.stringify(cd))
+    }
+
+    fd.append('feature_ids', JSON.stringify((form.selectedFeatures || []).map((f) => f.id)))
+
+    // CRITICAL: Send new images ONLY if user actually uploaded them
+    if (form.newImages?.length > 0) {
+        form.newImages.forEach((file) => fd.append('images', file))
+    }
+
+    // Send deleted image IDs if user explicitly removed any
+    if (form.deletedImageIds?.length > 0) {
+        fd.append('deleted_image_ids', JSON.stringify(form.deletedImageIds))
+    }
+
+    return fd
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function EditProperty() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const [property, setProperty] = useState(null)
+    const formRef = useRef(null)
+    const { user } = useAuth()
+    const [currentStep, setCurrentStep] = useState(1)
     const [form, setForm] = useState(null)
+    const [errors, setErrors] = useState({})
+    const [generalError, setGeneralError] = useState(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
-    const [error, setError] = useState(null)
+    const [loadError, setLoadError] = useState(null)
+    const [companies, setCompanies] = useState([])
 
     useEffect(() => {
-        async function loadProperty() {
+        async function load() {
             setLoading(true)
-            setError(null)
+            setLoadError(null)
             try {
-                const data = await getPropertyById(id)
-                setProperty(data)
+                const [data, companiesData] = await Promise.all([
+                    getPropertyById(id),
+                    getCompanies().catch(() => []),
+                ])
+                const companiesArr = Array.isArray(companiesData)
+                    ? companiesData
+                    : companiesData.results || []
+                setCompanies(companiesArr)
+
+                const hd = data.house_detail || {}
+                const cd = data.car_detail || {}
+
                 setForm({
                     property_name: data.property_name || '',
                     description: data.description || '',
-                    price: data.price || '',
-                    security_deposit: data.security_deposit || '',
                     listing_type: data.listing_type || 'house',
+                    price: data.price || '',
                     rental_unit: data.rental_unit || 'monthly',
+                    security_deposit: data.security_deposit || '',
+                    is_available: data.is_available ?? true,
+                    status: data.status || 'active',
+                    ownership: data.company ? 'company' : 'individual',
+                    company: data.company?.id || null,
                     address: data.address || '',
                     city: data.city || '',
-                    country: data.country || '',
-                    house_detail: data.house_detail || {},
-                    car_detail: data.car_detail || {},
-                    images: [],
+                    region: data.region || '',
+                    kebele: data.kebele || '',
+                    latitude: data.latitude || '',
+                    longitude: data.longitude || '',
+                    house_detail: {
+                        bedrooms: hd.bedrooms ?? '',
+                        bathrooms: hd.bathrooms ?? '',
+                        area_sqft: hd.area_sqft ?? '',
+                        furnishing: hd.furnishing || 'unfurnished',
+                        room_number: hd.room_number ?? '',
+                        total_rooms: hd.total_rooms ?? '',
+                        distance_from_main_road: hd.distance_from_main_road || '',
+                        rules_to_follow: hd.rules_to_follow || '',
+                    },
+                    car_detail: {
+                        brand: cd.brand || '',
+                        model: cd.model || '',
+                        year: cd.year || '',
+                        mileage: cd.mileage || '',
+                        fuel_type: cd.fuel_type || 'petrol',
+                        seating_capacity: cd.seating_capacity || '',
+                    },
                     selectedFeatures: data.features || [],
+                    // THREE-STATE IMAGE HANDLING
+                    existingImages: data.images || [],
+                    newImages: [],
+                    deletedImageIds: [],
                 })
             } catch (err) {
-                setError(err.message || 'Unable to load property.')
+                setLoadError(err.message || 'Unable to load property.')
             } finally {
                 setLoading(false)
             }
         }
-        loadProperty()
+        load()
     }, [id])
 
-    const isHouse = form?.listing_type === 'house'
-
-    const specificFields = useMemo(() => {
-        if (!form) return []
-        if (isHouse) {
-            return [
-                { name: 'bedrooms', label: 'Bedrooms', type: 'number' },
-                { name: 'bathrooms', label: 'Bathrooms', type: 'number' },
-                { name: 'area_sqft', label: 'Area (sqft)', type: 'number' },
-                { name: 'furnishing', label: 'Furnishing (e.g. furnished, unfurnished)', type: 'text' },
-                { name: 'floor_number', label: 'Floor Number', type: 'number' },
-                { name: 'room_number', label: 'Room Number', type: 'number' },
-            ]
-        }
-        return [
-            { name: 'brand', label: 'Brand', type: 'text' },
-            { name: 'model', label: 'Model', type: 'text' },
-            { name: 'year', label: 'Year', type: 'number' },
-            { name: 'mileage', label: 'Mileage', type: 'number' },
-            { name: 'fuel_type', label: 'Fuel Type', type: 'text' },
-            { name: 'seating_capacity', label: 'Seating Capacity', type: 'number' },
-        ]
-    }, [form, isHouse])
-
-    const handleFieldChange = (key, value) => {
-        setForm((prev) => ({ ...prev, [key]: value }))
-    }
-
-    const handleSpecificChange = (key, value) => {
-        const detailKey = isHouse ? 'house_detail' : 'car_detail'
-        setForm((prev) => ({
-            ...prev,
-            [detailKey]: {
-                ...prev[detailKey],
-                [key]: value,
-            },
-        }))
-    }
-
-    const handleImageChange = (event) => {
-        setForm((prev) => ({ ...prev, images: Array.from(event.target.files) }))
-    }
-
-    const handleSubmit = async (event) => {
-        event.preventDefault()
-        if (!form) return
-        setSaving(true)
-        setError(null)
-
-        try {
-            const payload = new FormData()
-            payload.append('property_name', form.property_name)
-            payload.append('description', form.description)
-            payload.append('price', form.price)
-            payload.append('security_deposit', form.security_deposit || '')
-            payload.append('listing_type', form.listing_type)
-            payload.append('rental_unit', form.rental_unit)
-            payload.append('address', form.address)
-            payload.append('city', form.city)
-            payload.append('country', form.country)
-            
-            if (isHouse) {
-                payload.append('house_detail', JSON.stringify(form.house_detail))
-            } else {
-                payload.append('car_detail', JSON.stringify(form.car_detail))
-            }
-            
-            payload.append(
-                'feature_ids',
-                JSON.stringify(form.selectedFeatures.map((feature) => feature.id))
+    useEffect(() => {
+        if (!formRef.current) return
+        const fields = Array.from(
+            formRef.current.querySelectorAll(
+                'input:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]), select, textarea'
             )
-            
-            if (form.images.length) {
-                form.images.forEach((file) => {
-                    payload.append('images', file)
-                })
-            }
+        ).filter((field) => !field.disabled && field.offsetParent !== null)
 
-            await updateProperty(id, payload)
+        if (fields.length > 0) {
+            fields[0].focus()
+        }
+    }, [currentStep, form?.listing_type])
+
+    const onChange = useCallback((key, value) => {
+        setForm((prev) => ({ ...prev, [key]: value }))
+        setErrors((prev) => {
+            const next = { ...prev }
+            delete next[key]
+            return next
+        })
+    }, [])
+
+    const handleNext = () => {
+        const stepErrors = validateStep(currentStep, form)
+        if (Object.keys(stepErrors).length > 0) { setErrors(stepErrors); return }
+        setErrors({})
+        setCurrentStep((prev) => Math.min(prev + 1, STEPS.length))
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const handleBack = () => {
+        setErrors({})
+        setCurrentStep((prev) => Math.max(prev - 1, 1))
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const handleSubmit = async () => {
+        setSaving(true)
+        setGeneralError(null)
+        try {
+            await updateProperty(id, buildUpdatePayload(form))
             navigate(`/owner/properties/${id}`)
         } catch (err) {
-            setError(err.message || 'Unable to update property.')
+            setGeneralError(err.message || 'Unable to save changes.')
         } finally {
             setSaving(false)
         }
     }
 
-    if (loading) {
-        return <LoadingSkeleton />
+    const handleRemoveExistingImage = (imageId) => {
+        onChange('deletedImageIds', [...(form.deletedImageIds || []), imageId])
     }
 
-    if (error) {
-        return (
-            <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/50 dark:text-red-300">
-                <p className="font-semibold">Unable to load property.</p>
-                <p className="mt-2">{error}</p>
-            </div>
-        )
+    const handleRemoveNewImage = (index) => {
+        const updated = form.newImages.filter((_, i) => i !== index)
+        onChange('newImages', updated)
     }
 
-    if (!property || !form) {
-        return <EmptyState title="Property not found" description="This property could not be loaded." />
-    }
+    if (loading) return <LoadingSkeleton />
+    if (loadError) return (
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/50 dark:text-red-300">
+            <p className="font-semibold">Unable to load property.</p>
+            <p className="mt-2">{loadError}</p>
+        </div>
+    )
+    if (!form) return <EmptyState title="Property not found" description="This property could not be loaded." />
 
     return (
-        <div className="space-y-6">
+        <div className="mx-auto max-w-2xl space-y-6">
+            {/* Header */}
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Edit property</h2>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Update the listing details and save your changes.</p>
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => navigate(`/owner/properties/${id}`)}
+                        className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Edit Property</h1>
+                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Update your listing details.</p>
+                    </div>
+                </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-                <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <section className="space-y-4">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Basic information</h3>
-                        
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Property Name
-                                <Input value={form.property_name} onChange={(event) => handleFieldChange('property_name', event.target.value)} placeholder="Property Name" />
-                            </label>
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                City
-                                <Input value={form.city} onChange={(event) => handleFieldChange('city', event.target.value)} placeholder="City" />
-                            </label>
-                        </div>
-                        
-                        <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                            Description
-                            <textarea
-                                rows={5}
-                                value={form.description}
-                                onChange={(event) => handleFieldChange('description', event.target.value)}
-                                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                            />
-                        </label>
-                        
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Address
-                                <Input value={form.address} onChange={(event) => handleFieldChange('address', event.target.value)} placeholder="Address" />
-                            </label>
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Country
-                                <Input value={form.country} onChange={(event) => handleFieldChange('country', event.target.value)} placeholder="Country" />
-                            </label>
-                        </div>
-                        
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Listing Type
-                                <select
-                                    value={form.listing_type}
-                                    disabled
-                                    className="h-12 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 cursor-not-allowed"
-                                >
-                                    <option value="house">House</option>
-                                    <option value="car">Car</option>
-                                </select>
-                                <p className="text-xs text-slate-500 mt-1">Listing type cannot be changed.</p>
-                            </label>
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Price
-                                <Input value={form.price} onChange={(event) => handleFieldChange('price', event.target.value)} type="number" placeholder="25000" />
-                            </label>
-                        </div>
-                        
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Rental Unit
-                                <select
-                                    value={form.rental_unit}
-                                    onChange={(event) => handleFieldChange('rental_unit', event.target.value)}
-                                    className="h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm transition focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                                >
-                                    <option value="hourly">Per Hour</option>
-                                    <option value="daily">Per Day</option>
-                                    <option value="weekly">Per Week</option>
-                                    <option value="monthly">Per Month</option>
-                                    <option value="yearly">Per Year</option>
-                                </select>
-                            </label>
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Security deposit
-                                <Input value={form.security_deposit} onChange={(event) => handleFieldChange('security_deposit', event.target.value)} type="number" placeholder="5000" />
-                            </label>
-                        </div>
-                        
-                        <div>
-                            <label className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                Replace images
-                                <input type="file" accept="image/*" multiple onChange={handleImageChange} className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 transition focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
-                            </label>
-                        </div>
-                    </section>
-                    
-                    <section className="space-y-4">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">{isHouse ? 'House details' : 'Car details'}</h3>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            {specificFields.map((field) => {
-                                const detailKey = isHouse ? 'house_detail' : 'car_detail'
-                                return (
-                                    <label key={field.name} className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                                        {field.label}
-                                        <Input
-                                            value={form[detailKey][field.name] ?? ''}
-                                            onChange={(event) => handleSpecificChange(field.name, event.target.value)}
-                                            type={field.type}
-                                            placeholder={field.label}
-                                        />
-                                    </label>
-                                )
-                            })}
-                        </div>
-                    </section>
-                    
-                    <section className="space-y-4">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Update the amenities available at this property.
-                        </p>
-                        <FeatureMultiSelect
-                            selectedFeatures={form.selectedFeatures}
-                            onChange={(selectedFeatures) =>
-                                setForm((prev) => ({ ...prev, selectedFeatures }))
-                            }
-                        />
-                    </section>
+            {/* Form card */}
+            <div ref={formRef} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <StepProgress currentStep={currentStep} />
+
+                <div className="mt-6 space-y-5">
+
+                    {/* ── Step 1 ── */}
+                    {currentStep === 1 && (
+                        <>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Basic Information</h3>
+                            </div>
+                            <FormField label="Property Name" required error={errors.property_name}>
+                                <Input
+                                    value={form.property_name}
+                                    onChange={(e) => onChange('property_name', e.target.value)}
+                                    className={errors.property_name ? 'border-red-500' : ''}
+                                />
+                            </FormField>
+                            <FormField label="Description">
+                                <textarea rows={5} value={form.description}
+                                    onChange={(e) => onChange('description', e.target.value)}
+                                    className={textareaClass} />
+                            </FormField>
+                            <div>
+                                <p className={labelClass}>Listing Type</p>
+                                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                                    {form.listing_type === 'house'
+                                        ? <Building2 className="h-5 w-5 text-[#c99b43]" />
+                                        : <Car className="h-5 w-5 text-[#c99b43]" />
+                                    }
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                        {form.listing_type === 'house' ? 'House / Apartment' : 'Car / Vehicle'}
+                                    </span>
+                                    <span className="ml-auto text-xs text-slate-400">(Cannot be changed)</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── Step 2 ── */}
+                    {currentStep === 2 && (
+                        <>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Rental & Ownership</h3>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <FormField label="Price (ETB)" required error={errors.price}>
+                                    <Input type="number" step="0.01" min="0" value={form.price}
+                                        onChange={(e) => onChange('price', e.target.value)}
+                                        className={errors.price ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Rental Unit">
+                                    <select value={form.rental_unit} onChange={(e) => onChange('rental_unit', e.target.value)} className={selectClass}>
+                                        <option value="hourly">Per Hour</option>
+                                        <option value="daily">Per Day</option>
+                                        <option value="weekly">Per Week</option>
+                                        <option value="monthly">Per Month</option>
+                                        <option value="yearly">Per Year</option>
+                                    </select>
+                                </FormField>
+                                <FormField label="Security Deposit">
+                                    <Input type="number" step="0.01" min="0" value={form.security_deposit}
+                                        onChange={(e) => onChange('security_deposit', e.target.value)} />
+                                </FormField>
+                                <FormField label="Status">
+                                    <select value={form.status} onChange={(e) => onChange('status', e.target.value)} className={selectClass}>
+                                        <option value="active">Active</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </FormField>
+                            </div>
+                            <FormField label="Availability">
+                                <div className="flex items-center gap-3">
+                                    <button type="button" onClick={() => onChange('is_available', !form.is_available)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${form.is_available ? 'bg-[#c99b43]' : 'bg-slate-300 dark:bg-slate-700'}`}>
+                                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${form.is_available ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                    <span className="text-sm text-slate-700 dark:text-slate-300">
+                                        {form.is_available ? 'Available' : 'Not available'}
+                                    </span>
+                                </div>
+                            </FormField>
+                        </>
+                    )}
+
+                    {/* ── Step 3 ── */}
+                    {currentStep === 3 && (
+                        <>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
+                            </div>
+                            <FormField label="Address">
+                                <Input value={form.address} onChange={(e) => onChange('address', e.target.value)} placeholder="Street address" />
+                            </FormField>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <FormField label="City" required error={errors.city}>
+                                    <Input value={form.city} onChange={(e) => onChange('city', e.target.value)}
+                                        className={errors.city ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Region" required error={errors.region}>
+                                    <Input value={form.region} onChange={(e) => onChange('region', e.target.value)}
+                                        className={errors.region ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Kebele">
+                                    <Input value={form.kebele} onChange={(e) => onChange('kebele', e.target.value)} placeholder="Kebele (optional)" />
+                                </FormField>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <FormField label="Latitude">
+                                    <Input type="number" step="any" value={form.latitude} onChange={(e) => onChange('latitude', e.target.value)} placeholder="9.0054" />
+                                </FormField>
+                                <FormField label="Longitude">
+                                    <Input type="number" step="any" value={form.longitude} onChange={(e) => onChange('longitude', e.target.value)} placeholder="38.7636" />
+                                </FormField>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── Step 4: House ── */}
+                    {currentStep === 4 && form.listing_type === 'house' && (
+                        <>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">House Details</h3>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <FormField label="Bedrooms" required error={errors['house_detail.bedrooms']}>
+                                    <Input type="number" min="0" value={form.house_detail.bedrooms}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, bedrooms: e.target.value })}
+                                        className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Bathrooms" required error={errors['house_detail.bathrooms']}>
+                                    <Input type="number" min="0" value={form.house_detail.bathrooms}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, bathrooms: e.target.value })}
+                                        className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Area (sqft)" required error={errors['house_detail.area_sqft']}>
+                                    <Input type="number" min="0" value={form.house_detail.area_sqft}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, area_sqft: e.target.value })}
+                                        className={errors['house_detail.area_sqft'] ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Furnishing">
+                                    <select value={form.house_detail.furnishing}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, furnishing: e.target.value })}
+                                        className={selectClass}>
+                                        <option value="furnished">Furnished</option>
+                                        <option value="semi_furnished">Semi-Furnished</option>
+                                        <option value="unfurnished">Unfurnished</option>
+                                    </select>
+                                </FormField>
+                                <FormField label="Room Number">
+                                    <Input type="number" min="0" value={form.house_detail.room_number}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, room_number: e.target.value })} />
+                                </FormField>
+                                <FormField label="Total Rooms">
+                                    <Input type="number" min="0" value={form.house_detail.total_rooms}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, total_rooms: e.target.value })} />
+                                </FormField>
+                                <FormField label="Distance from Main Road">
+                                    <Input value={form.house_detail.distance_from_main_road}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, distance_from_main_road: e.target.value })}
+                                        placeholder="e.g. 500 m" />
+                                </FormField>
+                            </div>
+                            <FormField label="Rules to Follow">
+                                <textarea rows={3} value={form.house_detail.rules_to_follow}
+                                    onChange={(e) => onChange('house_detail', { ...form.house_detail, rules_to_follow: e.target.value })}
+                                    className={textareaClass} placeholder="e.g. No smoking..." />
+                            </FormField>
+                        </>
+                    )}
+
+                    {/* ── Step 4: Car ── */}
+                    {currentStep === 4 && form.listing_type === 'car' && (
+                        <>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Car Details</h3>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <FormField label="Brand" required error={errors['car_detail.brand']}>
+                                    <Input value={form.car_detail.brand}
+                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, brand: e.target.value })}
+                                        className={errors['car_detail.brand'] ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Model" required error={errors['car_detail.model']}>
+                                    <Input value={form.car_detail.model}
+                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, model: e.target.value })}
+                                        className={errors['car_detail.model'] ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Year" required error={errors['car_detail.year']}>
+                                    <Input type="number" min="1900" value={form.car_detail.year}
+                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, year: e.target.value })}
+                                        className={errors['car_detail.year'] ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Seating Capacity" required error={errors['car_detail.seating_capacity']}>
+                                    <Input type="number" min="1" value={form.car_detail.seating_capacity}
+                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, seating_capacity: e.target.value })}
+                                        className={errors['car_detail.seating_capacity'] ? 'border-red-500' : ''} />
+                                </FormField>
+                                <FormField label="Mileage (km)">
+                                    <Input type="number" min="0" value={form.car_detail.mileage}
+                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, mileage: e.target.value })} />
+                                </FormField>
+                                <FormField label="Fuel Type">
+                                    <select value={form.car_detail.fuel_type}
+                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, fuel_type: e.target.value })}
+                                        className={selectClass}>
+                                        <option value="petrol">Petrol</option>
+                                        <option value="diesel">Diesel</option>
+                                        <option value="electric">Electric</option>
+                                        <option value="hybrid">Hybrid</option>
+                                    </select>
+                                </FormField>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── Step 5 ── */}
+                    {currentStep === 5 && (
+                        <>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Features & Images</h3>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                    Update amenities and images. Existing images are kept unless you explicitly remove them.
+                                </p>
+                            </div>
+                            <div>
+                                <p className={labelClass}>Features & Amenities</p>
+                                <FeatureMultiSelect
+                                    selectedFeatures={form.selectedFeatures}
+                                    onChange={(features) => onChange('selectedFeatures', features)}
+                                />
+                            </div>
+
+                            {/* EXISTING IMAGES WITH DELETE BUTTONS */}
+                            {form.existingImages?.length > 0 && (
+                                <div>
+                                    <p className={labelClass}>Current Images</p>
+                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                        {form.existingImages
+                                            .filter((img) => !form.deletedImageIds?.includes(img.id))
+                                            .map((img) => (
+                                                <div key={img.id} className="relative group">
+                                                    <img
+                                                        src={resolveImageSrc(img)}
+                                                        alt={`Image ${img.id}`}
+                                                        className="h-28 w-full rounded-2xl object-cover"
+                                                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image' }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveExistingImage(img.id)}
+                                                        className="absolute top-1 right-1 rounded-full bg-red-500 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
+                                                        title="Delete image"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* NEW IMAGES UPLOAD */}
+                            <div>
+                                <p className={labelClass}>Upload New Images <span className="text-slate-400 text-xs">(optional)</span></p>
+                                <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition hover:border-[#c99b43] dark:border-slate-700 dark:bg-slate-900">
+                                    <Plus className="h-6 w-6 text-[#c99b43]" />
+                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click to upload new images</p>
+                                    <input type="file" accept="image/*" multiple className="sr-only"
+                                        onChange={(e) => onChange('newImages', Array.from(e.target.files))} />
+                                </label>
+                                {form.newImages?.length > 0 && (
+                                    <div className="mt-3">
+                                        <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">New Images (to be added)</p>
+                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                            {form.newImages.map((file, idx) => (
+                                                <div key={idx} className="relative group">
+                                                    <img
+                                                        src={URL.createObjectURL(file)}
+                                                        alt={`New ${idx + 1}`}
+                                                        className="h-28 w-full rounded-2xl object-cover"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveNewImage(idx)}
+                                                        className="absolute top-1 right-1 rounded-full bg-red-500 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
+                                                        title="Remove image"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
-                
-                <aside className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <div>
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Update property</h3>
-                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Submit changes when ready. Backend image replacement is supported if you upload new files.</p>
+
+                {generalError && (
+                    <div className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                        {generalError}
                     </div>
-                    {error && <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</div>}
-                    <div className="space-y-4">
-                        <Button type="submit" disabled={saving} className="w-full">
-                            {saving ? 'Saving...' : 'Save changes'}
-                        </Button>
-                        <button
-                            type="button"
-                            onClick={() => navigate(`/owner/properties/${id}`)}
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                        >
-                            Cancel
+                )}
+
+                <div className="mt-8 flex items-center justify-between gap-3">
+                    <button type="button" onClick={handleBack} disabled={currentStep === 1}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                        <ChevronLeft className="h-4 w-4" /> Back
+                    </button>
+
+                    {currentStep < STEPS.length ? (
+                        <button type="button" onClick={handleNext}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]">
+                            Continue <ChevronRight className="h-4 w-4" />
                         </button>
-                    </div>
-                </aside>
-            </form>
+                    ) : (
+                        <button type="button" onClick={handleSubmit} disabled={saving}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838] disabled:opacity-60">
+                            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
+                        </button>
+                    )}
+                </div>
+            </div>
         </div>
     )
 }

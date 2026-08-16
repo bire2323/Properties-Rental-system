@@ -292,7 +292,7 @@ function Home() {
                   </h3>
                   <p className="mt-1.5 flex items-center text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
                     <MapPin className="mr-1 h-3.5 w-3.5" />
-                    {[property.city, property.country].filter(Boolean).join(", ")}
+                    {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                   </p>
 
                   <div className="mt-3 flex items-center gap-3 border-t border-slate-200 pt-3 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:text-sm">
@@ -369,7 +369,7 @@ function Home() {
                   <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
                   <p className="mt-2 flex items-center text-sm text-slate-600 dark:text-slate-400">
                     <MapPin className="mr-1 h-4 w-4" />
-                    {[property.city, property.country].filter(Boolean).join(", ")}
+                    {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                   </p>
 
                   <div className="mt-4 flex items-center gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">

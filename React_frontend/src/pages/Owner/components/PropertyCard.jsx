@@ -2,12 +2,36 @@ import { useNavigate } from 'react-router-dom'
 import { Building2, MapPin, DollarSign, CircleDollarSign, Eye, Pencil, Trash2 } from 'lucide-react'
 import { getImageUrl } from '../../../lib/utils'
 
-export default function PropertyCard({ property, onDelete }) {
+export default function PropertyCard({ property, onDelete, isDraftMode = false }) {
     const navigate = useNavigate()
     const imageUrl = getImageUrl(property.main_image?.image || property.images?.[0]?.image) || ''
+    const cardTitle = isDraftMode ? 'Draft property' : (property.property_name || 'Property')
+    const badgeText = isDraftMode ? 'Draft' : property.status === 'active' ? 'Available' : 'Unavailable'
+    const badgeClass = isDraftMode
+        ? 'rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-200'
+        : property.status === 'active'
+            ? 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+
+    const handleOpenDraft = () => {
+        if (isDraftMode) {
+            navigate('/owner/properties/draft/edit')
+        }
+    }
 
     return (
-        <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+        <div
+            className={`group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 ${isDraftMode ? 'cursor-pointer' : ''}`}
+            onClick={handleOpenDraft}
+            role={isDraftMode ? 'button' : undefined}
+            tabIndex={isDraftMode ? 0 : undefined}
+            onKeyDown={(event) => {
+                if (isDraftMode && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault()
+                    navigate('/owner/properties/draft/edit')
+                }
+            }}
+        >
             <div className="h-64 overflow-hidden bg-slate-100">
                 <img
                     src={imageUrl}
@@ -25,18 +49,16 @@ export default function PropertyCard({ property, onDelete }) {
                         <Building2 className="h-4 w-4" />
                         {property.listing_type}
                     </span>
-                    <span className={property.status === 'active' ? 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>
-                        {property.status === 'active' ? 'Available' : 'Unavailable'}
-                    </span>
+                    <span className={badgeClass}>{badgeText}</span>
                 </div>
                 <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{[property.city, property.country].filter(Boolean).join(", ")}</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{cardTitle}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <MapPin className="h-4 w-4" />
-                        {[property.city, property.country].filter(Boolean).join(", ")}
+                        {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <DollarSign className="h-4 w-4" />

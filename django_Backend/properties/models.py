@@ -1,9 +1,11 @@
 from django.db import models
 from django.conf import settings
 
+
 class ListingType(models.TextChoices):
     HOUSE = "house", "House / Apartment"
     CAR = "car", "Car / Vehicle"
+
 
 class RentalUnit(models.TextChoices):
     HOURLY = "hourly", "Per Hour"
@@ -12,6 +14,7 @@ class RentalUnit(models.TextChoices):
     MONTHLY = "monthly", "Per Month"
     YEARLY = "yearly", "Per Year"
 
+
 class ListingStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
     PENDING = "pending", "Pending"
@@ -19,11 +22,67 @@ class ListingStatus(models.TextChoices):
     INACTIVE = "inactive", "Inactive"
     REJECTED = "rejected", "Rejected"
 
+
+class Company(models.Model):
+    """
+    Represents a rental or real-estate company that can manage multiple
+    property listings. A property can optionally belong to a Company.
+    """
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    logo = models.ImageField(
+        upload_to='companies/logos/',
+        blank=True,
+        null=True
+    )
+    contact_email = models.EmailField(blank=True, null=True)
+    contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    website = models.URLField(blank=True, null=True)
+
+    # Location
+    address = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100)
+    region = models.CharField(max_length=100)
+
+    # Management — one or more users can manage this company
+    managers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='managed_companies',
+        blank=True,
+        help_text='Users authorised to manage this company and its listings.'
+    )
+
+    is_verified = models.BooleanField(
+        default=False,
+        help_text='Set by admins to indicate the company has been verified.'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Company'
+        verbose_name_plural = 'Companies'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class Property(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="properties"
+    )
+    # Optional company association; null means individually owned listing
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='properties',
+        help_text='If set, this listing belongs to the specified company.'
     )
     property_name = models.CharField(max_length=200)
     description = models.TextField()
@@ -43,11 +102,12 @@ class Property(models.Model):
         null=True,
         blank=True
     )
-    
-    # Location
+
+    # Location — Ethiopian-style administrative structure
     address = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100)
-    country = models.CharField(max_length=100)
+    region = models.CharField(max_length=100, blank=True, null=True)
+    kebele = models.CharField(max_length=100, blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
@@ -57,14 +117,14 @@ class Property(models.Model):
         related_name='properties',
         help_text='Amenities and features available for this listing.'
     )
-    
+
     is_available = models.BooleanField(default=True)
     status = models.CharField(
         max_length=20,
         choices=ListingStatus.choices,
         default=ListingStatus.ACTIVE
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,18 +141,33 @@ class HouseDetail(models.Model):
     bedrooms = models.PositiveIntegerField()
     bathrooms = models.PositiveIntegerField()
     area_sqft = models.PositiveIntegerField()
-    
+
     furnishing = models.CharField(
         max_length=20,
         choices=[
-            ('furnished', 'Furnished'), 
-            ('semi_furnished', 'Semi-Furnished'), 
+            ('furnished', 'Furnished'),
+            ('semi_furnished', 'Semi-Furnished'),
             ('unfurnished', 'Unfurnished')
         ],
         default='unfurnished'
     )
-    floor_number = models.PositiveIntegerField(null=True, blank=True)
     room_number = models.PositiveIntegerField(null=True, blank=True)
+    total_rooms = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Total number of rooms in the property.'
+    )
+    distance_from_main_road = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text='Distance from the main road, e.g. "500 m", "1.5 km".'
+    )
+    rules_to_follow = models.TextField(
+        null=True,
+        blank=True,
+        help_text='Rental rules, e.g. "No smoking", "No pets", "Family only".'
+    )
 
     def __str__(self):
         return f"House details for {self.property.property_name}"
@@ -108,13 +183,13 @@ class CarDetail(models.Model):
     model = models.CharField(max_length=100)
     year = models.PositiveIntegerField()
     mileage = models.PositiveIntegerField(null=True, blank=True)
-    
+
     fuel_type = models.CharField(
         max_length=20,
         choices=[
-            ('petrol', 'Petrol'), 
-            ('diesel', 'Diesel'), 
-            ('electric', 'Electric'), 
+            ('petrol', 'Petrol'),
+            ('diesel', 'Diesel'),
+            ('electric', 'Electric'),
             ('hybrid', 'Hybrid')
         ],
         null=True,
@@ -145,15 +220,15 @@ class Feature(models.Model):
 
 class PropertyImage(models.Model):
     property = models.ForeignKey(
-        Property, 
-        on_delete=models.CASCADE, 
+        Property,
+        on_delete=models.CASCADE,
         related_name='images'
     )
     image = models.ImageField(upload_to='properties/%Y/%m/%d/')
-    order = models.IntegerField(default=0) 
+    order = models.IntegerField(default=0)
 
     class Meta:
-        ordering = ['order']  
+        ordering = ['order']
         verbose_name = "Property Image"
         verbose_name_plural = "Property Images"
 

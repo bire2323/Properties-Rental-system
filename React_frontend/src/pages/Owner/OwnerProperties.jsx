@@ -8,6 +8,35 @@ import PropertyList from './components/PropertyList'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
 
+const DRAFT_STORAGE_KEY = 'property_add_draft'
+
+function readSavedDraft() {
+    try {
+        const raw = localStorage.getItem(DRAFT_STORAGE_KEY)
+        if (!raw) return null
+        const parsed = JSON.parse(raw)
+        const form = parsed?.form
+        if (!form) return null
+
+        return {
+            id: 'draft',
+            property_name: form.property_name || 'Draft property',
+            listing_type: form.listing_type || 'house',
+            status: 'draft',
+            price: form.price || 0,
+            city: form.city || '',
+            region: form.region || '',
+            kebele: form.kebele || '',
+            isDraft: true,
+            main_image: null,
+            images: [],
+            _draftLabel: 'Draft property',
+        }
+    } catch {
+        return null
+    }
+}
+
 export default function OwnerProperties() {
     const navigate = useNavigate()
     const [properties, setProperties] = useState([])
@@ -17,6 +46,11 @@ export default function OwnerProperties() {
     const [propertyType, setPropertyType] = useState('all')
     const [availability, setAvailability] = useState('all')
     const [viewMode, setViewMode] = useState('grid')
+    const [draftProperty, setDraftProperty] = useState(null)
+
+    useEffect(() => {
+        setDraftProperty(readSavedDraft())
+    }, [])
 
     useEffect(() => {
         async function loadProperties() {
@@ -53,7 +87,7 @@ export default function OwnerProperties() {
 
     const filteredProperties = useMemo(() => {
         return ownerProperties.filter((property) => {
-            const matchesSearch = [property.property_name, property.city, property.country, property.listing_type]
+            const matchesSearch = [property.property_name, property.city, property.region, property.kebele, property.listing_type]
                 .filter(Boolean)
                 .some((field) => field.toLowerCase().includes(searchTerm.toLowerCase()))
             const matchesType = propertyType === 'all' || property.listing_type === propertyType
@@ -105,6 +139,22 @@ export default function OwnerProperties() {
                 <PropertyList properties={filteredProperties} onDelete={handleDelete} />
             ) : (
                 <PropertyGrid properties={filteredProperties} onDelete={handleDelete} />
+            )}
+
+            {draftProperty && (
+                <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Draft property</h3>
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 dark:bg-amber-950/50 dark:text-amber-200">
+                            Draft
+                        </span>
+                    </div>
+                    <PropertyGrid
+                        properties={[draftProperty]}
+                        onDelete={null}
+                        isDraftMode={true}
+                    />
+                </div>
             )}
         </div>
     )
