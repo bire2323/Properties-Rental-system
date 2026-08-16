@@ -358,352 +358,401 @@ export default function EditProperty() {
     if (!form) return <EmptyState title="Property not found" description="This property could not be loaded." />
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6">
-            {/* Header */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="flex items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={() => navigate(`/owner/properties/${id}`)}
-                        className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Edit Property</h1>
-                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Update your listing details.</p>
+        <div className="flex gap-6">
+            <div className="w-full xl:w-[70%] space-y-6">
+                {/* Header */}
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/owner/properties/${id}`)}
+                            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                            <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <div>
+                            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Edit Property</h1>
+                            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Update your listing details.</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Form card */}
-            <div ref={formRef} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <StepProgress currentStep={currentStep} />
+                {/* Form card */}
+                <div ref={formRef} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <StepProgress currentStep={currentStep} />
 
-                <div className="mt-6 space-y-5">
+                    <div className="mt-6 space-y-5">
 
-                    {/* ── Step 1 ── */}
-                    {currentStep === 1 && (
-                        <>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Basic Information</h3>
-                            </div>
-                            <FormField label="Property Name" required error={errors.property_name}>
-                                <Input
-                                    value={form.property_name}
-                                    onChange={(e) => onChange('property_name', e.target.value)}
-                                    className={errors.property_name ? 'border-red-500' : ''}
-                                />
-                            </FormField>
-                            <FormField label="Description">
-                                <textarea rows={5} value={form.description}
-                                    onChange={(e) => onChange('description', e.target.value)}
-                                    className={textareaClass} />
-                            </FormField>
-                            <div>
-                                <p className={labelClass}>Listing Type</p>
-                                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
-                                    {form.listing_type === 'house'
-                                        ? <Building2 className="h-5 w-5 text-[#c99b43]" />
-                                        : <Car className="h-5 w-5 text-[#c99b43]" />
-                                    }
-                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                        {form.listing_type === 'house' ? 'House / Apartment' : 'Car / Vehicle'}
-                                    </span>
-                                    <span className="ml-auto text-xs text-slate-400">(Cannot be changed)</span>
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    {/* ── Step 2 ── */}
-                    {currentStep === 2 && (
-                        <>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Rental & Ownership</h3>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField label="Price (ETB)" required error={errors.price}>
-                                    <Input type="number" step="0.01" min="0" value={form.price}
-                                        onChange={(e) => onChange('price', e.target.value)}
-                                        className={errors.price ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Rental Unit">
-                                    <select value={form.rental_unit} onChange={(e) => onChange('rental_unit', e.target.value)} className={selectClass}>
-                                        <option value="hourly">Per Hour</option>
-                                        <option value="daily">Per Day</option>
-                                        <option value="weekly">Per Week</option>
-                                        <option value="monthly">Per Month</option>
-                                        <option value="yearly">Per Year</option>
-                                    </select>
-                                </FormField>
-                                <FormField label="Security Deposit">
-                                    <Input type="number" step="0.01" min="0" value={form.security_deposit}
-                                        onChange={(e) => onChange('security_deposit', e.target.value)} />
-                                </FormField>
-                                <FormField label="Status">
-                                    <select value={form.status} onChange={(e) => onChange('status', e.target.value)} className={selectClass}>
-                                        <option value="active">Active</option>
-                                        <option value="draft">Draft</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                </FormField>
-                            </div>
-                            <FormField label="Availability">
-                                <div className="flex items-center gap-3">
-                                    <button type="button" onClick={() => onChange('is_available', !form.is_available)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${form.is_available ? 'bg-[#c99b43]' : 'bg-slate-300 dark:bg-slate-700'}`}>
-                                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${form.is_available ? 'translate-x-6' : 'translate-x-1'}`} />
-                                    </button>
-                                    <span className="text-sm text-slate-700 dark:text-slate-300">
-                                        {form.is_available ? 'Available' : 'Not available'}
-                                    </span>
-                                </div>
-                            </FormField>
-                        </>
-                    )}
-
-                    {/* ── Step 3 ── */}
-                    {currentStep === 3 && (
-                        <>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
-                            </div>
-                            <FormField label="Address">
-                                <Input value={form.address} onChange={(e) => onChange('address', e.target.value)} placeholder="Street address" />
-                            </FormField>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField label="City" required error={errors.city}>
-                                    <Input value={form.city} onChange={(e) => onChange('city', e.target.value)}
-                                        className={errors.city ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Region" required error={errors.region}>
-                                    <Input value={form.region} onChange={(e) => onChange('region', e.target.value)}
-                                        className={errors.region ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Kebele">
-                                    <Input value={form.kebele} onChange={(e) => onChange('kebele', e.target.value)} placeholder="Kebele (optional)" />
-                                </FormField>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField label="Latitude">
-                                    <Input type="number" step="any" value={form.latitude} onChange={(e) => onChange('latitude', e.target.value)} placeholder="9.0054" />
-                                </FormField>
-                                <FormField label="Longitude">
-                                    <Input type="number" step="any" value={form.longitude} onChange={(e) => onChange('longitude', e.target.value)} placeholder="38.7636" />
-                                </FormField>
-                            </div>
-                        </>
-                    )}
-
-                    {/* ── Step 4: House ── */}
-                    {currentStep === 4 && form.listing_type === 'house' && (
-                        <>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">House Details</h3>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField label="Bedrooms" required error={errors['house_detail.bedrooms']}>
-                                    <Input type="number" min="0" value={form.house_detail.bedrooms}
-                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, bedrooms: e.target.value })}
-                                        className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Bathrooms" required error={errors['house_detail.bathrooms']}>
-                                    <Input type="number" min="0" value={form.house_detail.bathrooms}
-                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, bathrooms: e.target.value })}
-                                        className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Area (sqft)" required error={errors['house_detail.area_sqft']}>
-                                    <Input type="number" min="0" value={form.house_detail.area_sqft}
-                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, area_sqft: e.target.value })}
-                                        className={errors['house_detail.area_sqft'] ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Furnishing">
-                                    <select value={form.house_detail.furnishing}
-                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, furnishing: e.target.value })}
-                                        className={selectClass}>
-                                        <option value="furnished">Furnished</option>
-                                        <option value="semi_furnished">Semi-Furnished</option>
-                                        <option value="unfurnished">Unfurnished</option>
-                                    </select>
-                                </FormField>
-                                <FormField label="Room Number">
-                                    <Input type="number" min="0" value={form.house_detail.room_number}
-                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, room_number: e.target.value })} />
-                                </FormField>
-                                <FormField label="Total Rooms">
-                                    <Input type="number" min="0" value={form.house_detail.total_rooms}
-                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, total_rooms: e.target.value })} />
-                                </FormField>
-                                <FormField label="Distance from Main Road">
-                                    <Input value={form.house_detail.distance_from_main_road}
-                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, distance_from_main_road: e.target.value })}
-                                        placeholder="e.g. 500 m" />
-                                </FormField>
-                            </div>
-                            <FormField label="Rules to Follow">
-                                <textarea rows={3} value={form.house_detail.rules_to_follow}
-                                    onChange={(e) => onChange('house_detail', { ...form.house_detail, rules_to_follow: e.target.value })}
-                                    className={textareaClass} placeholder="e.g. No smoking..." />
-                            </FormField>
-                        </>
-                    )}
-
-                    {/* ── Step 4: Car ── */}
-                    {currentStep === 4 && form.listing_type === 'car' && (
-                        <>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Car Details</h3>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField label="Brand" required error={errors['car_detail.brand']}>
-                                    <Input value={form.car_detail.brand}
-                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, brand: e.target.value })}
-                                        className={errors['car_detail.brand'] ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Model" required error={errors['car_detail.model']}>
-                                    <Input value={form.car_detail.model}
-                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, model: e.target.value })}
-                                        className={errors['car_detail.model'] ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Year" required error={errors['car_detail.year']}>
-                                    <Input type="number" min="1900" value={form.car_detail.year}
-                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, year: e.target.value })}
-                                        className={errors['car_detail.year'] ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Seating Capacity" required error={errors['car_detail.seating_capacity']}>
-                                    <Input type="number" min="1" value={form.car_detail.seating_capacity}
-                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, seating_capacity: e.target.value })}
-                                        className={errors['car_detail.seating_capacity'] ? 'border-red-500' : ''} />
-                                </FormField>
-                                <FormField label="Mileage (km)">
-                                    <Input type="number" min="0" value={form.car_detail.mileage}
-                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, mileage: e.target.value })} />
-                                </FormField>
-                                <FormField label="Fuel Type">
-                                    <select value={form.car_detail.fuel_type}
-                                        onChange={(e) => onChange('car_detail', { ...form.car_detail, fuel_type: e.target.value })}
-                                        className={selectClass}>
-                                        <option value="petrol">Petrol</option>
-                                        <option value="diesel">Diesel</option>
-                                        <option value="electric">Electric</option>
-                                        <option value="hybrid">Hybrid</option>
-                                    </select>
-                                </FormField>
-                            </div>
-                        </>
-                    )}
-
-                    {/* ── Step 5 ── */}
-                    {currentStep === 5 && (
-                        <>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Features & Images</h3>
-                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    Update amenities and images. Existing images are kept unless you explicitly remove them.
-                                </p>
-                            </div>
-                            <div>
-                                <p className={labelClass}>Features & Amenities</p>
-                                <FeatureMultiSelect
-                                    selectedFeatures={form.selectedFeatures}
-                                    onChange={(features) => onChange('selectedFeatures', features)}
-                                />
-                            </div>
-
-                            {/* EXISTING IMAGES WITH DELETE BUTTONS */}
-                            {form.existingImages?.length > 0 && (
+                        {/* ── Step 1 ── */}
+                        {currentStep === 1 && (
+                            <>
                                 <div>
-                                    <p className={labelClass}>Current Images</p>
-                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                        {form.existingImages
-                                            .filter((img) => !form.deletedImageIds?.includes(img.id))
-                                            .map((img) => (
-                                                <div key={img.id} className="relative group">
-                                                    <img
-                                                        src={resolveImageSrc(img)}
-                                                        alt={`Image ${img.id}`}
-                                                        className="h-28 w-full rounded-2xl object-cover"
-                                                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image' }}
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveExistingImage(img.id)}
-                                                        className="absolute top-1 right-1 rounded-full bg-red-500 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
-                                                        title="Delete image"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Basic Information</h3>
+                                </div>
+                                <FormField label="Property Name" required error={errors.property_name}>
+                                    <Input
+                                        value={form.property_name}
+                                        onChange={(e) => onChange('property_name', e.target.value)}
+                                        className={errors.property_name ? 'border-red-500' : ''}
+                                    />
+                                </FormField>
+                                <FormField label="Description">
+                                    <textarea rows={5} value={form.description}
+                                        onChange={(e) => onChange('description', e.target.value)}
+                                        className={textareaClass} />
+                                </FormField>
+                                <div>
+                                    <p className={labelClass}>Listing Type</p>
+                                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                                        {form.listing_type === 'house'
+                                            ? <Building2 className="h-5 w-5 text-[#c99b43]" />
+                                            : <Car className="h-5 w-5 text-[#c99b43]" />
+                                        }
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                            {form.listing_type === 'house' ? 'House / Apartment' : 'Car / Vehicle'}
+                                        </span>
+                                        <span className="ml-auto text-xs text-slate-400">(Cannot be changed)</span>
                                     </div>
                                 </div>
-                            )}
+                            </>
+                        )}
 
-                            {/* NEW IMAGES UPLOAD */}
-                            <div>
-                                <p className={labelClass}>Upload New Images <span className="text-slate-400 text-xs">(optional)</span></p>
-                                <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition hover:border-[#c99b43] dark:border-slate-700 dark:bg-slate-900">
-                                    <Plus className="h-6 w-6 text-[#c99b43]" />
-                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click to upload new images</p>
-                                    <input type="file" accept="image/*" multiple className="sr-only"
-                                        onChange={(e) => onChange('newImages', Array.from(e.target.files))} />
-                                </label>
-                                {form.newImages?.length > 0 && (
-                                    <div className="mt-3">
-                                        <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">New Images (to be added)</p>
+                        {/* ── Step 2 ── */}
+                        {currentStep === 2 && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Rental & Ownership</h3>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Price (ETB)" required error={errors.price}>
+                                        <Input type="number" step="0.01" min="0" value={form.price}
+                                            onChange={(e) => onChange('price', e.target.value)}
+                                            className={errors.price ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Rental Unit">
+                                        <select value={form.rental_unit} onChange={(e) => onChange('rental_unit', e.target.value)} className={selectClass}>
+                                            <option value="hourly">Per Hour</option>
+                                            <option value="daily">Per Day</option>
+                                            <option value="weekly">Per Week</option>
+                                            <option value="monthly">Per Month</option>
+                                            <option value="yearly">Per Year</option>
+                                        </select>
+                                    </FormField>
+                                    <FormField label="Security Deposit">
+                                        <Input type="number" step="0.01" min="0" value={form.security_deposit}
+                                            onChange={(e) => onChange('security_deposit', e.target.value)} />
+                                    </FormField>
+                                    <FormField label="Status">
+                                        <select value={form.status} onChange={(e) => onChange('status', e.target.value)} className={selectClass}>
+                                            <option value="active">Active</option>
+                                            <option value="draft">Draft</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </FormField>
+                                </div>
+                                <FormField label="Availability">
+                                    <div className="flex items-center gap-3">
+                                        <button type="button" onClick={() => onChange('is_available', !form.is_available)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${form.is_available ? 'bg-[#c99b43]' : 'bg-slate-300 dark:bg-slate-700'}`}>
+                                            <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${form.is_available ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                                            {form.is_available ? 'Available' : 'Not available'}
+                                        </span>
+                                    </div>
+                                </FormField>
+                            </>
+                        )}
+
+                        {/* ── Step 3 ── */}
+                        {currentStep === 3 && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
+                                </div>
+                                <FormField label="Address">
+                                    <Input value={form.address} onChange={(e) => onChange('address', e.target.value)} placeholder="Street address" />
+                                </FormField>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="City" required error={errors.city}>
+                                        <Input value={form.city} onChange={(e) => onChange('city', e.target.value)}
+                                            className={errors.city ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Region" required error={errors.region}>
+                                        <Input value={form.region} onChange={(e) => onChange('region', e.target.value)}
+                                            className={errors.region ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Kebele">
+                                        <Input value={form.kebele} onChange={(e) => onChange('kebele', e.target.value)} placeholder="Kebele (optional)" />
+                                    </FormField>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Latitude">
+                                        <Input type="number" step="any" value={form.latitude} onChange={(e) => onChange('latitude', e.target.value)} placeholder="9.0054" />
+                                    </FormField>
+                                    <FormField label="Longitude">
+                                        <Input type="number" step="any" value={form.longitude} onChange={(e) => onChange('longitude', e.target.value)} placeholder="38.7636" />
+                                    </FormField>
+                                </div>
+                            </>
+                        )}
+
+                        {/* ── Step 4: House ── */}
+                        {currentStep === 4 && form.listing_type === 'house' && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">House Details</h3>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Bedrooms" required error={errors['house_detail.bedrooms']}>
+                                        <Input type="number" min="0" value={form.house_detail.bedrooms}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bedrooms: e.target.value })}
+                                            className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Bathrooms" required error={errors['house_detail.bathrooms']}>
+                                        <Input type="number" min="0" value={form.house_detail.bathrooms}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bathrooms: e.target.value })}
+                                            className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Area (sqft)" required error={errors['house_detail.area_sqft']}>
+                                        <Input type="number" min="0" value={form.house_detail.area_sqft}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, area_sqft: e.target.value })}
+                                            className={errors['house_detail.area_sqft'] ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Furnishing">
+                                        <select value={form.house_detail.furnishing}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, furnishing: e.target.value })}
+                                            className={selectClass}>
+                                            <option value="furnished">Furnished</option>
+                                            <option value="semi_furnished">Semi-Furnished</option>
+                                            <option value="unfurnished">Unfurnished</option>
+                                        </select>
+                                    </FormField>
+                                    <FormField label="Room Number">
+                                        <Input type="number" min="0" value={form.house_detail.room_number}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, room_number: e.target.value })} />
+                                    </FormField>
+                                    <FormField label="Total Rooms">
+                                        <Input type="number" min="0" value={form.house_detail.total_rooms}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, total_rooms: e.target.value })} />
+                                    </FormField>
+                                    <FormField label="Distance from Main Road">
+                                        <Input value={form.house_detail.distance_from_main_road}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, distance_from_main_road: e.target.value })}
+                                            placeholder="e.g. 500 m" />
+                                    </FormField>
+                                </div>
+                                <FormField label="Rules to Follow">
+                                    <textarea rows={3} value={form.house_detail.rules_to_follow}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, rules_to_follow: e.target.value })}
+                                        className={textareaClass} placeholder="e.g. No smoking..." />
+                                </FormField>
+                            </>
+                        )}
+
+                        {/* ── Step 4: Car ── */}
+                        {currentStep === 4 && form.listing_type === 'car' && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Car Details</h3>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Brand" required error={errors['car_detail.brand']}>
+                                        <Input value={form.car_detail.brand}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, brand: e.target.value })}
+                                            className={errors['car_detail.brand'] ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Model" required error={errors['car_detail.model']}>
+                                        <Input value={form.car_detail.model}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, model: e.target.value })}
+                                            className={errors['car_detail.model'] ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Year" required error={errors['car_detail.year']}>
+                                        <Input type="number" min="1900" value={form.car_detail.year}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, year: e.target.value })}
+                                            className={errors['car_detail.year'] ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Seating Capacity" required error={errors['car_detail.seating_capacity']}>
+                                        <Input type="number" min="1" value={form.car_detail.seating_capacity}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, seating_capacity: e.target.value })}
+                                            className={errors['car_detail.seating_capacity'] ? 'border-red-500' : ''} />
+                                    </FormField>
+                                    <FormField label="Mileage (km)">
+                                        <Input type="number" min="0" value={form.car_detail.mileage}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, mileage: e.target.value })} />
+                                    </FormField>
+                                    <FormField label="Fuel Type">
+                                        <select value={form.car_detail.fuel_type}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, fuel_type: e.target.value })}
+                                            className={selectClass}>
+                                            <option value="petrol">Petrol</option>
+                                            <option value="diesel">Diesel</option>
+                                            <option value="electric">Electric</option>
+                                            <option value="hybrid">Hybrid</option>
+                                        </select>
+                                    </FormField>
+                                </div>
+                            </>
+                        )}
+
+                        {/* ── Step 5 ── */}
+                        {currentStep === 5 && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Features & Images</h3>
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                        Update amenities and images. Existing images are kept unless you explicitly remove them.
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className={labelClass}>Features & Amenities</p>
+                                    <FeatureMultiSelect
+                                        selectedFeatures={form.selectedFeatures}
+                                        onChange={(features) => onChange('selectedFeatures', features)}
+                                    />
+                                </div>
+
+                                {/* EXISTING IMAGES WITH DELETE BUTTONS */}
+                                {form.existingImages?.length > 0 && (
+                                    <div>
+                                        <p className={labelClass}>Current Images</p>
                                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                            {form.newImages.map((file, idx) => (
-                                                <div key={idx} className="relative group">
-                                                    <img
-                                                        src={URL.createObjectURL(file)}
-                                                        alt={`New ${idx + 1}`}
-                                                        className="h-28 w-full rounded-2xl object-cover"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveNewImage(idx)}
-                                                        className="absolute top-1 right-1 rounded-full bg-red-500 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
-                                                        title="Remove image"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                            {form.existingImages
+                                                .filter((img) => !form.deletedImageIds?.includes(img.id))
+                                                .map((img) => (
+                                                    <div key={img.id} className="relative group">
+                                                        <img
+                                                            src={resolveImageSrc(img)}
+                                                            alt={`Image ${img.id}`}
+                                                            className="h-28 w-full rounded-2xl object-cover"
+                                                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image' }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveExistingImage(img.id)}
+                                                            className="absolute top-1 right-1 rounded-full bg-red-500 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
+                                                            title="Delete image"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
                                         </div>
                                     </div>
                                 )}
-                            </div>
-                        </>
-                    )}
-                </div>
 
-                {generalError && (
-                    <div className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                        {generalError}
+                                {/* NEW IMAGES UPLOAD */}
+                                <div>
+                                    <p className={labelClass}>Upload New Images <span className="text-slate-400 text-xs">(optional)</span></p>
+                                    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition hover:border-[#c99b43] dark:border-slate-700 dark:bg-slate-900">
+                                        <Plus className="h-6 w-6 text-[#c99b43]" />
+                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click to upload new images</p>
+                                        <input type="file" accept="image/*" multiple className="sr-only"
+                                            onChange={(e) => onChange('newImages', Array.from(e.target.files))} />
+                                    </label>
+                                    {form.newImages?.length > 0 && (
+                                        <div className="mt-3">
+                                            <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">New Images (to be added)</p>
+                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                                {form.newImages.map((file, idx) => (
+                                                    <div key={idx} className="relative group">
+                                                        <img
+                                                            src={URL.createObjectURL(file)}
+                                                            alt={`New ${idx + 1}`}
+                                                            className="h-28 w-full rounded-2xl object-cover"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveNewImage(idx)}
+                                                            className="absolute top-1 right-1 rounded-full bg-red-500 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
+                                                            title="Remove image"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
-                )}
 
-                <div className="mt-8 flex items-center justify-between gap-3">
-                    <button type="button" onClick={handleBack} disabled={currentStep === 1}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-                        <ChevronLeft className="h-4 w-4" /> Back
-                    </button>
-
-                    {currentStep < STEPS.length ? (
-                        <button type="button" onClick={handleNext}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]">
-                            Continue <ChevronRight className="h-4 w-4" />
-                        </button>
-                    ) : (
-                        <button type="button" onClick={handleSubmit} disabled={saving}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838] disabled:opacity-60">
-                            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
-                        </button>
+                    {generalError && (
+                        <div className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                            {generalError}
+                        </div>
                     )}
+
+                    <div className="mt-8 flex items-center justify-between gap-3">
+                        <button type="button" onClick={handleBack} disabled={currentStep === 1}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                            <ChevronLeft className="h-4 w-4" /> Back
+                        </button>
+
+                        {currentStep < STEPS.length ? (
+                            <button type="button" onClick={handleNext}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]">
+                                Continue <ChevronRight className="h-4 w-4" />
+                            </button>
+                        ) : (
+                            <button type="button" onClick={handleSubmit} disabled={saving}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838] disabled:opacity-60">
+                                {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
+
+            <aside className="hidden w-[30%] xl:flex">
+                <div className="flex w-full flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-lg shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950 dark:shadow-slate-950/40">
+                    <div className="relative h-56 overflow-hidden">
+                        <img
+                            src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80"
+                            alt="Property listing inspiration"
+                            className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-transparent" />
+                        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-[11px] font-medium tracking-[0.18em] text-white backdrop-blur-sm uppercase">
+                            Edit listing
+                        </div>
+                    </div>
+
+                    <div className="p-5">
+                        <div className="mb-4">
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c99b43]">
+                                Update in 5 steps
+                            </p>
+                            <h2 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
+                                Keep your listing fresh
+                            </h2>
+                        </div>
+
+                        <div className="space-y-3">
+                            {[
+                                ['01', 'Review basics', 'Check the title, type, and description.'],
+                                ['02', 'Adjust pricing', 'Update your rate, deposit, and availability.'],
+                                ['03', 'Fix location', 'Correct the city, region, and address details.'],
+                                ['04', 'Refresh details', 'Update room specs, features, and property info.'],
+                                ['05', 'Manage photos', 'Upload new images or remove outdated ones.'],
+                            ].map(([step, title, desc]) => (
+                                <div key={step} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/80">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#c99b43]/10 text-xs font-bold text-[#c99b43]">
+                                        {step}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
+                                        <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </aside>
         </div>
     )
 }

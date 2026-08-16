@@ -1173,121 +1173,169 @@ export default function AddProperty() {
     }
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6">
-            {showCompanyModal && (
-                <CompanyCreateModal
-                    onClose={() => setShowCompanyModal(false)}
-                    onCreated={handleCompanyCreated}
-                />
-            )}
-
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#f8e6ba]/85 via-white/10 to-[#dfeaf7]/85 dark:from-[#201d17]/70 dark:via-slate-950/10 dark:to-[#0f172a]/70" aria-hidden="true" />
-                <img
-                    src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80"
-                    alt="Modern house"
-                    className="absolute -right-10 top-4 h-32 w-32 rounded-[2rem] object-cover opacity-30 blur-[1px] grayscale-[0.1] sm:h-40 sm:w-40 dark:opacity-35"
-                />
-                <img
-                    src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80"
-                    alt="Luxury car"
-                    className="absolute -left-10 bottom-4 h-28 w-28 rounded-[2rem] object-cover opacity-35 blur-[1px] grayscale-[0.1] sm:h-36 sm:w-36 dark:opacity-30"
-                />
-
-                <div className="relative flex items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={() => navigate('/owner/properties')}
-                        className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Add New Property</h1>
-                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                            Create a new listing step by step.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Form card */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <StepProgress currentStep={currentStep} />
-
-                <div
-                    ref={formRef}
-                    onKeyDown={handleFormKeyDown}
-                    className="mt-6"
-                >
-                    {currentStep === 1 && (
-                        <Step1 form={form} onChange={onChange} errors={errors} />
-                    )}
-                    {currentStep === 2 && (
-                        <Step2
-                            form={form}
-                            onChange={onChange}
-                            errors={errors}
-                            companies={companies}
-                            companiesLoading={companiesLoading}
-                            onAddCompany={() => setShowCompanyModal(true)}
-                            user={user}
-                        />
-                    )}
-                    {currentStep === 3 && (
-                        <Step3 form={form} onChange={onChange} errors={errors} />
-                    )}
-                    {currentStep === 4 && (
-                        <Step4 form={form} onChange={onChange} errors={errors} />
-                    )}
-                    {currentStep === 5 && (
-                        <Step5 form={form} onChange={onChange} errors={errors} />
-                    )}
-                </div>
-
-                {generalError && (
-                    <div className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                        {generalError}
-                    </div>
+        <div className='flex'>
+            <div className="mx-auto w-[70%] space-y-6">
+                {showCompanyModal && (
+                    <CompanyCreateModal
+                        onClose={() => setShowCompanyModal(false)}
+                        onCreated={handleCompanyCreated}
+                    />
                 )}
 
-                {/* Navigation */}
-                <div className="mt-8 flex items-center justify-between gap-3">
-                    <button
-                        type="button"
-                        onClick={handleBack}
-                        disabled={currentStep === 1}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-                    >
-                        <ChevronLeft className="h-4 w-4" /> Back
-                    </button>
+                <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#f8e6ba]/85 via-white/10 to-[#dfeaf7]/85 dark:from-[#201d17]/70 dark:via-slate-950/10 dark:to-[#0f172a]/70" aria-hidden="true" />
+                    <img
+                        src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80"
+                        alt="Modern house"
+                        className="absolute -right-10 top-4 h-32 w-32 rounded-[2rem] object-cover opacity-30 blur-[1px] grayscale-[0.1] sm:h-40 sm:w-40 dark:opacity-35"
+                    />
+                    <img
+                        src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80"
+                        alt="Luxury car"
+                        className="absolute -left-10 bottom-4 h-28 w-28 rounded-[2rem] object-cover opacity-35 blur-[1px] grayscale-[0.1] sm:h-36 sm:w-36 dark:opacity-30"
+                    />
 
-                    {currentStep < STEPS.length ? (
+                    <div className="relative flex items-center gap-3">
                         <button
                             type="button"
-                            onClick={handleNext}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                            onClick={() => navigate('/owner/properties')}
+                            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
-                            Continue <ChevronRight className="h-4 w-4" />
+                            <ChevronLeft className="h-5 w-5" />
                         </button>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={loading}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838] disabled:opacity-60"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" /> Creating...
-                                </>
-                            ) : (
-                                'Create Listing'
-                            )}
-                        </button>
+                        <div>
+                            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Add New Property</h1>
+                            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                                Create a new listing step by step.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form card */}
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <StepProgress currentStep={currentStep} />
+
+                    <div
+                        ref={formRef}
+                        onKeyDown={handleFormKeyDown}
+                        className="mt-6"
+                    >
+                        {currentStep === 1 && (
+                            <Step1 form={form} onChange={onChange} errors={errors} />
+                        )}
+                        {currentStep === 2 && (
+                            <Step2
+                                form={form}
+                                onChange={onChange}
+                                errors={errors}
+                                companies={companies}
+                                companiesLoading={companiesLoading}
+                                onAddCompany={() => setShowCompanyModal(true)}
+                                user={user}
+                            />
+                        )}
+                        {currentStep === 3 && (
+                            <Step3 form={form} onChange={onChange} errors={errors} />
+                        )}
+                        {currentStep === 4 && (
+                            <Step4 form={form} onChange={onChange} errors={errors} />
+                        )}
+                        {currentStep === 5 && (
+                            <Step5 form={form} onChange={onChange} errors={errors} />
+                        )}
+                    </div>
+
+                    {generalError && (
+                        <div className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                            {generalError}
+                        </div>
                     )}
+
+                    {/* Navigation */}
+                    <div className="mt-8 flex items-center justify-between gap-3">
+                        <button
+                            type="button"
+                            onClick={handleBack}
+                            disabled={currentStep === 1}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                        >
+                            <ChevronLeft className="h-4 w-4" /> Back
+                        </button>
+
+                        {currentStep < STEPS.length ? (
+                            <button
+                                type="button"
+                                onClick={handleNext}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                            >
+                                Continue <ChevronRight className="h-4 w-4" />
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838] disabled:opacity-60"
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" /> Creating...
+                                    </>
+                                ) : (
+                                    'Create Listing'
+                                )}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
+            <aside className="hidden w-[30%] xl:flex">
+                <div className="flex w-full flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-lg shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950 dark:shadow-slate-950/40">
+                    <div className="relative h-56 overflow-hidden">
+                        <img
+                            src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80"
+                            alt="Property listing inspiration"
+                            className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-transparent" />
+                        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-[11px] font-medium tracking-[0.18em] text-white backdrop-blur-sm uppercase">
+                            Ready to list
+                        </div>
+                    </div>
+
+                    <div className="p-5">
+                        <div className="mb-4">
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c99b43]">
+                                Post in 5 steps
+                            </p>
+                            <h2 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
+                                Make your property stand out
+                            </h2>
+                        </div>
+
+                        <div className="space-y-3">
+                            {[
+                                ['01', 'Add basic details', 'Name, type, and a clear description.'],
+                                ['02', 'Set price & ownership', 'Choose rental terms and who is listing it.'],
+                                ['03', 'Add location', 'Mention city, area, and nearby landmarks.'],
+                                ['04', 'Fill property info', 'Share rooms, features, and property specs.'],
+                                ['05', 'Upload photos', 'Add quality images and publish live.'],
+                            ].map(([step, title, desc]) => (
+                                <div key={step} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/80">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#c99b43]/10 text-xs font-bold text-[#c99b43]">
+                                        {step}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
+                                        <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </aside>
         </div>
     )
 }
