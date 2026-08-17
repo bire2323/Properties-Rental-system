@@ -504,6 +504,13 @@ export default function BecomeOwnerPage() {
             </AnimatePresence>
           </div>
         </Card>
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="text-sm text-slate-500 my-5 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          I'll complete this <span className="font-semibold text-yellow-400 cursor-pointer underline hover:text-yellow-600">later</span>.
+        </button>
 
         <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
           All information is secure and will only be used for verification purposes.

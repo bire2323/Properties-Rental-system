@@ -133,11 +133,46 @@ export async function getCompanies() {
 }
 
 /**
+ * GET /api/companies/my-companies/
+ * Returns only companies the authenticated user manages.
+ */
+export async function getMyManagedCompanies() {
+    return request('/api/companies/my-companies/', { method: 'GET' })
+}
+
+/**
  * GET /api/companies/:id/
  * Fetches a single company by ID.
  */
 export async function getCompany(id) {
     return request(`/api/companies/${id}/`, { method: 'GET' })
+}
+
+/**
+ * GET /api/companies/:id/documents/
+ * Lists verification documents for a company.
+ */
+export async function getCompanyDocuments(companyId) {
+    return request(`/api/companies/${companyId}/documents/`, { method: 'GET' })
+}
+
+/**
+ * POST /api/companies/:id/documents/
+ * Upload a single verification document for a company.
+ */
+export async function createCompanyDocument(companyId, data) {
+    return request(`/api/companies/${companyId}/documents/`, {
+        method: 'POST',
+        body: data,
+    })
+}
+
+/**
+ * DELETE /api/companies/:id/documents/:documentId/
+ * Removes a verification document if the user has permission.
+ */
+export async function deleteCompanyDocument(companyId, documentId) {
+    return request(`/api/companies/${companyId}/documents/${documentId}/`, { method: 'DELETE' })
 }
 
 /**

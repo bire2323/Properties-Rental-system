@@ -36,6 +36,30 @@ function Login() {
       [name]: type === 'checkbox' ? checked : value,
     }))
   }
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+
+      const fieldOrder = ['email', 'password']
+      const currentField = e.target
+      const currentName = currentField.name
+
+      if (!fieldOrder.includes(currentName)) return
+
+      const currentIndex = fieldOrder.indexOf(currentName)
+
+      if (currentIndex === fieldOrder.length - 1) {
+        // Last field → submit the form
+        e.target.closest('form').requestSubmit()
+      } else {
+        const nextFieldName = fieldOrder[currentIndex + 1]
+        const nextField = document.querySelector(`[name="${nextFieldName}"]`)
+        if (nextField) {
+          nextField.focus()
+        }
+      }
+    }
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -113,6 +137,7 @@ function Login() {
                       placeholder="Enter your email"
                       value={formData.email}
                       onChange={handleChange}
+                      onKeyDown={handleKeyDown}
                       className="h-13 rounded-2xl border-slate-200 bg-slate-50/90 pl-11 pr-4 shadow-sm focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/20 dark:border-slate-800 dark:bg-slate-900/80"
                     />
                   </div>
@@ -122,6 +147,7 @@ function Login() {
                   <div className="flex items-center justify-between gap-4">
                     <label
                       htmlFor="password"
+
                       className="text-sm font-medium text-slate-700 dark:text-slate-200"
                     >
                       Password
@@ -143,6 +169,7 @@ function Login() {
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={handleChange}
+                      onKeyDown={handleKeyDown}
                       className="h-13 rounded-2xl border-slate-200 bg-slate-50/90 pl-11 pr-12 shadow-sm focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/20 dark:border-slate-800 dark:bg-slate-900/80"
                     />
                     <button

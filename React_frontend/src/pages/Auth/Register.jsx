@@ -88,6 +88,32 @@ function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
+  // ─── Enter key navigation ──────────────────────────────────────
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+
+      const fieldOrder = ['accountType', 'firstName', 'lastName', 'email', 'password', 'confirmPassword']
+      const currentField = e.target
+      const currentName = currentField.name
+
+      if (!fieldOrder.includes(currentName)) return
+
+      const currentIndex = fieldOrder.indexOf(currentName)
+
+      if (currentIndex === fieldOrder.length - 1) {
+        // Last field → submit the form
+        e.target.closest('form').requestSubmit()
+      } else {
+        const nextFieldName = fieldOrder[currentIndex + 1]
+        const nextField = document.querySelector(`[name="${nextFieldName}"]`)
+        if (nextField) {
+          nextField.focus()
+        }
+      }
+    }
+  }
+
   const applyValidation = (nextData) => {
     const nextErrors = validateForm(nextData)
     setErrors(nextErrors)
@@ -129,7 +155,6 @@ function Register() {
         password: formData.password,
         confirm_password: formData.confirmPassword,
         role: formData.accountType, // 'tenant' or 'owner'
-        // Optional profile fields are omitted – they can be added later
       }
 
       const result = await register(payload)
@@ -164,7 +189,11 @@ function Register() {
             </div>
 
             <div className="space-y-5 px-6 py-5 sm:px-8">
-              <form className="space-y-4" onSubmit={handleSubmit}>
+              <form
+                className="space-y-4"
+                onSubmit={handleSubmit}
+                onKeyDown={handleKeyDown}
+              >
                 {/* Account Type */}
                 <label className="space-y-1.5">
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-200">Account Type</span>

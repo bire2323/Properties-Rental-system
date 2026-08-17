@@ -35,6 +35,7 @@ def home(request):
 class RegisterAPIView(GenericAPIView):
     """Register a new user account and return the profile payload."""
 
+    authentication_classes = []
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
@@ -57,6 +58,7 @@ class RegisterAPIView(GenericAPIView):
 class LoginAPIView(GenericAPIView):
     """Log in using email/password and store tokens in secure cookies."""
 
+    authentication_classes = []
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
 
@@ -77,13 +79,11 @@ class LoginAPIView(GenericAPIView):
         return response
 
 
-# ============================================================
-# LOGOUT API VIEW
-# ============================================================
 
 class LogoutAPIView(APIView):
     """Clear the JWT cookies so the browser session is fully signed out."""
 
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -91,14 +91,10 @@ class LogoutAPIView(APIView):
         clear_auth_cookies(response)
         return response
 
-
-# ============================================================
-# GOOGLE AUTH API VIEW
-# ============================================================
-
 class GoogleAuthAPIView(GenericAPIView):
     """Verify a Google credential token, then create or log in the matching user."""
 
+    authentication_classes = []
     serializer_class = GoogleAuthSerializer
     permission_classes = [AllowAny]
 

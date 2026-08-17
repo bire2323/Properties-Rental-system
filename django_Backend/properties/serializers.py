@@ -5,7 +5,15 @@ import json
 from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger(__name__)
-from .models import Property, HouseDetail, CarDetail, PropertyImage, Feature, Company
+from .models import (
+    Property,
+    HouseDetail,
+    CarDetail,
+    PropertyImage,
+    Feature,
+    Company,
+    CompanyVerificationDocument,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -25,16 +33,59 @@ class PropertyImageSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
+# Company documents
+# ---------------------------------------------------------------------------
+
+class CompanyVerificationDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyVerificationDocument
+        fields = [
+            'id',
+            'company',
+            'document_type',
+            'document_number',
+            'document_file',
+            'verification_status',
+            'rejection_reason',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.role != 'admin':
+            company = self.instance.company if self.instance else data.get('company')
+            if company and not company.managers.filter(pk=request.user.pk).exists():
+                raise serializers.ValidationError(
+                    'You are not allowed to manage documents for this company.'
+                )
+        return data
+
+
+# ---------------------------------------------------------------------------
 # Company
 # ---------------------------------------------------------------------------
 
+class CompanyVerificationDocumentReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyVerificationDocument
+        fields = [
+            'id',
+            'document_type',
+            'document_number',
+            'document_file',
+            'verification_status',
+            'rejection_reason',
+            'created_at',
+            'updated_at',
+        ]
+
+
 class CompanySerializer(serializers.ModelSerializer):
-    """
-    Read serializer — used when embedding company info inside a property
-    response or returning company details publicly.
-    Manager IDs are included for informational purposes only.
-    """
+    """Read serializer for company details and public company data."""
     manager_ids = serializers.SerializerMethodField()
+    documents = serializers.SerializerMethodField()
 
     class Meta:
         model = Company
@@ -51,6 +102,7 @@ class CompanySerializer(serializers.ModelSerializer):
             'region',
             'is_verified',
             'manager_ids',
+            'documents',
             'created_at',
             'updated_at',
         ]
@@ -58,13 +110,22 @@ class CompanySerializer(serializers.ModelSerializer):
     def get_manager_ids(self, obj):
         return list(obj.managers.values_list('id', flat=True))
 
+    def get_documents(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return []
+        from accounts.models import User
+        if request.user.role == User.Role.ADMIN or obj.managers.filter(pk=request.user.pk).exists():
+            return CompanyVerificationDocumentReadSerializer(
+                obj.verification_documents.all(),
+                many=True,
+                context={'request': request},
+            ).data
+        return []
+
 
 class CompanyWriteSerializer(serializers.ModelSerializer):
-    """
-    Write serializer — used for creating and updating companies.
-    The requesting user is added as a manager automatically in the view's
-    perform_create; managers cannot be set arbitrarily by the client.
-    """
+    """Write serializer for creating/updating companies."""
     class Meta:
         model = Company
         fields = [
@@ -292,15 +353,11 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         return unique_ids
 
     def validate_company(self, company):
-        """
-        Ensure the requesting user is a manager of the company they are
-        trying to attach to the property.
-        """
+        """Ensure the requesting user is a manager of the company they attach."""
         if company is None:
             return company
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            # Admins may assign any company
             from accounts.models import User
             if request.user.role == User.Role.ADMIN:
                 return company

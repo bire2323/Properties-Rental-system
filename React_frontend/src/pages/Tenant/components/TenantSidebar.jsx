@@ -3,6 +3,7 @@ import { Home, Bookmark, Calendar, CreditCard, MessageSquare, User, Settings, Lo
 import { useAuth } from '../../../hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
+import logo from '../../../assets/logo.jpg'
 
 const links = [
     { label: 'Dashboard', path: '/tenant/dashboard', icon: Home },
@@ -25,13 +26,17 @@ export default function TenantSidebar({ isOpen, onClose }) {
             )}
         >
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-                <button
-                    type="button"
-                    onClick={() => navigate('/')}
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                >
-                    <Home onClick={() => navigate('/')} className="h-4 w-4" />
-                    Home
+                <button type="button" onClick={() => navigate('/')} className="flex shrink-0 items-center gap-3">
+                    <img
+                        src={logo}
+                        alt="NX Rent logo"
+                        className="h-14 w-auto object-contain"
+                    />
+                    <span className="text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d]">
+                        <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
+                            NexaSpace
+                        </span>
+                    </span>
                 </button>
                 <button
                     type="button"

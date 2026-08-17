@@ -49,21 +49,21 @@ export default function OwnerTopbar({ onToggleSidebar }) {
 
     return (
         <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-            <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center gap-3">
+            <div className="mx-auto flex h-14 sm:h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center gap-2 sm:gap-3">
                     <button
                         type="button"
                         onClick={onToggleSidebar}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 lg:hidden"
+                        className="inline-flex h-7 sm:h-11 w-7 sm:w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 lg:hidden"
                     >
-                        <Menu className="h-5 w-5" />
+                        <Menu className="h-4 sm:h-5 w-4 sm:w-5" />
                     </button>
 
                     <div>
-                        <span className="block text-base md:text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
+                        <span className="block text-[11px] sm:text-base md:text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
                             Owner Portal
                         </span>
-                        <h1 className="text-lg font-semibold text-slate-900 dark:text-white">
+                        <h1 className="text-[10px] sm:text-lg font-semibold text-slate-900 dark:text-white">
                             {pageTitle}
                         </h1>
                     </div>
@@ -89,7 +89,7 @@ export default function OwnerTopbar({ onToggleSidebar }) {
                             onClick={() => setMenuOpen((open) => !open)}
                             className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                         >
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+                            <div className="flex h-5 sm:h-9 w-5 sm:w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
                                 {profileInitial}
                             </div>
                             <span className="hidden md:inline">{profileLabel}</span>

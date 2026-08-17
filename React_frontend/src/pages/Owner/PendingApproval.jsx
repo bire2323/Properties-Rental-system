@@ -1,10 +1,26 @@
 // src/pages/owner/PendingApproval.jsx
-import { Clock, ShieldCheck } from 'lucide-react';
+import { Clock, Loader2, ShieldCheck } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import { getDashboardRoute } from '@/services/authService';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function PendingApproval() {
+
+    const navigate = useNavigate();
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div className='h-[50vh] w-full flex justify-center items-center'>
+                <Loader2 />
+
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
             <Navbar />
@@ -30,7 +46,11 @@ export default function PendingApproval() {
                         </p>
                     </div>
                     <button
-                        onClick={() => window.location.reload()}
+                        onClick={() => {
+
+                            const dashboardRoute = getDashboardRoute(user?.role)
+                            navigate(dashboardRoute)
+                        }}
                         className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#c99b43] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b88a35] transition"
                     >
                         Check Status

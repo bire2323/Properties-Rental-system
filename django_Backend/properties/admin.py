@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Property, HouseDetail, CarDetail, Feature, PropertyImage, Company
+from .models import Property, HouseDetail, CarDetail, Feature, PropertyImage, Company, CompanyVerificationDocument
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +47,27 @@ class CompanyAdmin(admin.ModelAdmin):
         }),
         ('Management', {
             'fields': ('managers', 'is_verified')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(CompanyVerificationDocument)
+class CompanyVerificationDocumentAdmin(admin.ModelAdmin):
+    list_display = ('company', 'document_type', 'verification_status', 'created_at')
+    list_filter = ('verification_status', 'document_type')
+    search_fields = ('company__name', 'document_number', 'document_type')
+    readonly_fields = ('created_at', 'updated_at')
+
+    fieldsets = (
+        ('Document', {
+            'fields': ('company', 'document_type', 'document_number', 'document_file')
+        }),
+        ('Review', {
+            'fields': ('verification_status', 'rejection_reason')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

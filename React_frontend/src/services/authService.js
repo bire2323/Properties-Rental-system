@@ -13,7 +13,7 @@ export function getDashboardRoute(role) {
                 return '/tenant'
             default:
                 // return '/tenant-dashboard'
-                return '/owner'
+                return '/'
         }
     }
 }

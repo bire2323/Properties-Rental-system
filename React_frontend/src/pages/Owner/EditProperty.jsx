@@ -4,7 +4,7 @@ import {
     ChevronLeft, ChevronRight, Check,
     Building2, Car, Plus, X, Loader2
 } from 'lucide-react'
-import { getPropertyById, updateProperty, getCompanies, createCompany } from '../../api/property/propertyApi'
+import { getPropertyById, updateProperty, getMyManagedCompanies } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -230,7 +230,7 @@ export default function EditProperty() {
             try {
                 const [data, companiesData] = await Promise.all([
                     getPropertyById(id),
-                    getCompanies().catch(() => []),
+                    getMyManagedCompanies().catch(() => []),
                 ])
                 const companiesArr = Array.isArray(companiesData)
                     ? companiesData
@@ -249,7 +249,7 @@ export default function EditProperty() {
                     security_deposit: data.security_deposit || '',
                     is_available: data.is_available ?? true,
                     status: data.status || 'active',
-                    ownership: data.company ? 'company' : 'individual',
+                    ownership: data.company ? 'company' : 'personal',
                     company: data.company?.id || null,
                     address: data.address || '',
                     city: data.city || '',

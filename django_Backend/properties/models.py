@@ -69,6 +69,65 @@ class Company(models.Model):
         return self.name
 
 
+class CompanyVerificationDocument(models.Model):
+    class DocumentType(models.TextChoices):
+        BUSINESS_LICENSE = 'business_license', 'Business License'
+        TRADE_LICENSE = 'trade_license', 'Trade License'
+        TAX_CERTIFICATE = 'tax_certificate', 'Tax Certificate'
+        REGISTRATION_CERTIFICATE = 'registration_certificate', 'Registration Certificate'
+        NATIONAL_ID = 'national_id', 'National ID'
+        OTHER = 'other', 'Other'
+
+    class VerificationStatus(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='verification_documents',
+        help_text='Company this document belongs to.'
+    )
+    document_type = models.CharField(
+        max_length=40,
+        choices=DocumentType.choices,
+        default=DocumentType.OTHER,
+    )
+    document_number = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Optional reference or registration number.'
+    )
+    document_file = models.FileField(
+        upload_to='company_verification_documents/',
+        blank=True,
+        null=True,
+        help_text='Uploaded document image or file.'
+    )
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.PENDING,
+    )
+    rejection_reason = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Reason for rejection if the document is rejected.'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Company Verification Document'
+        verbose_name_plural = 'Company Verification Documents'
+
+    def __str__(self):
+        return f"{self.company.name} - {self.get_document_type_display()}"
+
+
 class Property(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

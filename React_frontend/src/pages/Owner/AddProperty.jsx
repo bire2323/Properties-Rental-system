@@ -4,7 +4,7 @@ import {
     Check, ChevronRight, ChevronLeft, Building2, Car,
     Plus, X, Loader2, Home, CarFront
 } from 'lucide-react'
-import { createProperty, getCompanies, createCompany } from '../../api/property/propertyApi'
+import { createProperty, getMyManagedCompanies } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -33,8 +33,8 @@ const INITIAL_STATE = {
     security_deposit: '',
     is_available: true,
     status: 'active',
-    ownership: 'individual', // frontend-only — never sent to API
-    company: null,           // integer ID or null
+    ownership: 'personal',
+    company: null,
     // Step 3
     address: '',
     city: '',
@@ -239,141 +239,6 @@ function StepProgress({ currentStep }) {
     )
 }
 
-// ─── Company create modal ────────────────────────────────────────────────────
-
-function CompanyCreateModal({ onClose, onCreated }) {
-    const [form, setForm] = useState({
-        name: '', description: '', contact_email: '', contact_phone: '',
-        website: '', address: '', city: '', region: '',
-    })
-    const [logo, setLogo] = useState(null)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
-
-    const handleChange = (key, value) =>
-        setForm((prev) => ({ ...prev, [key]: value }))
-
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        if (!form.name.trim()) { setError('Company name is required.'); return }
-        if (!form.city.trim()) { setError('City is required.'); return }
-        if (!form.region.trim()) { setError('Region is required.'); return }
-        setLoading(true)
-        setError(null)
-        try {
-            const fd = new FormData()
-            Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v) })
-            if (logo) fd.append('logo', logo)
-            const company = await createCompany(fd)
-            onCreated(company)
-        } catch (err) {
-            setError(err.message || 'Failed to create company.')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Create Company</h2>
-                    <button
-                        onClick={onClose}
-                        className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
-                {error && (
-                    <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                        {error}
-                    </div>
-                )}
-                <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <FormField label="Company Name" required>
-                            <Input
-                                value={form.name}
-                                onChange={(e) => handleChange('name', e.target.value)}
-                                placeholder="Company Name"
-                            />
-                        </FormField>
-                        <FormField label="City" required>
-                            <Input
-                                value={form.city}
-                                onChange={(e) => handleChange('city', e.target.value)}
-                                placeholder="City"
-                            />
-                        </FormField>
-                        <FormField label="Region" required>
-                            <Input
-                                value={form.region}
-                                onChange={(e) => handleChange('region', e.target.value)}
-                                placeholder="Region"
-                            />
-                        </FormField>
-                        <FormField label="Contact Email">
-                            <Input
-                                type="email"
-                                value={form.contact_email}
-                                onChange={(e) => handleChange('contact_email', e.target.value)}
-                                placeholder="email@company.com"
-                            />
-                        </FormField>
-                        <FormField label="Contact Phone">
-                            <Input
-                                value={form.contact_phone}
-                                onChange={(e) => handleChange('contact_phone', e.target.value)}
-                                placeholder="+251..."
-                            />
-                        </FormField>
-                        <FormField label="Website">
-                            <Input
-                                value={form.website}
-                                onChange={(e) => handleChange('website', e.target.value)}
-                                placeholder="https://..."
-                            />
-                        </FormField>
-                    </div>
-                    <FormField label="Address">
-                        <Input
-                            value={form.address}
-                            onChange={(e) => handleChange('address', e.target.value)}
-                            placeholder="Street address"
-                        />
-                    </FormField>
-                    <FormField label="Description">
-                        <textarea
-                            rows={3}
-                            value={form.description}
-                            onChange={(e) => handleChange('description', e.target.value)}
-                            className={textareaClass}
-                            placeholder="Brief company description"
-                        />
-                    </FormField>
-                    <FormField label="Logo">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => setLogo(e.target.files[0] || null)}
-                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 transition focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        />
-                    </FormField>
-                    <div className="flex gap-3 pt-2">
-                        <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={loading} className="flex-1">
-                            {loading ? 'Creating...' : 'Create Company'}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    )
-}
-
 // ─── Step 1: Basic Info ──────────────────────────────────────────────────────
 
 function Step1({ form, onChange, errors }) {
@@ -528,25 +393,26 @@ function Step2({ form, onChange, errors, companies, companiesLoading, onAddCompa
             </FormField>
 
             <div>
-                <p className={labelClass}>Ownership Type</p>
-                <div className="flex gap-3">
+                <p className={labelClass}>Where are you listing this property?</p>
+                <div className="grid gap-3 sm:grid-cols-2">
                     {[
-                        { value: 'individual', label: 'Individual' },
-                        { value: 'company', label: 'Company' },
+                        { value: 'personal', label: 'My Personal Listings', description: 'Individual listing under your account' },
+                        { value: 'company', label: 'A Company', description: 'Property owned by one of your managed companies' },
                     ].map((opt) => (
                         <button
                             key={opt.value}
                             type="button"
                             onClick={() => {
                                 onChange('ownership', opt.value)
-                                if (opt.value === 'individual') onChange('company', null)
+                                if (opt.value === 'personal') onChange('company', null)
                             }}
-                            className={`flex-1 rounded-2xl border-2 py-3 text-sm font-semibold transition ${form.ownership === opt.value
+                            className={`rounded-2xl border-2 p-4 text-left transition ${form.ownership === opt.value
                                 ? 'border-[#c99b43] bg-[#c99b43]/5 text-[#c99b43]'
                                 : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:text-slate-300'
                                 }`}
                         >
-                            {opt.label}
+                            <div className="font-semibold">{opt.label}</div>
+                            <div className="mt-1 text-xs opacity-80">{opt.description}</div>
                         </button>
                     ))}
                 </div>
@@ -561,7 +427,7 @@ function Step2({ form, onChange, errors, companies, companiesLoading, onAddCompa
                             onClick={onAddCompany}
                             className="inline-flex items-center gap-1 rounded-xl bg-[#c99b43] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#b08838]"
                         >
-                            <Plus className="h-3 w-3" /> Add Company
+                            <Plus className="h-3 w-3" /> New Company
                         </button>
                     </div>
                     {companiesLoading ? (
@@ -570,7 +436,7 @@ function Step2({ form, onChange, errors, companies, companiesLoading, onAddCompa
                         </div>
                     ) : managedCompanies.length === 0 ? (
                         <p className="text-sm text-slate-500">
-                            You are not a manager of any company yet. Create one using &ldquo;Add Company&rdquo; above.
+                            You are not a manager of any company yet. Create a company to start listing under a company workspace.
                         </p>
                     ) : (
                         <select
@@ -925,7 +791,7 @@ function validateStep(step, form) {
     }
     if (step === 2) {
         if (!form.price || parseFloat(form.price) <= 0) errors.price = 'Enter a valid price greater than 0.'
-        if (form.ownership === 'company' && !form.company) errors.company = 'Please select a company or create one.'
+        if (form.ownership === 'company' && !form.company) errors.company = 'Please select one of your managed companies.'
     }
     if (step === 3) {
         if (!form.city.trim()) errors.city = 'City is required.'
@@ -1009,7 +875,6 @@ export default function AddProperty() {
     const [loading, setLoading] = useState(false)
     const [companies, setCompanies] = useState([])
     const [companiesLoading, setCompaniesLoading] = useState(false)
-    const [showCompanyModal, setShowCompanyModal] = useState(false)
     const [draftRecovery, setDraftRecovery] = useState(null)
     const [draftChecked, setDraftChecked] = useState(false)
 
@@ -1092,14 +957,14 @@ export default function AddProperty() {
 
     // Fetch companies when step 2 becomes active
     useEffect(() => {
-        if (currentStep === 2 && companies.length === 0) {
+        if (currentStep === 2) {
             setCompaniesLoading(true)
-            getCompanies()
+            getMyManagedCompanies()
                 .then((data) => setCompanies(Array.isArray(data) ? data : data.results || []))
-                .catch(() => { })
+                .catch(() => setCompanies([]))
                 .finally(() => setCompaniesLoading(false))
         }
-    }, [currentStep, companies.length])
+    }, [currentStep])
 
     const onChange = useCallback((key, value) => {
         setForm((prev) => ({ ...prev, [key]: value }))
@@ -1165,22 +1030,14 @@ export default function AddProperty() {
     }
 
     const handleCompanyCreated = (company) => {
-        // Backend creates the company and adds current user as manager.
-        // We inject manager_ids locally so filtering works immediately.
         setCompanies((prev) => [...prev, { ...company, manager_ids: [user?.id] }])
+        onChange('ownership', 'company')
         onChange('company', company.id)
-        setShowCompanyModal(false)
     }
 
     return (
         <div className='flex'>
-            <div className="mx-auto w-[70%] space-y-6">
-                {showCompanyModal && (
-                    <CompanyCreateModal
-                        onClose={() => setShowCompanyModal(false)}
-                        onCreated={handleCompanyCreated}
-                    />
-                )}
+            <div className="mx-auto sm:w-[70%] space-y-6">
 
                 <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="absolute inset-0 bg-gradient-to-r from-[#f8e6ba]/85 via-white/10 to-[#dfeaf7]/85 dark:from-[#201d17]/70 dark:via-slate-950/10 dark:to-[#0f172a]/70" aria-hidden="true" />
@@ -1231,7 +1088,7 @@ export default function AddProperty() {
                                 errors={errors}
                                 companies={companies}
                                 companiesLoading={companiesLoading}
-                                onAddCompany={() => setShowCompanyModal(true)}
+                                onAddCompany={() => navigate('/owner/companies/create')}
                                 user={user}
                             />
                         )}

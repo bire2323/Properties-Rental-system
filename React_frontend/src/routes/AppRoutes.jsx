@@ -14,6 +14,8 @@ import OwnerSettings from '../pages/Owner/OwnerSettings'
 import AddProperty from '../pages/Owner/AddProperty'
 import OwnerPropertyDetails from '../pages/Owner/OwnerPropertyDetails'
 import EditProperty from '../pages/Owner/EditProperty'
+import CreateCompany from '../pages/Owner/Companies/CreateCompany'
+import EditCompany from '../pages/Owner/Companies/EditCompany'
 import TenantDashboard from '../pages/Tenant/TenantDashboard'
 import Home from '../pages/Home/Home'
 import Login from '../pages/Auth/Login'
@@ -55,6 +57,9 @@ function AppRoutes() {
                 <Route path="/vehicles/:id" element={<VehicleDetails />} />
                 <Route path="/owner/pending" element={<PendingApproval />} />
 
+                <Route path="/owner/companies/create" element={<CreateCompany />} />
+                <Route path="/owner/companies/:id/edit" element={<EditCompany />} />
+
                 <Route
                     path="/tenant"
                     element={
@@ -89,6 +94,7 @@ function AppRoutes() {
                     <Route path="properties/draft/edit" element={<EditProperty />} />
                     <Route path="properties/:id" element={<OwnerPropertyDetails />} />
                     <Route path="properties/:id/edit" element={<EditProperty />} />
+
                     <Route path="bookings" element={<OwnerBookings />} />
                     <Route path="favorites" element={<OwnerFavorites />} />
                     <Route path="payments" element={<OwnerPayments />} />

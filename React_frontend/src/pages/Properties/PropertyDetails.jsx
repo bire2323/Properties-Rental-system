@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import {
   MapPin, Star, Bed, Bath, Maximize2, Heart, Calendar,
   CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car,
-  X, Loader2
+  X, Loader2, Fuel, Gauge, Users, Settings2
 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
@@ -81,7 +81,14 @@ function mapPropertyToCard(property) {
       isCompany: !!property.company
     },
     detail: detail,
-    listing_type: property.listing_type
+    listing_type: property.listing_type,
+    // Car specific fields
+    brand: detail.brand || '',
+    model: detail.model || '',
+    year: detail.year || '',
+    mileage: detail.mileage || '',
+    fuel_type: detail.fuel_type || '',
+    seating_capacity: detail.seating_capacity || '',
   }
 }
 
@@ -181,7 +188,6 @@ function PropertyDetails() {
     try {
       setIsRatingLoading(true)
 
-      // ✅ Optimistic UI update (prevents blinking/re-fetching page state)
       setProperty(prev => ({
         ...prev,
         rating_summary: {
@@ -192,7 +198,6 @@ function PropertyDetails() {
 
       await rateProperty(property.id, ratingValue)
 
-      // ✅ Fetch the updated property to reflect the new average rating and count
       const data = await getPropertyById(property.id)
       if (data) {
         setProperty(mapPropertyToCard(data))
@@ -245,7 +250,7 @@ function PropertyDetails() {
     )
   }
 
-  const similarProperties = []
+  const isHouse = property.listing_type === 'house'
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -277,8 +282,6 @@ function PropertyDetails() {
                   <Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
                 )}
               </Button>
-
-              {/* ✅ FIX: Render ShareButton directly without wrapping in another Button tag */}
               <ShareButton propertyId={property.id} title={property.title} />
             </div>
           </div>
@@ -409,56 +412,105 @@ function PropertyDetails() {
 
                 {/* ─── Stats Grid ──────────────────────────────────── */}
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                  {/* Price Card (always visible) */}
                   <div className="rounded-2xl border border-[#c99b43]/20 bg-gradient-to-br from-[#fff7e8] to-white p-5 shadow-sm dark:border-[#c99b43]/20 dark:from-[#1e1a11] dark:to-slate-900">
                     <p className="text-sm text-slate-600 dark:text-slate-400">Price ({property.rental_unit})</p>
                     <p className="mt-2 text-3xl font-bold text-[#c99b43]">{property.price}</p>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ETB / {property.rental_unit}</p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Bed className="h-5 w-5 text-[#c99b43]" />
-                      <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{property.beds}</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">Bedrooms</p>
+                  {/* ─── House-specific stats ────────────────────── */}
+                  {isHouse ? (
+                    <>
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Bed className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.beds}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Bedrooms</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Bath className="h-5 w-5 text-[#c99b43]" />
-                      <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{property.baths}</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">Bathrooms</p>
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Bath className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.baths}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Bathrooms</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Maximize2 className="h-5 w-5 text-[#c99b43]" />
-                      <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{property.area} m²</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">Area</p>
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Maximize2 className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.area} m²</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Area</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Car className="h-5 w-5 text-[#c99b43]" />
-                      <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{property.parking}</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">Parking</p>
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Car className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.parking}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Parking</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </>
+                  ) : (
+                    // ─── Car-specific stats ──────────────────────
+                    <>
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Car className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.brand || '-'}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Brand</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Settings2 className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.model || '-'}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Model</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.year || '-'}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Year</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Gauge className="h-5 w-5 text-[#c99b43]" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{property.mileage || '-'}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Mileage</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* ─── Description ──────────────────────────────────── */}
                 <div className="mt-10">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Description</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">About the Property</h2>
                   <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-950/40">
                     <p className="leading-relaxed text-slate-600 dark:text-slate-400">
                       {property.description}
@@ -468,13 +520,39 @@ function PropertyDetails() {
 
                 {/* ─── Additional Info ────────────────────────────────── */}
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                    <CheckCircle className="h-5 w-5 text-emerald-500" />
-                    <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Furnished</p>
-                      <p className="font-semibold text-slate-900 dark:text-white">{property.furnished}</p>
+                  {/* Show Furnished only for houses */}
+                  {isHouse && (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Furnished</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">{property.furnished}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Show Fuel Type and Seating Capacity for cars */}
+                  {!isHouse && property.fuel_type && (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                      <Fuel className="h-5 w-5 text-[#c99b43]" />
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Fuel Type</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">{property.fuel_type}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isHouse && property.seating_capacity && (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                      <Users className="h-5 w-5 text-[#c99b43]" />
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Seating</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">{property.seating_capacity}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Common fields */}
                   <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                     <CheckCircle className="h-5 w-5 text-emerald-500" />
                     <div>
@@ -530,10 +608,18 @@ function PropertyDetails() {
                       <span className="text-sm text-slate-600 dark:text-slate-400">Category</span>
                       <span className="font-semibold text-slate-900 dark:text-white">{property.type}</span>
                     </div>
-                    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Furnished</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{property.furnished}</span>
-                    </div>
+                    {isHouse && (
+                      <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Furnished</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">{property.furnished}</span>
+                      </div>
+                    )}
+                    {!isHouse && property.fuel_type && (
+                      <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Fuel Type</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">{property.fuel_type}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
                       <span className="text-sm text-slate-600 dark:text-slate-400">Rating</span>
                       <span className="font-semibold text-slate-900 dark:text-white">{property.rating} / 5</span>

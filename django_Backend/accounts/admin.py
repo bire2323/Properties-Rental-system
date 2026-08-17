@@ -2,8 +2,19 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .models import User
+from accounts.models import OwnerProfile
 
+@admin.register(OwnerProfile)
+class OwnerProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'verification_status', 'can_post_property', 'created_at']
+    list_filter = ['verification_status', 'can_post_property']
+    search_fields = ['user__email', 'user__first_name', 'user__last_name']
+    actions = ['approve_owners']
 
+    def approve_owners(self, request, queryset):
+        queryset.update(verification_status='approved', can_post_property=True)
+        self.message_user(request, f"{queryset.count()} owner(s) approved.")
+    approve_owners.short_description = "Approve selected owners"
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
 
