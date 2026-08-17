@@ -32,7 +32,7 @@ class PropertyRating(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user} - {self.property.title} - {self.rating} Stars"
+        return f"{self.user} - {self.property.property_name} - {self.rating} Stars"
 
 class Favorite(models.Model):
     user = models.ForeignKey(
@@ -56,4 +56,4 @@ class Favorite(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user} favorited {self.property.title}"
+        return f"{self.user} favorited {self.property.property_name}"

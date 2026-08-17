@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDashboardRoute } from '@/services/authService'
+import { getImageUrl } from '@/lib/utils'
 import {
   ChevronDown,
   Heart,
@@ -67,6 +68,9 @@ function Navbar() {
   const propertyDropdownRef = useRef(null)
   const vehicleDropdownRef = useRef(null)
   const authDropdownRef = useRef(null)
+
+  const profileLabel = user?.first_name;
+  const profileImageUrl = user?.profile_image ? getImageUrl(user.profile_image) : null;
   const navigateTo = (path) => {
     navigate(path)
   }
@@ -303,7 +307,19 @@ function Navbar() {
                 aria-label="Open profile menu"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] text-sm font-semibold text-slate-950 shadow-sm">
-                  {userInitial}
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={profileLabel}
+                      className="h-full w-full rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.textContent = profileInitial;
+                      }}
+                    />
+                  ) : (
+                    userInitial
+                  )}
                 </span>
                 <ChevronDown
                   size={16}

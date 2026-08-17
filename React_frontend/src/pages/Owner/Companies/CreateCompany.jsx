@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Building2 } from 'lucide-react'
 import { createCompany, createCompanyDocument } from '../../../api/property/propertyApi'
 import CompanyProgress from '../../../components/company/CompanyProgress'
@@ -97,6 +97,7 @@ function validateStep(step, form) {
 
 export default function CreateCompany() {
     const navigate = useNavigate()
+    const location = useLocation()
     const [currentStep, setCurrentStep] = useState(1)
     const [form, setForm] = useState(INITIAL_FORM)
     const [documents, setDocuments] = useState([])
@@ -199,6 +200,11 @@ export default function CreateCompany() {
             if (form.logo) companyPayload.append('logo', form.logo)
 
             const created = await createCompany(companyPayload)
+            const returnTo = location.state?.returnTo || '/owner/companies'
+            const navigationState = {
+                createdCompany: created,
+                companyCreated: true,
+            }
 
             if (documents.length > 0) {
                 const failures = []
@@ -217,15 +223,18 @@ export default function CreateCompany() {
                 }
 
                 if (failures.length > 0) {
-                    setError('Company created, but some documents could not be uploaded: ' + failures.join(', '))
-                    clearDraft()
-                    navigate(`/owner/companies/${created.id}/edit`)
-                    return
+                    navigationState.documentUploadWarning =
+                        'Company created, but some verification documents could not be uploaded. You can retry them later.'
+                    navigationState.failedDocuments = failures
+                    setError(navigationState.documentUploadWarning)
                 }
             }
 
             clearDraft()
-            navigate(`/owner/companies/${created.id}/edit`)
+            navigate(returnTo, {
+                replace: true,
+                state: navigationState,
+            })
         } catch (err) {
             setError(err.message || 'Unable to create company.')
         } finally {

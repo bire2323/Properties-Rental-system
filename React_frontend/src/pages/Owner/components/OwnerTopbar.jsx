@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Bell, Heart, Moon, SunMedium, Menu, ChevronDown } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
-import { cn } from '@/lib/utils'
+import { cn, getImageUrl } from '@/lib/utils'
 
 const routeTitles = {
     dashboard: 'Dashboard',
@@ -22,6 +22,7 @@ export default function OwnerTopbar({ onToggleSidebar }) {
     const { theme, toggleTheme } = useTheme()
     const [menuOpen, setMenuOpen] = useState(false)
     const menuRef = useRef(null)
+    const profileImageUrl = user?.profile_image ? getImageUrl(user.profile_image) : null;
 
     const pageTitle = (() => {
         const segments = location.pathname.split('/').filter(Boolean)
@@ -90,7 +91,19 @@ export default function OwnerTopbar({ onToggleSidebar }) {
                             className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                         >
                             <div className="flex h-5 sm:h-9 w-5 sm:w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
-                                {profileInitial}
+                                {profileImageUrl ? (
+                                    <img
+                                        src={profileImageUrl}
+                                        alt={profileLabel}
+                                        className="h-full w-full rounded-full object-cover"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.parentElement.textContent = profileInitial;
+                                        }}
+                                    />
+                                ) : (
+                                    profileInitial
+                                )}
                             </div>
                             <span className="hidden md:inline">{profileLabel}</span>
                             <ChevronDown className="h-4 w-4 text-slate-500" />

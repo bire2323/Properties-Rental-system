@@ -3,22 +3,35 @@ import { Clock, Loader2, ShieldCheck } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
-import { getDashboardRoute } from '@/services/authService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useState } from 'react';
 
 export default function PendingApproval() {
-
     const navigate = useNavigate();
-    const { user, loading } = useAuth();
+    const { user, loading, checkAuth } = useAuth();
+    const [isChecking, setIsChecking] = useState(false);
+
+    // ✅ Redirect to dashboard if user is approved
+    useEffect(() => {
+        if (user && user.owner_profile?.can_post_property === true) {
+            navigate('/owner/dashboard', { replace: true });
+        }
+    }, [user, navigate]);
+
+    const handleCheckStatus = async () => {
+        setIsChecking(true);
+        await checkAuth();
+        setIsChecking(false);
+
+    };
 
     if (loading) {
         return (
-            <div className='h-[50vh] w-full flex justify-center items-center'>
-                <Loader2 />
-
+            <div className="h-[50vh] w-full flex justify-center items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#c99b43]" />
             </div>
-        )
+        );
     }
 
     return (
@@ -42,18 +55,22 @@ export default function PendingApproval() {
                         <ShieldCheck className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-blue-700 dark:text-blue-300">
                             You will be able to list properties as soon as your account is approved.
-                            We'll notify you via <span className='rounded px-1 hover:text-underline focus:text-underline bg-[#c99b43] text-white'>email</span> .
+                            We'll notify you via <span className="rounded px-1 bg-[#c99b43] text-white">email</span>.
                         </p>
                     </div>
                     <button
-                        onClick={() => {
-
-                            const dashboardRoute = getDashboardRoute(user?.role)
-                            navigate(dashboardRoute)
-                        }}
-                        className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#c99b43] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b88a35] transition"
+                        onClick={handleCheckStatus}
+                        disabled={isChecking}
+                        className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#c99b43] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b88a35] transition disabled:opacity-50"
                     >
-                        Check Status
+                        {isChecking ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Checking...
+                            </>
+                        ) : (
+                            'Check Status'
+                        )}
                     </button>
                 </Card>
             </main>

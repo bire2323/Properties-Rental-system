@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
     Check, ChevronRight, ChevronLeft, Building2, Car,
     Plus, X, Loader2, Home, CarFront
@@ -866,6 +866,7 @@ function buildPayload(form) {
 
 export default function AddProperty() {
     const navigate = useNavigate()
+    const location = useLocation()
     const { user } = useAuth()
     const formRef = useRef(null)
     const [currentStep, setCurrentStep] = useState(1)
@@ -1029,10 +1030,42 @@ export default function AddProperty() {
         }
     }
 
-    const handleCompanyCreated = (company) => {
-        setCompanies((prev) => [...prev, { ...company, manager_ids: [user?.id] }])
-        onChange('ownership', 'company')
-        onChange('company', company.id)
+    useEffect(() => {
+        const createdCompany = location.state?.createdCompany
+        if (!createdCompany) return
+
+        setCompanies((prev) => {
+            const nextCompany = { ...createdCompany, manager_ids: createdCompany.manager_ids || [user?.id] }
+            const existingIndex = prev.findIndex((company) => company.id === nextCompany.id)
+
+            if (existingIndex >= 0) {
+                const updated = [...prev]
+                updated[existingIndex] = nextCompany
+                return updated
+            }
+
+            return [nextCompany, ...prev]
+        })
+
+        setForm((prev) => ({
+            ...prev,
+            ownership: 'company',
+            company: createdCompany.id,
+        }))
+
+        navigate(location.pathname, {
+            replace: true,
+            state: {},
+        })
+    }, [location.state, navigate, user?.id])
+
+    const handleCreateCompany = () => {
+        navigate('/owner/companies/create', {
+            state: {
+                returnTo: location.pathname,
+                source: 'property-create',
+            },
+        })
     }
 
     return (
@@ -1088,7 +1121,7 @@ export default function AddProperty() {
                                 errors={errors}
                                 companies={companies}
                                 companiesLoading={companiesLoading}
-                                onAddCompany={() => navigate('/owner/companies/create')}
+                                onAddCompany={handleCreateCompany}
                                 user={user}
                             />
                         )}

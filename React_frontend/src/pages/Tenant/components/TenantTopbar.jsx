@@ -3,6 +3,7 @@ import { Bell, Heart, Menu, ChevronDown } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
+import { cn, getImageUrl } from '@/lib/utils'
 
 const routeTitles = {
     dashboard: 'Dashboard',
@@ -20,7 +21,8 @@ export default function TenantTopbar({ onToggleSidebar }) {
     const { theme, toggleTheme } = useTheme()
     const [open, setOpen] = useState(false)
     const ref = useRef(null)
-
+    const profileImageUrl = user?.profile_image ? getImageUrl(user.profile_image) : null;
+    const userInitial = user?.first_name ? user.first_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'T';
     const pageTitle = (() => {
         const segments = location.pathname.split('/').filter(Boolean)
         const page = segments[1] || 'dashboard'
@@ -59,7 +61,22 @@ export default function TenantTopbar({ onToggleSidebar }) {
 
                     <div className="relative" ref={ref}>
                         <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm dark:border-slate-800 dark:bg-slate-900">
-                            <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-semibold">{(user?.first_name || 'U').charAt(0)}</div>
+                            <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-semibold">
+
+                                {profileImageUrl ? (
+                                    <img
+                                        src={profileImageUrl}
+                                        alt={profileLabel}
+                                        className="h-full w-full rounded-full object-cover"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.parentElement.textContent = profileInitial;
+                                        }}
+                                    />
+                                ) : (
+                                    userInitial
+                                )}
+                            </div>
                             <span className="hidden sm:inline">{user?.first_name || user?.email?.split('@')[0]}</span>
                             <ChevronDown className="h-4 w-4 text-slate-500" />
                         </button>
