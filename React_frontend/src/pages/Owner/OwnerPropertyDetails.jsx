@@ -139,6 +139,27 @@ export default function OwnerPropertyDetails() {
                                 <p className="mt-2 font-semibold text-slate-900 dark:text-white">{new Date(property.updated_at).toLocaleDateString()}</p>
                             </div>
                         </div>
+                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
+                            {property.features?.length ? (
+                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                    {property.features.map((feature) => {
+                                        const Icon = getFeatureIcon(feature.name)
+                                        return (
+                                            <div
+                                                key={feature.id}
+                                                className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4 dark:bg-slate-900"
+                                            >
+                                                <Icon className="h-5 w-5 text-[#c99b43]" />
+                                                <span className="font-medium text-slate-900 dark:text-white">{feature.name}</span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">No features listed for this property.</p>
+                            )}
+                        </div>
                     </div>
                     <div className="space-y-6">
                         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -194,27 +215,7 @@ export default function OwnerPropertyDetails() {
                             </div>
                         </div>
 
-                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
-                            {property.features?.length ? (
-                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                    {property.features.map((feature) => {
-                                        const Icon = getFeatureIcon(feature.name)
-                                        return (
-                                            <div
-                                                key={feature.id}
-                                                className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4 dark:bg-slate-900"
-                                            >
-                                                <Icon className="h-5 w-5 text-[#c99b43]" />
-                                                <span className="font-medium text-slate-900 dark:text-white">{feature.name}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">No features listed for this property.</p>
-                            )}
-                        </div>
+                        <div></div>
                     </div>
                 </div>
             )}

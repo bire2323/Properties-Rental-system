@@ -4,7 +4,7 @@ import {
     ChevronLeft, ChevronRight, Check,
     Building2, Car, Plus, X, Loader2
 } from 'lucide-react'
-import { getPropertyById, updateProperty, getMyManagedCompanies } from '../../api/property/propertyApi'
+import { getPropertyById, updateProperty, getMyManagedCompanies, createProperty } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -159,7 +159,7 @@ function buildUpdatePayload(form) {
     fd.append('rental_unit', form.rental_unit)
     if (form.security_deposit) fd.append('security_deposit', parseFloat(form.security_deposit).toFixed(2))
     fd.append('is_available', form.is_available)
-    fd.append('status', form.status)
+    fd.append('status', "active")
     if (form.company) fd.append('company', form.company)
     if (form.address?.trim()) fd.append('address', form.address.trim())
     fd.append('city', form.city.trim())
@@ -207,6 +207,7 @@ function buildUpdatePayload(form) {
     return fd
 }
 
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function EditProperty() {
@@ -227,6 +228,34 @@ export default function EditProperty() {
         async function load() {
             setLoading(true)
             setLoadError(null)
+
+            const isDraft = location.pathname.includes('/draft/edit')
+
+            if (isDraft) {
+                // ✅ Load from localStorage
+                try {
+                    const draftData = localStorage.getItem('property_add_draft')
+                    if (draftData) {
+
+                        const parsed = JSON.parse(draftData)
+                        if (parsed.form.ownership === 'company' && !parsed.form.company) {
+                            parsed.form.ownership = 'personal';
+                        }
+                        setForm(parsed.form)
+                        setCurrentStep(parsed.currentStep);
+                        setLoading(false)
+                        return
+                    } else {
+                        setLoadError('No draft found. Please create a new property.')
+                        setLoading(false)
+                        return
+                    }
+                } catch (err) {
+                    setLoadError('Failed to load draft .')
+                    setLoading(false)
+                    return
+                }
+            }
             try {
                 const [data, companiesData] = await Promise.all([
                     getPropertyById(id),
@@ -313,7 +342,9 @@ export default function EditProperty() {
     }, [])
 
     const handleNext = () => {
+
         const stepErrors = validateStep(currentStep, form)
+        // console.log("error", stepErrors/)
         if (Object.keys(stepErrors).length > 0) { setErrors(stepErrors); return }
         setErrors({})
         setCurrentStep((prev) => Math.min(prev + 1, STEPS.length))
@@ -327,6 +358,45 @@ export default function EditProperty() {
     }
 
     const handleSubmit = async () => {
+        const isDraft = location.pathname.includes('/draft/edit')
+        if (isDraft) {
+            setSaving(true);
+            try {
+
+                // 1. Validate all steps (ensure all required fields are filled)
+                const allErrors = {};
+                for (let step = 1; step <= STEPS.length; step++) {
+                    const stepErrors = validateStep(step, form);
+                    Object.assign(allErrors, stepErrors);
+                }
+                if (Object.keys(allErrors).length > 0) {
+                    setErrors(allErrors);
+                    setSaving(false);
+                    // Scroll to the first error step
+                    const firstErrorStep = Object.keys(allErrors).reduce((min, key) => {
+                        const step = key.includes('house_detail') || key.includes('car_detail') ? 4 : 1;
+                        return Math.min(min, step);
+                    }, 5);
+                    setCurrentStep(firstErrorStep);
+                    return;
+                }
+
+
+                const payload = buildUpdatePayload(form);
+
+
+                await createProperty(payload);
+
+                localStorage.removeItem('property_add_draft');
+
+                navigate('/owner/properties');
+            } catch (err) {
+                setGeneralError('Failed to save draft.');
+            } finally {
+                setSaving(false);
+            }
+            return;
+        }
         setSaving(true)
         setGeneralError(null)
         try {
