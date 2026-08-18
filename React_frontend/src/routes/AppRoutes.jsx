@@ -1,7 +1,19 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from '../components/auth/ProtectedRoute'
+import AdminRoute from '../components/auth/AdminRoute'
 import AdminDashboard from '../pages/Admin/AdminDashboard'
+import Users from '../pages/Admin/Users'
+import AdminProperties from '../pages/Admin/Properties'
+import AdminPropertyDetail from '../pages/Admin/AdminPropertyDetail'
+import Rentals from '../pages/Admin/Rentals'
+import Verification from '../pages/Admin/Verification'
+import VerificationDetail from '../pages/Admin/VerificationDetail'
+import Reports from '../pages/Admin/Reports'
+import Payments from '../pages/Admin/Payments'
+import AdminSetting from '../pages/Admin/AdminSetting'
+import Notification from '../pages/Admin/Notification'
+import NotificationDetail from '../pages/Admin/NotificationDetail'
 import OwnerDashboard from '../pages/Owner/OwnerDashboard'
 import OwnerLayout from '../pages/Owner/OwnerLayout'
 import OwnerBookings from '../pages/Owner/OwnerBookings'
@@ -104,9 +116,97 @@ function AppRoutes() {
                 <Route
                     path="/admin-dashboard"
                     element={
-                        <ProtectedRoute>
+                        <AdminRoute>
                             <AdminDashboard />
-                        </ProtectedRoute>
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/users"
+                    element={
+                        <AdminRoute>
+                            <Users />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/properties"
+                    element={
+                        <AdminRoute>
+                            <AdminProperties />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/properties/:id"
+                    element={
+                        <AdminRoute>
+                            <AdminPropertyDetail />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/rentals"
+                    element={
+                        <AdminRoute>
+                            <Rentals />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/verification"
+                    element={
+                        <AdminRoute>
+                            <Verification />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/verification/:id"
+                    element={
+                        <AdminRoute>
+                            <VerificationDetail />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/reports"
+                    element={
+                        <AdminRoute>
+                            <Reports />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/payments"
+                    element={
+                        <AdminRoute>
+                            <Payments />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/settings"
+                    element={
+                        <AdminRoute>
+                            <AdminSetting />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/notifications"
+                    element={
+                        <AdminRoute>
+                            <Notification />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/notifications/:id"
+                    element={
+                        <AdminRoute>
+                            <NotificationDetail />
+                        </AdminRoute>
                     }
                 />
 

@@ -289,3 +289,79 @@ class OwnerVerificationDocument(models.Model):
 
     def __str__(self):
         return f"{self.owner_profile.user.email} - {self.get_document_type_display()}"
+
+
+class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        BOOKING = "Booking", "Booking"
+        PROPERTY = "Property", "Property"
+        PAYMENT = "Payment", "Payment"
+        SYSTEM = "System", "System"
+
+    class NotificationStatus(models.TextChoices):
+        NEW = "New", "New"
+        RECEIVED = "Received", "Received"
+        CONFIRMED = "Confirmed", "Confirmed"
+        INFO = "Info", "Info"
+
+    type = models.CharField(
+        max_length=20,
+        choices=NotificationType.choices,
+        default=NotificationType.SYSTEM,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=NotificationStatus.choices,
+        default=NotificationStatus.NEW,
+    )
+    title = models.CharField(max_length=255)
+    details = models.TextField(blank=True, null=True)
+    info = models.CharField(max_length=255, blank=True, null=True)
+
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sent_notifications",
+    )
+    sender_name = models.CharField(max_length=255, blank=True, null=True)
+    sender_email = models.EmailField(blank=True, null=True)
+    sender_phone = models.CharField(max_length=30, blank=True, null=True)
+
+    property_obj = models.ForeignKey(
+        "properties.Property",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
+    property_title = models.CharField(max_length=255, blank=True, null=True)
+    property_status = models.CharField(max_length=50, blank=True, null=True)
+    property_address = models.CharField(max_length=500, blank=True, null=True)
+    property_bedrooms = models.PositiveIntegerField(null=True, blank=True)
+    property_bathrooms = models.PositiveIntegerField(null=True, blank=True)
+    property_size = models.CharField(max_length=50, blank=True, null=True)
+    property_nightly_price = models.CharField(max_length=100, blank=True, null=True)
+    property_image = models.CharField(max_length=500, blank=True, null=True)
+    property_owner = models.CharField(max_length=255, blank=True, null=True)
+    property_added_date = models.CharField(max_length=50, blank=True, null=True)
+
+    tenant_name = models.CharField(max_length=255, blank=True, null=True)
+    tenant_phone = models.CharField(max_length=30, blank=True, null=True)
+    check_in_date = models.CharField(max_length=50, blank=True, null=True)
+    check_out_date = models.CharField(max_length=50, blank=True, null=True)
+    total_amount = models.CharField(max_length=100, blank=True, null=True)
+    payment_method = models.CharField(max_length=100, blank=True, null=True)
+    payment_status = models.CharField(max_length=50, blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+
+    def __str__(self):
+        return f"{self.type} - {self.title}"

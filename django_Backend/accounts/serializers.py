@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Profile, OwnerProfile, OwnerVerificationDocument
+from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification
 from .services import verify_google_token
 
 User = get_user_model()
@@ -390,3 +390,78 @@ class FullUserSerializer(UserSerializer):
         fields = UserSerializer.Meta.fields + (
             "verification_documents",
         )
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    date = serializers.SerializerMethodField()
+    time = serializers.SerializerMethodField()
+    sender = serializers.SerializerMethodField()
+    phone = serializers.CharField(source="sender_phone", read_only=True, default="")
+    email = serializers.CharField(source="sender_email", read_only=True, default="")
+    owner = serializers.CharField(source="property_owner", read_only=True, default="")
+    image = serializers.CharField(source="property_image", read_only=True, default="")
+    bedrooms = serializers.IntegerField(source="property_bedrooms", read_only=True, default=0)
+    bathrooms = serializers.IntegerField(source="property_bathrooms", read_only=True, default=0)
+    size = serializers.CharField(source="property_size", read_only=True, default="")
+    nightlyPrice = serializers.CharField(source="property_nightly_price", read_only=True, default="")
+    addedDate = serializers.CharField(source="property_added_date", read_only=True, default="")
+
+    class Meta:
+        model = Notification
+        fields = (
+            "id",
+            "type",
+            "status",
+            "title",
+            "details",
+            "info",
+            "sender",
+            "sender_name",
+            "email",
+            "phone",
+            "sender_phone",
+            "date",
+            "time",
+            "tenant_name",
+            "tenant_phone",
+            "check_in_date",
+            "check_out_date",
+            "total_amount",
+            "payment_method",
+            "payment_status",
+            "property_title",
+            "property_status",
+            "property_address",
+            "property_bedrooms",
+            "property_bathrooms",
+            "property_size",
+            "property_nightly_price",
+            "property_image",
+            "property_owner",
+            "property_added_date",
+            "owner",
+            "image",
+            "bedrooms",
+            "bathrooms",
+            "size",
+            "nightlyPrice",
+            "addedDate",
+            "created_at",
+        )
+
+    def get_date(self, obj):
+        if obj.created_at:
+            return obj.created_at.strftime("%b %d, %Y")
+        return ""
+
+    def get_time(self, obj):
+        if obj.created_at:
+            return obj.created_at.strftime("%I:%M %p")
+        return ""
+
+    def get_sender(self, obj):
+        if obj.sender_name:
+            return obj.sender_name
+        if obj.sender:
+            return f"{obj.sender.first_name} {obj.sender.last_name}".strip() or obj.sender.email
+        return "System"
