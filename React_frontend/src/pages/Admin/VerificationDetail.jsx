@@ -5,6 +5,15 @@ import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import { getOwnerVerificationDetail, updateOwnerVerificationStatus } from '../../api/admin/adminApi'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '../../components/ui/dialog'
+import { Button } from '../../components/ui'
 
 function formatDate(value) {
     if (!value) return 'N/A'
@@ -25,6 +34,9 @@ function VerificationDetail() {
     const [ownerData, setOwnerData] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
+    const [rejectionReason, setRejectionReason] = useState('')
+    const [saving, setSaving] = useState(false)
     const navigate = useNavigate()
     const { id } = useParams()
     const { isDark } = useTheme()
@@ -60,20 +72,36 @@ function VerificationDetail() {
     const profileImage = ownerData?.profile_image || ownerData?.profile?.profile_image || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80'
     const documentImage = document?.document_image || null
 
-    const handleDecision = async (status) => {
+    const handleDecision = async (status, reason = '') => {
+        setSaving(true)
+        setError('')
         try {
-            await updateOwnerVerificationStatus(id, status)
+            await updateOwnerVerificationStatus(id, status, reason)
             setOwnerData((current) => ({
                 ...current,
                 owner_profile: {
                     ...current.owner_profile,
                     verification_status: status,
                     can_post_property: status === 'approved',
+                    rejection_reason: reason,
                 },
             }))
+            setRejectionDialogOpen(false)
+            setRejectionReason('')
         } catch (err) {
             setError(err.message || 'Unable to update verification status.')
+        } finally {
+            setSaving(false)
         }
+    }
+
+    const submitRejection = () => {
+        const reason = rejectionReason.trim()
+        if (!reason) {
+            setError('Please enter a rejection reason.')
+            return
+        }
+        handleDecision('rejected', reason)
     }
 
     if (loading) {
@@ -283,7 +311,7 @@ function VerificationDetail() {
                             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                                 <button
                                     type="button"
-                                    onClick={() => handleDecision('rejected')}
+                                    onClick={() => setRejectionDialogOpen(true)}
                                     className={`rounded-lg px-6 py-3 text-sm font-medium transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                 >
                                     Reject
@@ -296,6 +324,33 @@ function VerificationDetail() {
                                     Approve
                                 </button>
                             </div>
+
+                            <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
+                                <DialogContent className={isDark ? 'border-slate-700 bg-slate-900 text-white' : ''}>
+                                    <DialogHeader>
+                                        <DialogTitle className={isDark ? 'text-white' : ''}>Reject Verification</DialogTitle>
+                                        <DialogDescription className={isDark ? 'text-slate-400' : ''}>
+                                            Enter the reason that will be saved with this rejection.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <textarea
+                                        value={rejectionReason}
+                                        onChange={(event) => setRejectionReason(event.target.value)}
+                                        placeholder="Rejection reason"
+                                        rows={4}
+                                        autoFocus
+                                        className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${isDark ? 'border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:border-slate-500' : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:border-slate-400'}`}
+                                    />
+                                    <DialogFooter>
+                                        <Button type="button" variant="outline" onClick={() => setRejectionDialogOpen(false)} disabled={saving}>
+                                            Cancel
+                                        </Button>
+                                        <Button type="button" variant="destructive" onClick={submitRejection} disabled={saving}>
+                                            {saving ? 'Saving...' : 'Reject User'}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </>
                     )}
                 </main>

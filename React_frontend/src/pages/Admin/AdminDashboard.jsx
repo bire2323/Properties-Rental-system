@@ -102,10 +102,10 @@ function AdminDashboard() {
         <div className="min-h-screen flex lg:flex">
             <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <div className="flex-1">
+            <div className="min-w-0 flex-1 overflow-x-hidden">
                 <AdminTopbar onToggleSidebar={() => setSidebarOpen(true)} />
 
-                <main className="mx-auto max-w-[1700px] px-4 py-6 sm:px-5 lg:px-8">
+                <main className="mx-auto min-w-0 max-w-[1700px] overflow-x-hidden px-4 py-6 sm:px-5 lg:px-8">
                     <div className="mb-6 flex items-center justify-between gap-4">
                         <h1 className="text-3xl font-bold tracking-[-0.04em]">
                             Dashboard
@@ -113,9 +113,9 @@ function AdminDashboard() {
                     </div>
 
                     {loading ? (
-                        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5 mb-8">
+                        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 mb-8 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
                             {[...Array(5)].map((_, i) => (
-                                <Card key={i} className="p-4">
+                                <Card key={i} className="p-2 sm:p-4">
                                     <div className="space-y-2">
                                         <div className="h-4 bg-muted rounded animate-pulse"></div>
                                         <div className="h-8 bg-muted rounded animate-pulse"></div>
@@ -129,7 +129,7 @@ function AdminDashboard() {
                             <p className="mt-2">{error}</p>
                         </div>
                     ) : (
-                        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5 mb-8">
+                        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 mb-8 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
                             {statCards.map((item) => (
                                 <AdminStatCard key={item.label} {...item} />
                             ))}

@@ -111,7 +111,7 @@ function Payments() {
         <div className={`min-h-screen flex lg:flex ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
             <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <div className="flex-1">
+            <div className="min-w-0 flex-1 overflow-x-hidden">
                 <AdminTopbar onToggleSidebar={() => setSidebarOpen(true)} />
 
                 <main className={`mx-auto w-full px-4 py-6 sm:px-5 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
@@ -133,13 +133,13 @@ function Payments() {
                     </div>
 
                     {paymentRows.length > 0 && (
-                        <div className="mb-6 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="mb-6 grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 md:grid-cols-2 xl:grid-cols-4">
                             {statCards.map((item) => {
                                 const Icon = item.icon
                                 const isUp = item.trend === 'up'
 
                                 return (
-                                    <div key={item.label} className={`rounded-md border shadow-sm p-3 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+                                    <div key={item.label} className={`min-w-0 rounded-md border p-2 shadow-sm sm:p-3 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                                         <div className="flex items-center justify-between gap-2">
                                             <div className={`flex h-8 w-8 items-center justify-center rounded-md ${item.bg}`}>
                                                 <Icon className="h-4 w-4" />
@@ -149,10 +149,10 @@ function Payments() {
                                                 {item.change}
                                             </div>
                                         </div>
-                                        <div className={`mt-2 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        <div className={`mt-2 truncate text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                             {item.label}
                                         </div>
-                                        <div className={`mt-1 text-xl font-bold tracking-[-0.03em] ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        <div className={`mt-1 break-words text-xl font-bold tracking-[-0.03em] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                             {item.value}
                                         </div>
                                     </div>

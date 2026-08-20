@@ -15,6 +15,7 @@ import {
 import logo from '../../assets/logo.jpg'
 import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../hooks/useTheme'
+import { getSiteSettings, resolveSiteMediaUrl } from '../../api/siteSettingsApi'
 
 const propertyTypes = [
   { label: 'All Properties', value: '' },
@@ -62,6 +63,7 @@ function Navbar() {
   const navigate = useNavigate()
   const { isDark, toggleTheme } = useTheme()
   const { user, logout, loading } = useAuth()
+  const [siteSettings, setSiteSettings] = useState(null)
   const [propertyDropdownOpen, setPropertyDropdownOpen] = useState(false)
   const [vehicleDropdownOpen, setVehicleDropdownOpen] = useState(false)
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false)
@@ -76,6 +78,10 @@ function Navbar() {
   }
   const userLabel = user?.first_name || user?.email?.split('@')[0] || 'User'
   const userInitial = userLabel.charAt(0).toUpperCase()
+
+  useEffect(() => {
+    getSiteSettings().then(setSiteSettings).catch(() => { })
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -138,13 +144,13 @@ function Navbar() {
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <button type="button" onClick={() => navigate('/')} className="flex shrink-0 items-center gap-3">
           <img
-            src={logo}
-            alt="NX Rent logo"
+            src={resolveSiteMediaUrl(siteSettings?.logo) || logo}
+            alt={`${siteSettings?.site_name || 'Website'} logo`}
             className="h-14 w-auto object-contain"
           />
           <span className="text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d]">
             <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
-              NexaSpace
+              {siteSettings?.site_name || 'NexaSpace'}
             </span>
           </span>
         </button>

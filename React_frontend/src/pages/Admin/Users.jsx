@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
     Building2,
     MoreHorizontal,
@@ -11,7 +12,7 @@ import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import AdminStatCard from './components/AdminStatCard'
 import { useTheme } from '../../hooks/useTheme'
-import { getAllUsers, getUserStatisticsForUsersPage } from '../../api/admin/adminApi'
+import { deleteAdminUser, getAllUsers, getUserStatisticsForUsersPage, resetAdminUserLogin } from '../../api/admin/adminApi'
 import {
     Button,
     Input,
@@ -38,7 +39,11 @@ const getStatusClasses = (status) => {
 function Users() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [openMenuId, setOpenMenuId] = useState(null)
+    const [userToDelete, setUserToDelete] = useState(null)
+    const [deleting, setDeleting] = useState(false)
+    const [resettingUserId, setResettingUserId] = useState(null)
     const { isDark } = useTheme()
+    const navigate = useNavigate()
 
     // State for data fetching
     const [loading, setLoading] = useState(true)
@@ -123,19 +128,52 @@ function Users() {
     const displayedUsers = users.slice(0, visibleCount)
     const hasMoreUsers = users.length > visibleCount
 
+    const handleDeleteUser = async () => {
+        if (!userToDelete) return
+
+        try {
+            setDeleting(true)
+            await deleteAdminUser(userToDelete.id)
+            setUsers((currentUsers) => currentUsers.filter((user) => user.id !== userToDelete.id))
+            setTotalCount((count) => Math.max(0, count - 1))
+            setUserToDelete(null)
+        } catch (deleteError) {
+            setError(deleteError.message || 'Failed to delete user.')
+        } finally {
+            setDeleting(false)
+        }
+    }
+
+    const handleResetUserLogin = async (user) => {
+        try {
+            setResettingUserId(user.id)
+            await resetAdminUserLogin(user.id)
+            setUsers((currentUsers) => currentUsers.map((currentUser) => (
+                currentUser.id === user.id
+                    ? { ...currentUser, status: 'Active', login_blocked: false }
+                    : currentUser
+            )))
+            setOpenMenuId(null)
+        } catch (resetError) {
+            setError(resetError.message || 'Failed to reset user login access.')
+        } finally {
+            setResettingUserId(null)
+        }
+    }
+
     return (
         <div className="min-h-screen flex lg:flex">
             <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <div className="flex-1">
+            <div className="min-w-0 flex-1 overflow-x-hidden">
                 <AdminTopbar onToggleSidebar={() => setSidebarOpen(true)} />
 
-                <main className="mx-auto w-full px-4 py-6 sm:px-5 lg:px-8">
+                <main className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden px-4 py-6 sm:px-5 lg:px-8">
                     <div className="mb-6 flex items-center justify-between gap-4">
                         <h1 className="text-3xl font-bold tracking-[-0.04em]">Users</h1>
                     </div>
 
-                    <div className="mb-8 grid gap-3 md:grid-cols-3 xl:grid-cols-3">
+                    <div className="mb-8 grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-3">
                         {statCards.map((item) => (
                             <AdminStatCard key={item.label} {...item} />
                         ))}
@@ -163,20 +201,18 @@ function Users() {
 
                             <div className="flex flex-wrap items-center gap-2">
                                 <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                            {roleFilter === 'all' ? 'All Roles' : roleFilter === 'OWNER' ? 'Property Owners' : 'Customers'}
-                                        </Button>
+                                    <DropdownMenuTrigger variant="outline" size="sm">
+                                        {roleFilter === 'all' ? 'All Roles' : roleFilter === 'owner' ? 'Owner' : 'Tenant'}
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => handleRoleFilterChange('all')}>
                                             All Roles
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleRoleFilterChange('TENANT')}>
-                                            Customers
+                                        <DropdownMenuItem onClick={() => handleRoleFilterChange('tenant')}>
+                                            Tenant
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleRoleFilterChange('OWNER')}>
-                                            Property Owners
+                                        <DropdownMenuItem onClick={() => handleRoleFilterChange('owner')}>
+                                            Owner
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -260,26 +296,24 @@ function Users() {
                                                 <TableCell className="px-6 py-4">
                                                     <div className="flex items-center justify-end">
                                                         <DropdownMenu open={openMenuId === user.id} onOpenChange={(open) => setOpenMenuId(open ? user.id : null)}>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon-sm">
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
+                                                            <DropdownMenuTrigger variant="ghost" size="icon-sm">
+                                                                <MoreHorizontal className="h-4 w-4" />
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuItem onClick={() => {
-                                                                    console.log('View Detail:', user.id)
+                                                                    navigate(`/admin-dashboard/users/${user.id}`)
                                                                     setOpenMenuId(null)
                                                                 }}>
                                                                     View Detail
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    console.log('Reject:', user.id)
-                                                                    setOpenMenuId(null)
-                                                                }}>
-                                                                    Reject
+                                                                <DropdownMenuItem
+                                                                    disabled={resettingUserId === user.id}
+                                                                    onClick={() => handleResetUserLogin(user)}
+                                                                >
+                                                                    {resettingUserId === user.id ? 'Resetting...' : 'Reset / Unblock'}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem variant="destructive" onClick={() => {
-                                                                    console.log('Delete:', user.id)
+                                                                    setUserToDelete(user)
                                                                     setOpenMenuId(null)
                                                                 }}>
                                                                     Delete
@@ -309,6 +343,26 @@ function Users() {
                     </Card>
                 </main>
             </div>
+
+            {userToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+                    <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Are you sure?</h2>
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                            Delete {userToDelete.name}? This action cannot be undone.
+                        </p>
+                        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+                        <div className="mt-6 flex justify-end gap-3">
+                            <Button type="button" variant="outline" onClick={() => setUserToDelete(null)} disabled={deleting}>
+                                Cancel
+                            </Button>
+                            <Button type="button" variant="destructive" onClick={handleDeleteUser} disabled={deleting}>
+                                {deleting ? 'Deleting...' : 'Yes, Delete'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

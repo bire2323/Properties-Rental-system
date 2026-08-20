@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/properties/', include('properties.urls')),
     path('api/companies/', include('properties.company_urls')),
     path('api/interactions/', include('interactions.urls')),
+    path('api/site-settings/', include('site_settings.urls')),
 ]
 
 if settings.DEBUG:

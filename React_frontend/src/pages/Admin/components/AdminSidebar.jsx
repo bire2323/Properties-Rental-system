@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard,
@@ -18,6 +19,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
 import { cn } from '@/lib/utils'
 import logo from '../../../assets/logo.jpg'
+import { getSiteSettings, resolveSiteMediaUrl } from '../../../api/siteSettingsApi'
 
 const managementLinks = [
     { label: 'Dashboard', path: '/admin-dashboard', icon: LayoutDashboard },
@@ -38,6 +40,11 @@ export default function AdminSidebar({ isOpen, onClose }) {
     const navigate = useNavigate()
     const { logout } = useAuth()
     const { isDark } = useTheme()
+    const [siteSettings, setSiteSettings] = useState(null)
+
+    useEffect(() => {
+        getSiteSettings().then(setSiteSettings).catch(() => { })
+    }, [])
 
     return (
         <aside
@@ -49,9 +56,9 @@ export default function AdminSidebar({ isOpen, onClose }) {
         >
             <div className={`flex items-center justify-between border-b px-5 py-6 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                 <div className="flex items-center gap-3">
-                    <img src={logo} alt="NexaSpace logo" className="h-11 w-11 rounded-lg object-cover" />
+                    <img src={resolveSiteMediaUrl(siteSettings?.logo) || logo} alt={`${siteSettings?.site_name || 'Website'} logo`} className="h-11 w-11 rounded-lg object-cover" />
                     <div>
-                        <div className={`text-xl font-bold leading-none tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>NexaSpace</div>
+                        <div className={`text-xl font-bold leading-none tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{siteSettings?.site_name || 'NexaSpace'}</div>
                         <div className={`mt-1 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                             Property Rental
                         </div>

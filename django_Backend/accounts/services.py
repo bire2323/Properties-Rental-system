@@ -1,4 +1,6 @@
 import os
+from datetime import timedelta
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from google.oauth2 import id_token
@@ -11,9 +13,20 @@ User = get_user_model()
 
 def create_tokens(user):
     """Generate an access token and refresh token pair for a user."""
+    from site_settings.models import SiteSettings
+
+    security = SiteSettings.objects.filter(pk=1).first()
+    timeout_minutes = security.session_timeout_minutes if security else 30
+    session_started = int(timezone.now().timestamp())
     refresh = RefreshToken.for_user(user)
+    refresh["session_started"] = session_started
+    refresh["session_timeout_minutes"] = timeout_minutes
+    access_token = refresh.access_token
+    access_token["session_started"] = session_started
+    access_token["session_timeout_minutes"] = timeout_minutes
+    access_token.set_exp(lifetime=timedelta(minutes=timeout_minutes))
     return {
-        "access": str(refresh.access_token),
+        "access": str(access_token),
         "refresh": str(refresh),
     }
 

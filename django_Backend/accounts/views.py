@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from datetime import timedelta
 from django.http import JsonResponse
 from django.db.models import Q
 from django.utils import timezone
@@ -8,6 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from .permissions import CookieJWTAuthentication, IsAuthenticatedCookie
@@ -24,6 +26,9 @@ from .serializers import (
 )
 from .services import clear_auth_cookies, create_tokens, set_auth_cookies
 from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification
+from bookings.models import Booking
+from properties.models import Property
+from site_settings.models import SiteSettings
 
 User = get_user_model()
 
@@ -113,6 +118,19 @@ class RegisterAPIView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
+        site_settings = SiteSettings.objects.filter(pk=1).first()
+        if site_settings is None or site_settings.new_user_registration:
+            Notification.objects.create(
+                type=Notification.NotificationType.SYSTEM,
+                status=Notification.NotificationStatus.NEW,
+                title="New user registration",
+                details=f"{user.get_full_name().strip() or user.email} created a new account.",
+                info="User registration",
+                sender=user,
+                sender_name=user.get_full_name().strip() or user.email,
+                sender_email=user.email,
+            )
+
         tokens = create_tokens(user)
         response = Response(
             {
@@ -140,6 +158,7 @@ class LoginAPIView(GenericAPIView):
         response = Response(
             {
                 "user": UserSerializer(user).data,
+                "session_timeout_minutes": getattr(SiteSettings.objects.filter(pk=1).first(), "session_timeout_minutes", 30),
                 "message": "Login successful.",
             },
             status=status.HTTP_200_OK,
@@ -176,6 +195,7 @@ class GoogleAuthAPIView(GenericAPIView):
         response = Response(
             {
                 "user": UserSerializer(user).data,
+                "session_timeout_minutes": getattr(SiteSettings.objects.filter(pk=1).first(), "session_timeout_minutes", 30),
                 "message": "Google authentication successful.",
             },
             status=status.HTTP_200_OK,
@@ -194,13 +214,16 @@ class ProfileAPIView(APIView):
 
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticatedCookie]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request, *args, **kwargs):
         """Return the current user with nested profile data."""
         # Ensure Profile exists (create if missing)
         Profile.objects.get_or_create(user=request.user)
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = UserSerializer(request.user).data
+        if request.user.role == User.Role.ADMIN:
+            data["session_timeout_minutes"] = getattr(SiteSettings.objects.filter(pk=1).first(), "session_timeout_minutes", 30)
+        return Response(data, status=status.HTTP_200_OK)
 
     def put(self, request, *args, **kwargs):
         """
@@ -406,6 +429,27 @@ class FullUserDetailAPIView(APIView):
         serializer = FullUserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def delete(self, request, user_id=None, *args, **kwargs):
+        if not request.user.is_staff and not request.user.is_superuser:
+            return Response(
+                {"detail": "You do not have permission to delete users."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.is_staff or user.is_superuser or user.role == User.Role.ADMIN:
+            return Response(
+                {"detail": "Administrator accounts cannot be deleted here."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class AdminUserStatisticsAPIView(APIView):
     """
@@ -494,8 +538,9 @@ class AdminAllUsersAPIView(APIView):
         ).order_by('-created_at')
 
         # Apply role filter
-        if role_filter and role_filter.upper() in [User.Role.TENANT, User.Role.OWNER]:
-            queryset = queryset.filter(role=role_filter.upper())
+        normalized_role = role_filter.lower()
+        if normalized_role in [User.Role.TENANT, User.Role.OWNER]:
+            queryset = queryset.filter(role=normalized_role)
 
         # Apply search filter (search by name, email, or phone)
         if search:
@@ -528,7 +573,8 @@ class AdminAllUsersAPIView(APIView):
                 "email": user.email,
                 "phone": phone,
                 "role": user.role.title() if user.role else 'User',
-                "status": "Active" if user.is_active else "Inactive",
+                "status": "Blocked" if user.login_blocked else "Active" if user.is_active else "Inactive",
+                "login_blocked": user.login_blocked,
                 "created_at": user.created_at.isoformat() if user.created_at else None,
                 "profile_image": profile_image_url,
             })
@@ -540,6 +586,31 @@ class AdminAllUsersAPIView(APIView):
             "page_size": page_size,
             "total_pages": (total_count + page_size - 1) // page_size,
         }, status=status.HTTP_200_OK)
+
+
+class AdminUserLoginResetAPIView(APIView):
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticatedCookie]
+
+    def patch(self, request, user_id, *args, **kwargs):
+        if request.user.role != User.Role.ADMIN:
+            return Response(
+                {"detail": "You do not have permission to reset user login access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user.failed_login_attempts = 0
+        user.login_blocked = False
+        user.save(update_fields=["failed_login_attempts", "login_blocked", "updated_at"])
+        return Response(
+            {"id": user.id, "login_blocked": False, "message": "User login access has been reset."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class AdminOwnerVerificationAPIView(APIView):
@@ -634,9 +705,16 @@ class CookieTokenRefreshView(TokenRefreshView):
         response = super().post(request, *args, **kwargs)
 
         if response.status_code == status.HTTP_200_OK and response.data.get("access"):
+            security = SiteSettings.objects.filter(pk=1).first()
+            timeout_minutes = security.session_timeout_minutes if security else 30
+            access_token = RefreshToken(refresh_token).access_token
+            access_token["session_started"] = int(timezone.now().timestamp())
+            access_token["session_timeout_minutes"] = timeout_minutes
+            access_token.set_exp(lifetime=timedelta(minutes=timeout_minutes))
+            response.data["access"] = str(access_token)
             response.set_cookie(
                 key="access_token",
-                value=response.data["access"],
+                value=str(access_token),
                 httponly=True,
                 samesite="Lax",
                 secure=False,
@@ -647,7 +725,7 @@ class CookieTokenRefreshView(TokenRefreshView):
 
 
 class AdminNotificationListAPIView(APIView):
-    """Return all notifications with optional filtering for admin dashboard."""
+    """Return persisted admin notifications from the database."""
 
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticatedCookie]
@@ -662,128 +740,144 @@ class AdminNotificationListAPIView(APIView):
         type_filter = request.query_params.get("type", "").strip()
         search = request.query_params.get("search", "").strip()
 
-        queryset = Notification.objects.all().order_by("-created_at")
-
+        entries = NotificationSerializer(
+            Notification.objects.select_related("sender")
+            .filter(
+                Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
+                | Q(
+                    type=Notification.NotificationType.SYSTEM,
+                    title="New user registration",
+                )
+            ),
+            many=True,
+        ).data
         if type_filter and type_filter != "All":
-            queryset = queryset.filter(type=type_filter)
-
+            entries = [entry for entry in entries if entry["type"] == type_filter]
         if search:
-            queryset = queryset.filter(
-                Q(title__icontains=search) |
-                Q(details__icontains=search) |
-                Q(sender_name__icontains=search) |
-                Q(property_title__icontains=search) |
-                Q(type__icontains=search)
-            )
+            search_value = search.lower()
+            entries = [
+                entry for entry in entries
+                if search_value in " ".join(str(entry.get(key, "")) for key in ("title", "details", "sender", "property_title", "type")).lower()
+            ]
 
-        # If no notifications exist, seed with sample data for first-time use
-        if not queryset.exists():
-            self._seed_sample_notifications()
-            queryset = Notification.objects.all().order_by("-created_at")
+        entries.sort(key=lambda entry: entry.get("created_at", ""), reverse=True)
+        return Response(entries, status=status.HTTP_200_OK)
 
-        serializer = NotificationSerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def _payment_notifications(self):
+        from payments.models import PaymentTransaction
 
-    def _seed_sample_notifications(self):
-        Notification.objects.create(
-            type=Notification.NotificationType.BOOKING,
-            status=Notification.NotificationStatus.NEW,
-            title="New Booking Request",
-            info="Booking information",
-            details="Abebe Kebede requested to book Modern Apartment for a short stay. Please review the booking and approve or reject it based on availability and guest details.",
-            sender_name="Abebe Kebede",
-            sender_email="abebe@gmail.com",
-            sender_phone="+251 912 345 678",
-            tenant_name="Abebe Kebede",
-            tenant_phone="+251 912 345 678",
-            check_in_date="Aug 25, 2024",
-            check_out_date="Aug 30, 2024",
-            total_amount="ETB 850.00",
-            payment_method="Cash on Arrival",
-            payment_status="Pending",
-            property_title="Modern Apartment",
-            property_status="Active",
-            property_address="Bole Road, House No. 123, Addis Ababa, Ethiopia",
-            property_bedrooms=2,
-            property_bathrooms=2,
-            property_size="1200 sqft",
-            property_nightly_price="ETB 850 / night",
-            property_image="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=900&q=80",
-            property_owner="Hana Tesfaye",
-            property_added_date="Aug 15, 2024",
+        site_settings = SiteSettings.objects.filter(pk=1).first()
+        if site_settings is not None and not site_settings.payment_notifications:
+            return []
+
+        payments = PaymentTransaction.objects.select_related(
+            "payer", "booking", "booking__property"
         )
-        Notification.objects.create(
-            type=Notification.NotificationType.PROPERTY,
-            status=Notification.NotificationStatus.NEW,
-            title="New Property Added",
-            info="Listing was added successfully",
-            details="A new property listing was published and is now visible to tenants on the platform.",
-            sender_name="Hana Tesfaye",
-            sender_email="hana@gmail.com",
-            sender_phone="+251 911 561 220",
-            property_title="Hana Residence",
-            property_status="Published",
-            property_address="Calle 45, Addis Ababa",
-            property_bedrooms=3,
-            property_bathrooms=2,
-            property_size="1500 sqft",
-            property_nightly_price="ETB 950 / night",
-            property_image="https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=900&q=80",
-            property_owner="Hana Tesfaye",
-            property_added_date="Aug 17, 2024",
-        )
-        Notification.objects.create(
-            type=Notification.NotificationType.PAYMENT,
-            status=Notification.NotificationStatus.RECEIVED,
-            title="Payment Received",
-            info="Payment confirmation",
-            details="Payment for booking ID BK-2024-125 was successfully processed and recorded in the system.",
-            sender_name="System",
-            sender_email="billing@system.com",
-            total_amount="ETB 850.00",
-            payment_method="Bank Transfer",
-            payment_status="Paid",
-            property_title="Modern Apartment",
-            property_status="Active",
-            property_address="Bole Road, Addis Ababa",
-            property_bedrooms=2,
-            property_bathrooms=2,
-            property_size="1200 sqft",
-            property_nightly_price="ETB 850 / night",
-            property_image="https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=900&q=80",
-            property_owner="Hana Tesfaye",
-            property_added_date="Aug 12, 2024",
-        )
-        Notification.objects.create(
-            type=Notification.NotificationType.SYSTEM,
-            status=Notification.NotificationStatus.NEW,
-            title="New User Registered",
-            info="Welcome user created",
-            details="A new user account was registered and is eligible to start browsing listings.",
-            sender_name="System",
-            sender_email="welcome@system.com",
-        )
-        Notification.objects.create(
-            type=Notification.NotificationType.BOOKING,
-            status=Notification.NotificationStatus.CONFIRMED,
-            title="Booking Confirmed",
-            info="Reservation was approved",
-            details="The booking was confirmed and the guest has been notified with the reservation timeline.",
-            sender_name="System",
-            sender_email="booking@system.com",
-        )
-        Notification.objects.create(
-            type=Notification.NotificationType.SYSTEM,
-            status=Notification.NotificationStatus.INFO,
-            title="System Maintenance",
-            info="Scheduled maintenance",
-            details="The platform will be under maintenance for routine system updates and service improvements.",
-            sender_name="System",
-            sender_email="ops@system.com",
-        )
+        return [
+            {
+                "id": f"payment-{payment.id}",
+                "type": "Payment",
+                "status": "New" if payment.status in {
+                    PaymentTransaction.PaymentStatus.INITIATED,
+                    PaymentTransaction.PaymentStatus.PENDING,
+                } else "Info",
+                "title": "New payment",
+                "details": (
+                    f"{payment.currency} {payment.amount} payment for "
+                    f"{payment.booking.property.property_name}."
+                ),
+                "info": payment.get_payment_method_display(),
+                "sender": payment.payer.get_full_name().strip() or payment.payer.email,
+                "sender_name": payment.payer.get_full_name().strip() or payment.payer.email,
+                "email": payment.payer.email,
+                "payment_method": payment.get_payment_method_display(),
+                "payment_status": payment.get_status_display(),
+                "total_amount": f"{payment.currency} {payment.amount}",
+                "created_at": payment.created_at.isoformat(),
+            }
+            for payment in payments
+        ]
+
+    def _property_fields(self, property_obj):
+        house = getattr(property_obj, "house_detail", None)
+        car = getattr(property_obj, "car_detail", None)
+        image = property_obj.images.first()
+        owner = property_obj.owner
+        owner_name = f"{owner.first_name} {owner.last_name}".strip() or owner.email
+        owner_phone = getattr(getattr(owner, "profile", None), "phone_number", "") or ""
+        return {
+            "property_title": property_obj.property_name,
+            "property_status": property_obj.get_status_display(),
+            "property_address": ", ".join(filter(None, [property_obj.address, property_obj.city, property_obj.region])),
+            "property_bedrooms": getattr(house, "bedrooms", 0),
+            "property_bathrooms": getattr(house, "bathrooms", 0),
+            "property_size": f"{house.area_sqft} sqft" if house else "",
+            "property_nightly_price": f"{property_obj.currency} {property_obj.price} / {property_obj.get_rental_unit_display().lower()}",
+            "property_image": image.image.url if image else "",
+            "property_images": [property_image.image.url for property_image in property_obj.images.all()],
+            "property_owner": owner_name,
+            "property_owner_phone": owner_phone,
+            "property_added_date": property_obj.created_at.strftime("%b %d, %Y"),
+            "listing_type": property_obj.listing_type,
+            "car_brand": getattr(car, "brand", ""),
+            "car_model": getattr(car, "model", ""),
+            "car_year": getattr(car, "year", ""),
+            "car_mileage": getattr(car, "mileage", ""),
+            "car_fuel_type": getattr(car, "fuel_type", ""),
+            "car_seating_capacity": getattr(car, "seating_capacity", ""),
+        }
+
+    def _booking_history(self):
+        entries = []
+        bookings = Booking.objects.select_related("property", "property__owner", "property__house_detail", "property__car_detail", "renter").prefetch_related("property__images")
+        for booking in bookings:
+            fields = self._property_fields(booking.property)
+            renter_name = f"{booking.renter.first_name} {booking.renter.last_name}".strip() or booking.renter.email
+            entry = {
+                "id": f"booking-{booking.id}",
+                "type": "Booking",
+                "status": booking.get_status_display(),
+                "title": f"Booking {booking.booking_reference}",
+                "details": f"{renter_name} booked {booking.property.property_name}.",
+                "info": "Booking history",
+                "sender": renter_name,
+                "sender_name": renter_name,
+                "email": booking.renter.email,
+                "phone": getattr(getattr(booking.renter, "profile", None), "phone_number", "") or "",
+                "tenant_name": renter_name,
+                "tenant_phone": getattr(getattr(booking.renter, "profile", None), "phone_number", "") or "",
+                "check_in_date": booking.start_date.strftime("%b %d, %Y"),
+                "check_out_date": booking.end_date.strftime("%b %d, %Y"),
+                "total_amount": f"{booking.currency} {booking.total_amount}",
+                "payment_status": booking.get_status_display(),
+                "created_at": booking.created_at.isoformat(),
+            }
+            entry.update(fields)
+            entries.append(entry)
+        return entries
+
+    def _property_history(self):
+        entries = []
+        properties = Property.objects.select_related("owner", "house_detail", "car_detail").prefetch_related("images")
+        for property_obj in properties:
+            fields = self._property_fields(property_obj)
+            entry = {
+                "id": f"property-{property_obj.id}",
+                "type": "Property",
+                "status": "Info",
+                "title": f"Property Added: {property_obj.property_name}",
+                "details": property_obj.description or "A property listing was added.",
+                "info": "Property history",
+                "sender": fields["property_owner"],
+                "sender_name": fields["property_owner"],
+                "created_at": property_obj.created_at.isoformat(),
+            }
+            entry.update(fields)
+            entries.append(entry)
+        return entries
 
 
-class AdminNotificationDetailAPIView(APIView):
+class AdminNotificationDetailAPIView(AdminNotificationListAPIView):
     """Return detailed information for a specific notification."""
 
     authentication_classes = [CookieJWTAuthentication]
@@ -797,9 +891,70 @@ class AdminNotificationDetailAPIView(APIView):
             )
 
         try:
-            notification = Notification.objects.get(id=notification_id)
-        except Notification.DoesNotExist:
+            notification = Notification.objects.filter(
+                Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
+                | Q(type=Notification.NotificationType.SYSTEM, title="New user registration")
+            ).get(id=notification_id)
+        except (Notification.DoesNotExist, ValueError):
             return Response({"detail": "Notification not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = NotificationSerializer(notification)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(NotificationSerializer(notification).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, notification_id, *args, **kwargs):
+        if request.user.role != User.Role.ADMIN:
+            return Response(
+                {"detail": "You do not have permission to access this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            notification = Notification.objects.exclude(
+                type=Notification.NotificationType.SYSTEM
+            ).get(id=notification_id)
+        except (Notification.DoesNotExist, ValueError):
+            return Response({"detail": "Notification not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        notification.delete()
+        return Response({"detail": "Notification deleted successfully."}, status=status.HTTP_200_OK)
+
+
+class AdminPaymentsAPIView(APIView):
+    """Return admin payments list (stub returning empty transactions)."""
+
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticatedCookie]
+
+    def get(self, request, *args, **kwargs):
+        if request.user.role != User.Role.ADMIN:
+            return Response(
+                {"detail": "You do not have permission to access this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            from payments.models import Transaction, Payment
+
+            transactions_qs = Transaction.objects.select_related(
+                "booking", "booking__property", "booking__renter"
+            ).order_by("-created_at")[:100]
+
+            transactions = []
+            for i, tx in enumerate(transactions_qs):
+                booking = getattr(tx, "booking", None)
+                property_obj = getattr(booking, "property", None)
+                renter = getattr(booking, "renter", None)
+                transactions.append({
+                    "id": getattr(tx, "id", f"tx-{i}"),
+                    "transaction_id": getattr(tx, "transaction_id", getattr(tx, "reference", "")),
+                    "amount": float(getattr(tx, "amount", 0)),
+                    "currency": getattr(tx, "currency", "ETB"),
+                    "status": getattr(tx, "status", "Pending"),
+                    "payment_method": getattr(tx, "payment_method", getattr(tx, "method", "Bank Transfer")),
+                    "property_name": property_obj.property_name if property_obj else (getattr(booking, "title", "") if booking else ""),
+                    "tenant_name": (f"{renter.first_name} {renter.last_name}".strip() if renter else (getattr(renter, "email", "") if renter else "Unknown")),
+                    "date": getattr(tx, "created_at", getattr(tx, "paid_at", None)),
+                })
+        except Exception:
+            transactions = []
+
+        return Response({"transactions": transactions}, status=status.HTTP_200_OK)

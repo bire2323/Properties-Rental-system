@@ -12,8 +12,28 @@ import {
 import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
-import { Button, Card, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui'
-import { getAllProperties } from '../../api/admin/adminApi'
+import {
+    Button,
+    Card,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    Input,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '../../components/ui'
+import { getAllProperties, deleteProperty } from '../../api/admin/adminApi'
 import { getImageUrl } from '../../api/mediaHelper'
 
 const defaultImage = 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80'
@@ -37,11 +57,11 @@ const getStatusClasses = (status) => {
 }
 
 const mapProperty = (property) => ({
-    id: property.id,
+    id: property.id ?? `prop-${Math.random().toString(36).slice(2, 9)}`,
     name: property.title || property.property_name || 'Untitled Property',
     owner: property.owner_name || property.owner_email || 'Unknown Owner',
-    type: property.property_type === 'house' ? 'House' : property.property_type === 'car' ? 'Car' : 'Property',
-    location: property.location || 'Location not provided',
+    type: property.listing_type === 'house' ? 'House' : property.listing_type === 'car' ? 'Car' : 'Property',
+    location: property.location || property.city || property.address || 'Location not provided',
     price: formatPrice(property.price),
     status: property.is_available ? 'Available' : 'Rented',
     date: formatDate(property.created_at),
@@ -60,40 +80,48 @@ function Properties() {
     const [statusFilter, setStatusFilter] = useState('all')
     const [visibleCount, setVisibleCount] = useState(5)
     const [openMenuId, setOpenMenuId] = useState(null)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [propertyToDelete, setPropertyToDelete] = useState(null)
+    const [deleting, setDeleting] = useState(false)
     const { isDark } = useTheme()
 
-    useEffect(() => {
-        async function loadProperties() {
-            setLoading(true)
-            setError('')
-            try {
-                const response = await getAllProperties()
-                const items = Array.isArray(response) ? response : response.results || []
-                setProperties(items.map(mapProperty))
-            } catch (err) {
-                console.error('Error fetching properties:', err)
-                setError(err.message || 'Unable to load properties.')
-            } finally {
-                setLoading(false)
+    async function loadProperties() {
+        setLoading(true)
+        setError('')
+        try {
+            const filters = {}
+            if (typeFilter !== 'all') {
+                filters.type = typeFilter === 'House' ? 'house' : 'car'
             }
+            if (statusFilter !== 'all') {
+                filters.is_available = statusFilter === 'Available' ? 'true' : 'false'
+            }
+            const response = await getAllProperties(filters)
+            const items = Array.isArray(response) ? response : response.results || []
+            setProperties(items.map(mapProperty))
+        } catch (err) {
+            console.error('Error fetching properties:', err)
+            setError(err.message || 'Unable to load properties.')
+        } finally {
+            setLoading(false)
         }
+    }
 
+    useEffect(() => {
         loadProperties()
-    }, [])
+    }, [typeFilter, statusFilter])
 
     const filteredProperties = useMemo(() => {
         return properties.filter((property) => {
-            const matchesSearch = !searchTerm
-                || property.name.toLowerCase().includes(searchTerm.toLowerCase())
-                || property.owner.toLowerCase().includes(searchTerm.toLowerCase())
-                || property.location.toLowerCase().includes(searchTerm.toLowerCase())
-
-            const matchesType = typeFilter === 'all' || property.type === typeFilter
-            const matchesStatus = statusFilter === 'all' || property.status === statusFilter
-
-            return matchesSearch && matchesType && matchesStatus
+            if (!searchTerm) return true
+            const term = searchTerm.toLowerCase()
+            return (
+                property.name.toLowerCase().includes(term)
+                || property.owner.toLowerCase().includes(term)
+                || property.location.toLowerCase().includes(term)
+            )
         })
-    }, [properties, searchTerm, typeFilter, statusFilter])
+    }, [properties, searchTerm])
 
     useEffect(() => {
         setVisibleCount(5)
@@ -108,36 +136,63 @@ function Properties() {
         { label: 'Rented', value: properties.filter((item) => !item.isAvailable).length.toLocaleString(), icon: ArrowDownRight },
     ]
 
+    const handleDeleteClick = (property) => {
+        setPropertyToDelete(property)
+        setDeleteDialogOpen(true)
+        setOpenMenuId(null)
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!propertyToDelete) return
+        setDeleting(true)
+        try {
+            await deleteProperty(propertyToDelete.id)
+            setProperties((prev) => prev.filter((p) => p.id !== propertyToDelete.id))
+            setDeleteDialogOpen(false)
+            setPropertyToDelete(null)
+        } catch (err) {
+            console.error('Delete failed:', err)
+            setError(err.message || 'Failed to delete property.')
+        } finally {
+            setDeleting(false)
+        }
+    }
+
+    const handleCancelDelete = () => {
+        setDeleteDialogOpen(false)
+        setPropertyToDelete(null)
+    }
+
     return (
         <div className={`min-h-screen flex lg:flex ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
             <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <div className="flex-1">
+            <div className="min-w-0 flex-1 overflow-x-hidden">
                 <AdminTopbar onToggleSidebar={() => setSidebarOpen(true)} />
 
-                <main className={`mx-auto w-full px-4 py-6 sm:px-5 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+                <main className={`mx-auto w-full min-w-0 max-w-full overflow-x-hidden px-4 py-6 sm:px-5 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
                     <div className="mb-6 flex items-center justify-between gap-4">
                         <h1 className={`text-3xl font-bold tracking-[-0.04em] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             Properties
                         </h1>
                     </div>
 
-                    <div className="mb-8 grid gap-3 md:grid-cols-3 xl:grid-cols-3">
+                    <div className="mb-8 grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-3">
                         {statCards.map((item) => {
                             const Icon = item.icon
                             return (
-                                <Card key={item.label} className={`p-4 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+                                <Card key={item.label} className={`min-w-0 p-2 sm:p-4 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className={`text-xs font-medium uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            <p className={`truncate text-[10px] font-medium uppercase tracking-wide sm:text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                 {item.label}
                                             </p>
-                                            <p className={`mt-3 text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                            <p className={`mt-2 break-words text-xl font-bold sm:mt-3 sm:text-2xl ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                                 {item.value}
                                             </p>
                                         </div>
-                                        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isDark ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'}`}>
-                                            <Icon className="h-5 w-5" />
+                                        <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${isDark ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'}`}>
+                                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                                         </div>
                                     </div>
                                 </Card>
@@ -195,37 +250,6 @@ function Properties() {
                                         <ChevronDown className="h-4 w-4" />
                                     </div>
 
-                                    {/* Top Menu Dropdown */}
-                                    {openMenuId && (
-                                        <div className={`absolute right-6 top-20 z-20 w-48 rounded-lg border shadow-lg ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
-                                            {properties.find(p => p.id === openMenuId) && (
-                                                <div className={`border-b px-4 py-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                                                    <p className={`text-xs font-semibold uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Selected</p>
-                                                    <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{properties.find(p => p.id === openMenuId)?.name}</p>
-                                                </div>
-                                            )}
-                                            <button
-                                                type="button"
-                                                className={`block w-full px-4 py-2.5 text-left text-sm font-medium transition ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                                                onClick={() => {
-                                                    navigate(`/admin-dashboard/properties/${openMenuId}`)
-                                                    setOpenMenuId(null)
-                                                }}
-                                            >
-                                                View Detail
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`block w-full rounded-b-lg px-4 py-2.5 text-left text-sm font-medium text-red-600 transition ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                                                onClick={() => {
-                                                    console.log('Delete property:', openMenuId)
-                                                    setOpenMenuId(null)
-                                                }}
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
@@ -281,15 +305,26 @@ function Properties() {
                                                                 </TableCell>
                                                                 <TableCell className="px-6 py-4">
                                                                     <div className="flex items-center justify-end">
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="icon-sm"
-                                                                            onClick={() => setOpenMenuId(openMenuId === property.id ? null : property.id)}
-                                                                            className={isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : ''}
-                                                                        >
-                                                                            <MoreHorizontal className="h-4 w-4" />
-                                                                        </Button>
+                                                                        <DropdownMenu open={openMenuId === property.id} onOpenChange={(open) => setOpenMenuId(open ? property.id : null)}>
+                                                                            <DropdownMenuTrigger
+                                                                                variant="outline"
+                                                                                size="icon-sm"
+                                                                                className={isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : ''}
+                                                                            >
+                                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent align="end">
+                                                                                <DropdownMenuItem onClick={() => {
+                                                                                    navigate(`/admin-dashboard/properties/${property.id}`)
+                                                                                    setOpenMenuId(null)
+                                                                                }}>
+                                                                                    View Detail
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuItem variant="destructive" onClick={() => handleDeleteClick(property)}>
+                                                                                    Delete
+                                                                                </DropdownMenuItem>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
                                                                     </div>
                                                                 </TableCell>
                                                             </TableRow>
@@ -318,6 +353,36 @@ function Properties() {
                     </Card>
                 </main>
             </div>
+
+            <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!open) handleCancelDelete() }}>
+                <DialogContent className={isDark ? 'border-slate-700 bg-slate-900 text-white' : ''}>
+                    <DialogHeader>
+                        <DialogTitle className={isDark ? 'text-white' : ''}>Delete Property</DialogTitle>
+                        <DialogDescription className={isDark ? 'text-slate-400' : ''}>
+                            Are you sure you want to delete &quot;{propertyToDelete?.name}&quot;? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleCancelDelete}
+                            disabled={deleting}
+                            className={isDark ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : ''}
+                        >
+                            No
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={handleConfirmDelete}
+                            disabled={deleting}
+                        >
+                            {deleting ? 'Deleting...' : 'Yes'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

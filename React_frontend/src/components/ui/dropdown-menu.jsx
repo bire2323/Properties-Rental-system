@@ -2,6 +2,7 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
+import { Button } from "./button"
 
 function DropdownMenu({
   ...props
@@ -16,9 +17,47 @@ function DropdownMenuPortal({
 }
 
 function DropdownMenuTrigger({
+  asChild,
+  className,
+  children,
+  render,
+  variant,
+  size,
   ...props
 }) {
-  return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
+  if (render) {
+    return (
+      <MenuPrimitive.Trigger
+        data-slot="dropdown-menu-trigger"
+        render={render}
+        {...props}
+      >
+        {children}
+      </MenuPrimitive.Trigger>
+    );
+  }
+
+  if (asChild) {
+    return (
+      <MenuPrimitive.Trigger
+        data-slot="dropdown-menu-trigger"
+        render={children}
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <MenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      render={(
+        <Button variant={variant ?? "outline"} size={size ?? "icon-sm"} className={className} />
+      )}
+      {...props}
+    >
+      {children}
+    </MenuPrimitive.Trigger>
+  );
 }
 
 function DropdownMenuContent({

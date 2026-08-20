@@ -6,15 +6,29 @@ export default function RecentPropertiesSection({ recentProperties = [] }) {
     const { isDark } = useTheme()
 
     const displayProperties = Array.isArray(recentProperties)
-        ? recentProperties.map((property) => ({
-            name: property.title,
-            location: property.location,
-            price: `ETB ${Number(property.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            ago: property.created_at ? 'Recently added' : 'Unknown',
-            image: typeof property.main_image === 'string'
-                ? property.main_image
-                : (property.main_image?.image || property.images?.[0]?.image || 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=200&q=80'),
-        }))
+        ? recentProperties.map((property, index) => {
+            const rawName = property.title || property.property_name || 'Untitled Property'
+            const rawLocation = property.location || property.city || property.address || property.region || '—'
+            const defaultImage = 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=200&q=80'
+            let image = defaultImage
+            if (typeof property.main_image === 'string') {
+                image = property.main_image
+            } else if (property.main_image?.image) {
+                image = property.main_image.image
+            } else if (property.images?.[0]?.image) {
+                image = property.images[0].image
+            } else if (Array.isArray(property.images) && typeof property.images[0] === 'string') {
+                image = property.images[0]
+            }
+            return {
+                id: property.id ?? `recent-${index}-${Math.random().toString(36).slice(2, 8)}`,
+                name: rawName,
+                location: rawLocation,
+                price: `ETB ${Number(property.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                ago: property.created_at ? 'Recently added' : 'Unknown',
+                image,
+            }
+        })
         : []
 
     return (
@@ -36,7 +50,7 @@ export default function RecentPropertiesSection({ recentProperties = [] }) {
                 <div className={`space-y-2 p-4 max-h-80 overflow-y-auto`}>
                     {displayProperties.map((property) => (
                         <div
-                            key={`${property.name}-${property.location}`}
+                            key={property.id}
                             className={`flex items-center gap-3 rounded-lg p-3 transition ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}
                         >
                             <img

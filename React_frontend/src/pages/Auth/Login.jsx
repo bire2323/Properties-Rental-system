@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Input } from '../../components/ui/input'
 
 function Login() {
+  const googleLoginEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true'
   const navigate = useNavigate()
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
@@ -215,18 +216,22 @@ function Login() {
                   <ArrowRight size={16} />
                 </Button>
 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-slate-200 dark:border-slate-800" />
-                  </div>
-                  <div className="relative flex justify-center">
-                    <span className="bg-white px-4 text-xs uppercase tracking-[0.3em] text-slate-400 dark:bg-slate-950">
-                      or continue with
-                    </span>
-                  </div>
-                </div>
+                {googleLoginEnabled && (
+                  <>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-slate-200 dark:border-slate-800" />
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-white px-4 text-xs uppercase tracking-[0.3em] text-slate-400 dark:bg-slate-950">
+                          or continue with
+                        </span>
+                      </div>
+                    </div>
 
-                <GoogleLoginButton />
+                    <GoogleLoginButton />
+                  </>
+                )}
 
                 <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                   Don&apos;t have an account?{' '}

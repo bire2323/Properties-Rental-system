@@ -8,14 +8,13 @@ import {
     House,
     Loader2,
     Search,
-    ShieldCheck,
 } from 'lucide-react'
 import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import { getAdminNotifications } from '../../api/admin/adminApi'
 
-const tabs = ['All', 'Booking', 'Property']
+const tabs = ['All', 'Property', 'New User']
 
 function Notification() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -31,11 +30,10 @@ function Notification() {
         setLoading(true)
         try {
             const filters = {}
-            if (activeTab !== 'All') {
-                filters.type = activeTab
-            }
             const data = await getAdminNotifications(filters)
-            setNotifications(data)
+            setNotifications(data.filter((item) => (
+                item.type === 'Property' || item.title === 'New user registration'
+            )))
         } catch (error) {
             console.error('Failed to fetch notifications:', error)
             setNotifications([])
@@ -49,14 +47,19 @@ function Notification() {
     }, [fetchNotifications])
 
     const filteredNotifications = useMemo(() => {
+        const tabNotifications = activeTab === 'New User'
+            ? notifications.filter((item) => item.title === 'New user registration')
+            : activeTab === 'Property'
+                ? notifications.filter((item) => item.type === 'Property')
+                : notifications
         const query = search.trim().toLowerCase()
-        if (!query) return notifications
-        return notifications.filter((item) => {
+        if (!query) return tabNotifications
+        return tabNotifications.filter((item) => {
             return [item.title, item.sender, item.type, item.details, item.property_title, item.propertyTitle].some((field) =>
                 field?.toLowerCase().includes(query),
             )
         })
-    }, [notifications, search])
+    }, [activeTab, notifications, search])
 
     const getStatusClass = (status) => {
         const map = {
@@ -154,7 +157,7 @@ function Notification() {
                                     >
                                         <div className="flex items-start gap-3">
                                             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-slate-700 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
-                                                {item.type === 'Property' ? <House className="h-4 w-4" /> : item.type === 'Payment' ? <ShieldCheck className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                                                {item.type === 'Property' ? <House className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
                                             </div>
                                             <div className="min-w-0">
                                                 <div className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -170,9 +173,11 @@ function Notification() {
                                         </div>
 
                                         <div className="flex items-center gap-2">
-                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${getStatusClass(item.status)}`}>
-                                                {item.status}
-                                            </span>
+                                            {item.status && (
+                                                <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${getStatusClass(item.status)}`}>
+                                                    {item.status}
+                                                </span>
+                                            )}
                                             <ArrowRight className={`h-4 w-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                                         </div>
                                     </button>
@@ -188,8 +193,8 @@ function Notification() {
                                             type="button"
                                             onClick={() => setDisplayCount(3)}
                                             className={`rounded-lg px-4 py-2 text-sm font-medium transition ${isDark
-                                                    ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                                 }`}
                                         >
                                             View less
@@ -200,8 +205,8 @@ function Notification() {
                                             type="button"
                                             onClick={() => setDisplayCount(displayCount + 3)}
                                             className={`rounded-lg px-4 py-2 text-sm font-medium transition ${isDark
-                                                    ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                                 }`}
                                         >
                                             View more
