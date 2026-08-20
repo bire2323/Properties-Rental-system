@@ -13,7 +13,7 @@ export default function PropertyList({ properties, onDelete }) {
                 <span>Status</span>
                 <span className="text-right">Actions</span>
             </div>
-            <div className="space-y-1 p-4">
+            <div className="space-y-1 p-2">
                 {properties.map((property) => (
                     <div key={property.id} className="grid grid-cols-[1.2fr_1fr_1fr_1fr_120px] gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                         <div>

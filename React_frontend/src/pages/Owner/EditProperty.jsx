@@ -38,6 +38,7 @@ function resolveImageSrc(img) {
     return url.startsWith('http') ? url : `${API_BASE}${url}`
 }
 
+
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
 
 function FormField({ label, required, error, children }) {
@@ -124,6 +125,11 @@ function validateStep(step, form) {
     if (step === 1) {
         if (!form.property_name?.trim()) errors.property_name = 'Property name is required.'
         else if (form.property_name.trim().length < 3) errors.property_name = 'Must be at least 3 characters.'
+        if (!form.description?.trim()) {
+            errors.description = 'Description is required.';
+        } else if (form.description.trim().length < 30) {
+            errors.description = 'Description must be at least 30 characters.';
+        }
     }
     if (step === 2) {
         if (!form.price || parseFloat(form.price) <= 0) errors.price = 'Enter a valid price greater than 0.'
@@ -132,6 +138,7 @@ function validateStep(step, form) {
     if (step === 3) {
         if (!form.city?.trim()) errors.city = 'City is required.'
         if (!form.region?.trim()) errors.region = 'Region is required.'
+        if (!form.kebele?.trim()) errors.kebele = 'Kebele is required.';
     }
     if (step === 4) {
         if (form.listing_type === 'house') {
@@ -357,6 +364,54 @@ export default function EditProperty() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
+    // const handleNext = () => {
+    //     const stepErrors = validateStep(currentStep, form)
+    //     if (Object.keys(stepErrors).length > 0) {
+    //         setErrors(stepErrors)
+    //         return
+    //     }
+    //     setErrors({})
+    //     setCurrentStep((prev) => Math.min(prev + 1, STEPS.length))
+    //     window.scrollTo({ top: 0, behavior: 'smooth' })
+    // }
+
+    const handleFormKeyDown = useCallback(
+        (event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.target.tagName === 'TEXTAREA') return
+
+            const target = event.target
+            const type = target.type || ''
+            if (['select-one', 'file', 'checkbox', 'radio'].includes(type) || target.tagName === 'SELECT') {
+                return
+            }
+
+            const formNode = formRef.current
+            if (!formNode) return
+
+            const fields = Array.from(
+                formNode.querySelectorAll(
+                    'input:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]), select, textarea'
+                )
+            ).filter((field) => !field.disabled && field.offsetParent !== null)
+
+            const currentIndex = fields.indexOf(target)
+            if (currentIndex === -1) return
+
+            event.preventDefault()
+
+            if (currentIndex < fields.length - 1) {
+                const next = fields[currentIndex + 1]
+                next.focus()
+                return
+            }
+
+            if (currentStep < STEPS.length) {
+                handleNext()
+            }
+        },
+        [currentStep, handleNext]
+    )
+
     const handleSubmit = async () => {
         const isDraft = location.pathname.includes('/draft/edit')
         if (isDraft) {
@@ -462,14 +517,21 @@ export default function EditProperty() {
                                 <FormField label="Property Name" required error={errors.property_name}>
                                     <Input
                                         value={form.property_name}
+                                        onKeyDown={handleFormKeyDown}
                                         onChange={(e) => onChange('property_name', e.target.value)}
                                         className={errors.property_name ? 'border-red-500' : ''}
+                                        required
                                     />
                                 </FormField>
-                                <FormField label="Description">
-                                    <textarea rows={5} value={form.description}
+                                <FormField label="Description" required error={errors.description}>
+                                    <textarea
+                                        rows={5}
+                                        value={form.description}
+                                        onKeyDown={handleFormKeyDown}
                                         onChange={(e) => onChange('description', e.target.value)}
-                                        className={textareaClass} />
+                                        className={textareaClass}
+                                        required
+                                    />
                                 </FormField>
                                 <div>
                                     <p className={labelClass}>Listing Type</p>
@@ -487,20 +549,25 @@ export default function EditProperty() {
                             </>
                         )}
 
+
                         {/* ── Step 2 ── */}
-                        {currentStep === 2 && (
+                        {/* {currentStep === 2 && (
                             <>
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Rental & Ownership</h3>
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <FormField label="Price (ETB)" required error={errors.price}>
-                                        <Input type="number" step="0.01" min="0" value={form.price}
+                                        <Input type="number" step="0.01" min="0"
+                                            value={form.price}
+                                            onkeydown={handleFormKeyDown}
                                             onChange={(e) => onChange('price', e.target.value)}
                                             className={errors.price ? 'border-red-500' : ''} />
                                     </FormField>
                                     <FormField label="Rental Unit">
-                                        <select value={form.rental_unit} onChange={(e) => onChange('rental_unit', e.target.value)} className={selectClass}>
+                                        <select value={form.rental_unit}
+                                            onkeydown={handleFormKeyDown}
+                                            onChange={(e) => onChange('rental_unit', e.target.value)} className={selectClass}>
                                             <option value="hourly">Per Hour</option>
                                             <option value="daily">Per Day</option>
                                             <option value="weekly">Per Week</option>
@@ -509,11 +576,15 @@ export default function EditProperty() {
                                         </select>
                                     </FormField>
                                     <FormField label="Security Deposit">
-                                        <Input type="number" step="0.01" min="0" value={form.security_deposit}
+                                        <Input type="number" step="0.01" min="0"
+                                            value={form.security_deposit}
+                                            onkeydown={handleFormKeyDown}
                                             onChange={(e) => onChange('security_deposit', e.target.value)} />
                                     </FormField>
                                     <FormField label="Status">
-                                        <select value={form.status} onChange={(e) => onChange('status', e.target.value)} className={selectClass}>
+                                        <select value={form.status}
+                                            onkeydown={handleFormKeyDown}
+                                            onChange={(e) => onChange('status', e.target.value)} className={selectClass}>
                                             <option value="active">Active</option>
                                             <option value="draft">Draft</option>
                                             <option value="pending">Pending</option>
@@ -533,10 +604,85 @@ export default function EditProperty() {
                                     </div>
                                 </FormField>
                             </>
+                        )} */}
+                        {currentStep === 2 && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Rental & Ownership</h3>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Price (ETB)" required error={errors.price}>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={form.price}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('price', e.target.value)}
+                                            className={errors.price ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Rental Unit" required>
+                                        <select
+                                            value={form.rental_unit}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('rental_unit', e.target.value)}
+                                            className={selectClass}
+                                            required
+                                        >
+                                            <option value="hourly">Per Hour</option>
+                                            <option value="daily">Per Day</option>
+                                            <option value="weekly">Per Week</option>
+                                            <option value="monthly">Per Month</option>
+                                            <option value="yearly">Per Year</option>
+                                        </select>
+                                    </FormField>
+                                    <FormField label="Security Deposit" required>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={form.security_deposit}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('security_deposit', e.target.value)}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Status" required>
+                                        <select
+                                            value={form.status}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('status', e.target.value)}
+                                            className={selectClass}
+                                            required
+                                        >
+                                            <option value="active">Active</option>
+                                            <option value="draft">Draft</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </FormField>
+                                </div>
+                                <FormField label="Availability">
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => onChange('is_available', !form.is_available)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${form.is_available ? 'bg-[#c99b43]' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                        >
+                                            <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${form.is_available ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                                            {form.is_available ? 'Available' : 'Not available'}
+                                        </span>
+                                    </div>
+                                </FormField>
+                            </>
                         )}
 
                         {/* ── Step 3 ── */}
-                        {currentStep === 3 && (
+                        {/* {currentStep === 3 && (
                             <>
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
@@ -546,30 +692,108 @@ export default function EditProperty() {
                                 </FormField>
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <FormField label="City" required error={errors.city}>
-                                        <Input value={form.city} onChange={(e) => onChange('city', e.target.value)}
+                                        <Input value={form.city}
+                                            onkeydown={handleFormKeyDown}
+                                            onChange={(e) => onChange('city', e.target.value)}
                                             className={errors.city ? 'border-red-500' : ''} />
                                     </FormField>
                                     <FormField label="Region" required error={errors.region}>
-                                        <Input value={form.region} onChange={(e) => onChange('region', e.target.value)}
+                                        <Input value={form.region}
+                                            onkeydown={handleFormKeyDown}
+                                            onChange={(e) => onChange('region', e.target.value)}
                                             className={errors.region ? 'border-red-500' : ''} />
                                     </FormField>
                                     <FormField label="Kebele">
-                                        <Input value={form.kebele} onChange={(e) => onChange('kebele', e.target.value)} placeholder="Kebele (optional)" />
+                                        <Input value={form.kebele}
+                                            onkeydown={handleFormKeyDown}
+                                            onChange={(e) => onChange('kebele', e.target.value)} placeholder="Kebele (eg. o1, 02..)" />
                                     </FormField>
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <FormField label="Latitude">
-                                        <Input type="number" step="any" value={form.latitude} onChange={(e) => onChange('latitude', e.target.value)} placeholder="9.0054" />
+                                        <Input type="number" step="any"
+                                            onkeydown={handleFormKeyDown}
+                                            value={form.latitude} onChange={(e) => onChange('latitude', e.target.value)} placeholder="9.0054" required />
                                     </FormField>
                                     <FormField label="Longitude">
-                                        <Input type="number" step="any" value={form.longitude} onChange={(e) => onChange('longitude', e.target.value)} placeholder="38.7636" />
+                                        <Input type="number" step="any"
+                                            onkeydown={handleFormKeyDown}
+                                            value={form.longitude} onChange={(e) => onChange('longitude', e.target.value)} placeholder="38.7636" required />
+                                    </FormField>
+                                </div>
+                            </>
+                        )} */}
+                        {currentStep === 3 && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
+                                </div>
+                                <FormField label="Address" required>
+                                    <Input
+                                        value={form.address}
+                                        onKeyDown={handleFormKeyDown}
+                                        onChange={(e) => onChange('address', e.target.value)}
+                                        placeholder="Street address"
+                                        required
+                                    />
+                                </FormField>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="City" required error={errors.city}>
+                                        <Input
+                                            value={form.city}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('city', e.target.value)}
+                                            className={errors.city ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Region" required error={errors.region}>
+                                        <Input
+                                            value={form.region}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('region', e.target.value)}
+                                            className={errors.region ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Kebele" required error={errors.kebele}>
+                                        <Input
+                                            value={form.kebele}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('kebele', e.target.value)}
+                                            placeholder="Kebele (e.g. 01, 02...)"
+                                            className={errors.kebele ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Latitude">
+                                        <Input
+                                            type="number"
+                                            step="any"
+                                            onKeyDown={handleFormKeyDown}
+                                            value={form.latitude}
+                                            onChange={(e) => onChange('latitude', e.target.value)}
+                                            placeholder="9.0054"
+                                        />
+                                    </FormField>
+                                    <FormField label="Longitude">
+                                        <Input
+                                            type="number"
+                                            step="any"
+                                            onKeyDown={handleFormKeyDown}
+                                            value={form.longitude}
+                                            onChange={(e) => onChange('longitude', e.target.value)}
+                                            placeholder="38.7636"
+                                        />
                                     </FormField>
                                 </div>
                             </>
                         )}
 
                         {/* ── Step 4: House ── */}
-                        {currentStep === 4 && form.listing_type === 'house' && (
+                        {/* {currentStep === 4 && form.listing_type === 'house' && (
                             <>
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white">House Details</h3>
@@ -619,10 +843,104 @@ export default function EditProperty() {
                                         className={textareaClass} placeholder="e.g. No smoking..." />
                                 </FormField>
                             </>
+                        )} */}
+                        {currentStep === 4 && form.listing_type === 'house' && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">House Details</h3>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Bedrooms" required error={errors['house_detail.bedrooms']}>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={form.house_detail.bedrooms}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bedrooms: e.target.value })}
+                                            className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Bathrooms" required error={errors['house_detail.bathrooms']}>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={form.house_detail.bathrooms}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bathrooms: e.target.value })}
+                                            className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Area (sqft)" required error={errors['house_detail.area_sqft']}>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={form.house_detail.area_sqft}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, area_sqft: e.target.value })}
+                                            className={errors['house_detail.area_sqft'] ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Furnishing" required>
+                                        <select
+                                            value={form.house_detail.furnishing}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, furnishing: e.target.value })}
+                                            className={selectClass}
+                                            required
+                                        >
+                                            <option value="furnished">Furnished</option>
+                                            <option value="semi_furnished">Semi-Furnished</option>
+                                            <option value="unfurnished">Unfurnished</option>
+                                        </select>
+                                    </FormField>
+                                    <FormField label="Room Number" required>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={form.house_detail.room_number}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, room_number: e.target.value })}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Total Rooms" required>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={form.house_detail.total_rooms}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, total_rooms: e.target.value })}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Distance from Main Road" required>
+                                        <Input
+                                            value={form.house_detail.distance_from_main_road}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, distance_from_main_road: e.target.value })}
+                                            placeholder="e.g. 500 m"
+                                            required
+                                        />
+                                    </FormField>
+                                </div>
+                                <FormField label="Rules to Follow" required>
+                                    <textarea
+                                        rows={3}
+                                        value={form.house_detail.rules_to_follow}
+                                        onKeyDown={handleFormKeyDown}
+                                        onChange={(e) => onChange('house_detail', { ...form.house_detail, rules_to_follow: e.target.value })}
+                                        className={textareaClass}
+                                        placeholder="e.g. No smoking..."
+                                        required
+                                    />
+                                </FormField>
+                            </>
                         )}
-
                         {/* ── Step 4: Car ── */}
-                        {currentStep === 4 && form.listing_type === 'car' && (
+                        {/* {currentStep === 4 && form.listing_type === 'car' && (
                             <>
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Car Details</h3>
@@ -664,6 +982,79 @@ export default function EditProperty() {
                                     </FormField>
                                 </div>
                             </>
+                        )} */}
+                        {currentStep === 4 && form.listing_type === 'car' && (
+                            <>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Car Details</h3>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Brand" required error={errors['car_detail.brand']}>
+                                        <Input
+                                            value={form.car_detail.brand}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, brand: e.target.value })}
+                                            className={errors['car_detail.brand'] ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Model" required error={errors['car_detail.model']}>
+                                        <Input
+                                            value={form.car_detail.model}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, model: e.target.value })}
+                                            className={errors['car_detail.model'] ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Year" required error={errors['car_detail.year']}>
+                                        <Input
+                                            type="number"
+                                            min="1900"
+                                            value={form.car_detail.year}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, year: e.target.value })}
+                                            className={errors['car_detail.year'] ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Seating Capacity" required error={errors['car_detail.seating_capacity']}>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            value={form.car_detail.seating_capacity}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, seating_capacity: e.target.value })}
+                                            className={errors['car_detail.seating_capacity'] ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Mileage (km)" required>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={form.car_detail.mileage}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, mileage: e.target.value })}
+                                            required
+                                        />
+                                    </FormField>
+                                    <FormField label="Fuel Type" required>
+                                        <select
+                                            value={form.car_detail.fuel_type}
+                                            onKeyDown={handleFormKeyDown}
+                                            onChange={(e) => onChange('car_detail', { ...form.car_detail, fuel_type: e.target.value })}
+                                            className={selectClass}
+                                            required
+                                        >
+                                            <option value="petrol">Petrol</option>
+                                            <option value="diesel">Diesel</option>
+                                            <option value="electric">Electric</option>
+                                            <option value="hybrid">Hybrid</option>
+                                        </select>
+                                    </FormField>
+                                </div>
+                            </>
                         )}
 
                         {/* ── Step 5 ── */}
@@ -675,6 +1066,7 @@ export default function EditProperty() {
                                         Update amenities and images. Existing images are kept unless you explicitly remove them.
                                     </p>
                                 </div>
+
                                 <div>
                                     <p className={labelClass}>Features & Amenities</p>
                                     <FeatureMultiSelect
@@ -696,7 +1088,10 @@ export default function EditProperty() {
                                                             src={resolveImageSrc(img)}
                                                             alt={`Image ${img.id}`}
                                                             className="h-28 w-full rounded-2xl object-cover"
-                                                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image' }}
+                                                            onError={(e) => {
+                                                                e.currentTarget.onerror = null;
+                                                                e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                                                            }}
                                                         />
                                                         <button
                                                             type="button"
@@ -714,16 +1109,29 @@ export default function EditProperty() {
 
                                 {/* NEW IMAGES UPLOAD */}
                                 <div>
-                                    <p className={labelClass}>Upload New Images <span className="text-slate-400 text-xs">(optional)</span></p>
+                                    <p className={labelClass}>
+                                        Upload New Images <span className="text-slate-400 text-xs">(optional)</span>
+                                    </p>
                                     <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition hover:border-[#c99b43] dark:border-slate-700 dark:bg-slate-900">
                                         <Plus className="h-6 w-6 text-[#c99b43]" />
-                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click to upload new images</p>
-                                        <input type="file" accept="image/*" multiple className="sr-only"
-                                            onChange={(e) => onChange('newImages', Array.from(e.target.files))} />
+                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            Click to upload new images
+                                        </p>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            className="sr-only"
+                                            onChange={(e) => onChange('newImages', Array.from(e.target.files))}
+                                        // ✅ Add 'required' if you want to force at least one image
+                                        // required
+                                        />
                                     </label>
                                     {form.newImages?.length > 0 && (
                                         <div className="mt-3">
-                                            <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">New Images (to be added)</p>
+                                            <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                                                New Images (to be added)
+                                            </p>
                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                                 {form.newImages.map((file, idx) => (
                                                     <div key={idx} className="relative group">

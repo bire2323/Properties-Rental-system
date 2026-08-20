@@ -6,7 +6,7 @@ export default function PropertyGrid({ properties, onDelete, isDraftMode = false
     }
 
     return (
-        <div className="grid gap-6 xl:grid-cols-3 lg:grid-cols-2">
+        <div className="grid gap-0.5 lg:gap-4 grid-cols-2 xl:grid-cols-4 lg:grid-cols-3">
             {properties.map((property) => (
                 <PropertyCard
                     key={property.id || 'draft'}

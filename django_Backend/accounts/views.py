@@ -255,12 +255,6 @@ class ProfileAPIView(APIView):
         )
 
 class BecomeOwnerAPIView(APIView):
-    """
-    Upgrade a user to an owner.
-    - Updates Profile with personal info (city, country, address, DOB, phone)
-    - Creates OwnerProfile with PENDING status
-    - Creates OwnerVerificationDocument from uploaded data
-    """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticatedCookie]
     parser_classes = [MultiPartParser, FormParser]  # Required for file uploads

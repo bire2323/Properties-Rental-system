@@ -16,6 +16,8 @@ export default function PendingApproval() {
     useEffect(() => {
         if (user && user.owner_profile?.can_post_property === true) {
             navigate('/owner/dashboard', { replace: true });
+        } else if (user.owner_profile.verification_status === "rejected") {
+            navigate('/');
         }
     }, [user, navigate]);
 
