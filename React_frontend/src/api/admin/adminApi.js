@@ -24,10 +24,17 @@ async function request(endpoint, options = {}) {
     })
 
     const responseText = await response.text()
-    const payload = responseText ? JSON.parse(responseText) : {}
+    let payload = {}
+    try {
+        payload = responseText ? JSON.parse(responseText) : {}
+    } catch (parseError) {
+        payload = {
+            detail: response.statusText || `Server returned ${response.status}`,
+        }
+    }
 
     if (!response.ok) {
-        const message = payload?.detail || payload?.message || payload?.error || 'Request failed.'
+        const message = payload?.detail || payload?.message || payload?.error || response.statusText || 'Request failed.'
         throw new Error(message)
     }
 
@@ -89,6 +96,16 @@ export async function getPropertyById(propertyId) {
         return response
     } catch (error) {
         console.error('Error fetching property by ID:', error)
+        throw error
+    }
+}
+
+export async function deleteProperty(propertyId) {
+    try {
+        const response = await request(`/api/properties/${propertyId}/`, { method: 'DELETE' })
+        return response
+    } catch (error) {
+        console.error('Error deleting property:', error)
         throw error
     }
 }
@@ -218,7 +235,7 @@ export async function getAllUsers(filters = {}) {
                 name: user.name || 'Unknown User',
                 email: user.email || '',
                 phone: user.phone || user.phone_number || 'N/A',
-                role: user.role === 'Tenant' ? 'Customer' : user.role || 'User',
+                role: user.role || 'User',
                 status: user.status || 'Active',
                 joined: user.created_at ? formatRelativeTime(user.created_at) : 'Recently',
                 avatar: user.profile_image,
@@ -238,6 +255,31 @@ export async function getAllUsers(filters = {}) {
             totalPages: 1,
         }
     }
+}
+
+export async function getAdminUserDetail(userId) {
+    const response = await request(`/api/accounts/users/${userId}/`, { method: 'GET' })
+    return {
+        ...response,
+        name: [response.first_name, response.last_name].filter(Boolean).join(' ') || response.email,
+        phone: response.phone_number || response.profile?.phone_number || 'N/A',
+        profileImage: resolveMediaUrl(response.profile_image || response.profile?.profile_image),
+        verificationDocuments: (response.verification_documents || []).map((document) => ({
+            ...document,
+            image: resolveMediaUrl(document.document_image),
+            type: document.document_type_display || document.document_type || 'Verification Document',
+        })),
+    }
+}
+
+export async function deleteAdminUser(userId) {
+    return request(`/api/accounts/users/${userId}/`, { method: 'DELETE' })
+}
+
+export async function resetAdminUserLogin(userId) {
+    return request(`/api/accounts/admin/users/${userId}/reset-login/`, {
+        method: 'PATCH',
+    })
 }
 
 export async function getOwnerVerificationList(search = '') {
@@ -395,16 +437,7 @@ export async function getAdminNotifications(filters = {}) {
         // Handle both array and paginated responses
         const notifications = Array.isArray(response) ? response : response.results || response.notifications || []
 
-        return notifications.map((notification) => ({
-            id: notification.id,
-            title: notification.title || 'Notification',
-            message: notification.message || '',
-            type: notification.type || 'General',
-            read: notification.read || false,
-            createdAt: notification.created_at || new Date().toISOString(),
-            relatedId: notification.related_id,
-            actionUrl: notification.action_url,
-        }))
+        return notifications.map(normalizeAdminNotification)
     } catch (error) {
         console.error('Error fetching notifications:', error)
         return []
@@ -416,21 +449,74 @@ export async function getAdminNotificationDetail(notificationId) {
         const endpoint = `/api/accounts/admin/notifications/${notificationId}/`
         const response = await request(endpoint, { method: 'GET' })
 
-        return {
-            id: response.id,
-            title: response.title || 'Notification',
-            message: response.message || '',
-            description: response.description || '',
-            type: response.type || 'General',
-            read: response.read || false,
-            status: response.status || 'New',
-            createdAt: response.created_at || new Date().toISOString(),
-            relatedId: response.related_id,
-            actionUrl: response.action_url,
-        }
+        return normalizeAdminNotification(response)
     } catch (error) {
         console.error('Error fetching notification detail:', error)
         throw error
+    }
+}
+
+export function markAdminNotificationViewed(notificationId) {
+    const viewedIds = new Set(JSON.parse(localStorage.getItem('admin-viewed-notifications') || '[]'))
+    viewedIds.add(String(notificationId))
+    localStorage.setItem('admin-viewed-notifications', JSON.stringify([...viewedIds]))
+}
+
+function formatBirr(value) {
+    if (value === null || value === undefined || value === '') return ''
+    return String(value).replace(/\$/g, 'ETB ').replace(/\bUSD\b/g, 'ETB')
+}
+
+function normalizeAdminNotification(notification) {
+    const createdAt = notification.created_at || ''
+    const viewedIds = new Set(JSON.parse(localStorage.getItem('admin-viewed-notifications') || '[]'))
+    const status = notification.status || ''
+    return {
+        ...notification,
+        id: notification.id,
+        title: notification.title || '',
+        message: notification.message || notification.details || '',
+        description: notification.description || notification.details || '',
+        details: notification.details || notification.message || '',
+        type: notification.type || '',
+        status: status === 'New' && viewedIds.has(String(notification.id)) ? '' : status,
+        read: notification.read || false,
+        createdAt,
+        date: notification.date || (createdAt ? new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''),
+        time: notification.time || (createdAt ? new Date(createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''),
+        sender: notification.sender || notification.sender_name || '',
+        email: notification.email || notification.sender_email || '',
+        phone: notification.phone || notification.sender_phone || '',
+        tenantName: notification.tenantName || notification.tenant_name || '',
+        tenantPhone: notification.tenantPhone || notification.tenant_phone || '',
+        checkInDate: notification.checkInDate || notification.check_in_date || '',
+        checkOutDate: notification.checkOutDate || notification.check_out_date || '',
+        totalAmount: formatBirr(notification.totalAmount || notification.total_amount),
+        paymentMethod: notification.paymentMethod || notification.payment_method || '',
+        paymentStatus: notification.paymentStatus || notification.payment_status || '',
+        propertyTitle: notification.propertyTitle || notification.property_title || '',
+        propertyStatus: notification.propertyStatus || notification.property_status || '',
+        propertyAddress: notification.propertyAddress || notification.property_address || '',
+        owner: notification.owner || notification.property_owner || '',
+        image: resolveMediaUrl(notification.image || notification.property_image),
+        images: (notification.property_images || notification.images || [notification.image || notification.property_image])
+            .filter(Boolean)
+            .map(resolveMediaUrl),
+        ownerPhone: notification.ownerPhone || notification.property_owner_phone || '',
+        bedrooms: notification.bedrooms ?? notification.property_bedrooms ?? 0,
+        bathrooms: notification.bathrooms ?? notification.property_bathrooms ?? 0,
+        size: notification.size || notification.property_size || '',
+        nightlyPrice: formatBirr(notification.nightlyPrice || notification.property_nightly_price),
+        addedDate: notification.addedDate || notification.property_added_date || '',
+        listingType: notification.listingType || notification.listing_type || '',
+        carBrand: notification.carBrand || notification.car_brand || '',
+        carModel: notification.carModel || notification.car_model || '',
+        carYear: notification.carYear || notification.car_year || '',
+        carMileage: notification.carMileage || notification.car_mileage || '',
+        carFuelType: notification.carFuelType || notification.car_fuel_type || '',
+        carSeatingCapacity: notification.carSeatingCapacity || notification.car_seating_capacity || '',
+        relatedId: notification.related_id,
+        actionUrl: notification.action_url,
     }
 }
 

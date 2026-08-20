@@ -118,6 +118,9 @@ class User(AbstractUser):
         auto_now=True
     )
 
+    failed_login_attempts = models.PositiveIntegerField(default=0)
+    login_blocked = models.BooleanField(default=False)
+
     USERNAME_FIELD = "email"
 
     REQUIRED_FIELDS = ["first_name", "last_name"]

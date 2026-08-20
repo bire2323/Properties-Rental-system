@@ -17,6 +17,8 @@ from .views import (
     AdminOwnerVerificationDecisionAPIView,
     AdminNotificationListAPIView,
     AdminNotificationDetailAPIView,
+    AdminPaymentsAPIView,
+    AdminUserLoginResetAPIView,
 )
 
 urlpatterns = [
@@ -40,5 +42,7 @@ urlpatterns = [
     path('admin/verification/', AdminOwnerVerificationAPIView.as_view(), name='admin-verification-list'),
     path('admin/verification/<int:user_id>/', AdminOwnerVerificationDecisionAPIView.as_view(), name='admin-verification-decision'),
     path('admin/notifications/', AdminNotificationListAPIView.as_view(), name='admin-notification-list'),
-    path('admin/notifications/<int:notification_id>/', AdminNotificationDetailAPIView.as_view(), name='admin-notification-detail'),
+    path('admin/notifications/<str:notification_id>/', AdminNotificationDetailAPIView.as_view(), name='admin-notification-detail'),
+    path('admin/payments/', AdminPaymentsAPIView.as_view(), name='admin-payments'),
+    path('admin/users/<int:user_id>/reset-login/', AdminUserLoginResetAPIView.as_view(), name='admin-user-reset-login'),
 ]

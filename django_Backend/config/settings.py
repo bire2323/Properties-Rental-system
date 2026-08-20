@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     "interactions",
     "bookings",
     "payments",
+    "site_settings",
+
 ]
 
 MIDDLEWARE = [

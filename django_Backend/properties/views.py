@@ -5,6 +5,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.db.models import Q, Avg, Count, Prefetch
 from interactions.models import PropertyRating, Favorite
+from accounts.models import Notification
+from site_settings.models import SiteSettings
 from .models import Property, Feature, Company, CompanyVerificationDocument
 from .permissions import PropertyPermission, CompanyPermission, CompanyDocumentPermission
 from .serializers import (
@@ -89,6 +91,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 Q(listing_type='car') & Q(car_detail__brand__icontains=brand)
             )
 
+        is_available = self.request.query_params.get('is_available')
+        if is_available is not None and is_available != '':
+            if is_available in ('true', 'True', '1'):
+                queryset = queryset.filter(is_available=True)
+            elif is_available in ('false', 'False', '0'):
+                queryset = queryset.filter(is_available=False)
+
         return queryset.order_by('-created_at')
 
     def get_serializer_class(self):
@@ -99,7 +108,36 @@ class PropertyViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        property_obj = serializer.save(owner=self.request.user)
+        site_settings = SiteSettings.objects.filter(pk=1).first()
+        if site_settings is None or site_settings.property_listing_alerts:
+            owner_name = self.request.user.get_full_name().strip() or self.request.user.email
+            house = getattr(property_obj, 'house_detail', None)
+            car = getattr(property_obj, 'car_detail', None)
+            image = property_obj.images.first()
+            owner_phone = getattr(getattr(self.request.user, 'profile', None), 'phone_number', '') or ''
+            Notification.objects.create(
+                type=Notification.NotificationType.PROPERTY,
+                status=Notification.NotificationStatus.NEW,
+                title="New property listing",
+                details=property_obj.description,
+                info="Property listing alert",
+                sender=self.request.user,
+                sender_name=owner_name,
+                sender_email=self.request.user.email,
+                property_obj=property_obj,
+                property_title=property_obj.property_name,
+                property_status=property_obj.get_status_display(),
+                property_owner=owner_name,
+                property_image=image.image.url if image else '',
+                property_bedrooms=getattr(house, 'bedrooms', None),
+                property_bathrooms=getattr(house, 'bathrooms', None),
+                property_size=f"{house.area_sqft} sqft" if house else '',
+                property_nightly_price=f"{property_obj.currency} {property_obj.price} / {property_obj.get_rental_unit_display().lower()}",
+                property_address=", ".join(filter(None, [property_obj.address, property_obj.city, property_obj.region])),
+                property_added_date=property_obj.created_at.strftime("%b %d, %Y"),
+                sender_phone=owner_phone,
+            )
 
     def perform_update(self, serializer):
         serializer.save()

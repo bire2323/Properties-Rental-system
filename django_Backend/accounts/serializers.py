@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification
+from site_settings.models import SiteSettings
 from .services import verify_google_token
 
 User = get_user_model()
@@ -246,11 +247,33 @@ class LoginSerializer(serializers.Serializer):
         email = attrs.get("email")
         password = attrs.get("password")
 
+        user = User.objects.filter(email=email).first()
+        if user and user.login_blocked:
+            raise serializers.ValidationError({"detail": "This account is blocked after too many failed login attempts."})
+
         request = self.context.get("request")
         user = authenticate(request=request, email=email, password=password)
 
         if not user:
+            if user is None:
+                failed_user = User.objects.filter(email=email).first()
+                if failed_user:
+                    security = SiteSettings.objects.filter(pk=1).first()
+                    limit = security.login_attempts_limit if security else 5
+                    failed_user.failed_login_attempts += 1
+                    if failed_user.failed_login_attempts >= limit:
+                        failed_user.login_blocked = True
+                    failed_user.save(update_fields=["failed_login_attempts", "login_blocked"])
+                    if failed_user.login_blocked:
+                        raise serializers.ValidationError({"detail": "This account is blocked after too many failed login attempts."})
             raise serializers.ValidationError({"detail": "Invalid email or password."})
+
+        if user.login_blocked:
+            raise serializers.ValidationError({"detail": "This account is blocked after too many failed login attempts."})
+
+        if user.failed_login_attempts:
+            user.failed_login_attempts = 0
+            user.save(update_fields=["failed_login_attempts"])
 
         attrs["user"] = user
         return attrs
@@ -359,9 +382,20 @@ class BecomeOwnerSerializer(serializers.ModelSerializer):
 class UpdateProfileSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile data."""
 
+    first_name = serializers.CharField(source="user.first_name", required=False)
+    last_name = serializers.CharField(source="user.last_name", required=False)
+    email = serializers.EmailField(source="user.email", required=False)
+    new_password = serializers.CharField(write_only=True, required=False, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, required=False, min_length=8)
+
     class Meta:
         model = Profile
         fields = (
+            "first_name",
+            "last_name",
+            "email",
+            "new_password",
+            "confirm_password",
             "phone_number",
             "profile_image",
             "date_of_birth",
@@ -369,6 +403,39 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "city",
             "country",
         )
+
+    def validate_email(self, value):
+        user = self.context["request"].user
+        if User.objects.exclude(pk=user.pk).filter(email=value).exists():
+            raise serializers.ValidationError("This email address is already in use.")
+        return value
+
+    def validate(self, attrs):
+        new_password = attrs.get("new_password")
+        confirm_password = attrs.get("confirm_password")
+        if new_password or confirm_password:
+            if not new_password or not confirm_password:
+                raise serializers.ValidationError({"confirm_password": "Enter and confirm the new password."})
+            if new_password != confirm_password:
+                raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return attrs
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", {})
+        new_password = validated_data.pop("new_password", None)
+        validated_data.pop("confirm_password", None)
+        for field, value in user_data.items():
+            setattr(instance.user, field, value)
+        if new_password:
+            instance.user.set_password(new_password)
+        if user_data:
+            update_fields = [*user_data.keys(), "updated_at"]
+            if new_password:
+                update_fields.append("password")
+            instance.user.save(update_fields=update_fields)
+        elif new_password:
+            instance.user.save(update_fields=["password", "updated_at"])
+        return super().update(instance, validated_data)
 
 
 

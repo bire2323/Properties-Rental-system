@@ -4,6 +4,7 @@ import ProtectedRoute from '../components/auth/ProtectedRoute'
 import AdminRoute from '../components/auth/AdminRoute'
 import AdminDashboard from '../pages/Admin/AdminDashboard'
 import Users from '../pages/Admin/Users'
+import UserDetail from '../pages/Admin/UserDetail'
 import AdminProperties from '../pages/Admin/Properties'
 import AdminPropertyDetail from '../pages/Admin/AdminPropertyDetail'
 import Rentals from '../pages/Admin/Rentals'
@@ -12,6 +13,7 @@ import VerificationDetail from '../pages/Admin/VerificationDetail'
 import Reports from '../pages/Admin/Reports'
 import Payments from '../pages/Admin/Payments'
 import AdminSetting from '../pages/Admin/AdminSetting'
+import AdminProfile from '../pages/Admin/AdminProfile'
 import Notification from '../pages/Admin/Notification'
 import NotificationDetail from '../pages/Admin/NotificationDetail'
 import OwnerDashboard from '../pages/Owner/OwnerDashboard'
@@ -130,6 +132,14 @@ function AppRoutes() {
                     }
                 />
                 <Route
+                    path="/admin-dashboard/users/:id"
+                    element={
+                        <AdminRoute>
+                            <UserDetail />
+                        </AdminRoute>
+                    }
+                />
+                <Route
                     path="/admin-dashboard/properties"
                     element={
                         <AdminRoute>
@@ -190,6 +200,14 @@ function AppRoutes() {
                     element={
                         <AdminRoute>
                             <AdminSetting />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/profile"
+                    element={
+                        <AdminRoute>
+                            <AdminProfile />
                         </AdminRoute>
                     }
                 />

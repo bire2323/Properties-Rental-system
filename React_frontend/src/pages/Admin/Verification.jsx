@@ -10,6 +10,14 @@ import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import { Button } from '../../components/ui'
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '../../components/ui/dialog'
+import {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
@@ -49,6 +57,9 @@ function Verification() {
     const [visibleCount, setVisibleCount] = useState(5)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [rejectionTarget, setRejectionTarget] = useState(null)
+    const [rejectionReason, setRejectionReason] = useState('')
+    const [saving, setSaving] = useState(false)
     const navigate = useNavigate()
     const { isDark } = useTheme()
 
@@ -86,17 +97,36 @@ function Verification() {
     const displayedRows = useMemo(() => rows.slice(0, visibleCount), [rows, visibleCount])
     const hasMoreRows = rows.length > visibleCount
 
-    const handleDecision = async (id, status) => {
+    const handleDecision = async (id, status, reason = '') => {
+        setSaving(true)
+        setError('')
         try {
-            await updateOwnerVerificationStatus(id, status)
+            await updateOwnerVerificationStatus(id, status, reason)
             setRows((currentRows) =>
                 currentRows.map((row) =>
-                    row.id === id ? { ...row, status: status === 'approved' ? 'Approved' : 'Rejected', status_value: status } : row,
+                    row.id === id ? { ...row, status: status === 'approved' ? 'Approved' : 'Rejected', status_value: status, rejection_reason: reason } : row,
                 ),
             )
         } catch (err) {
             setError(err.message || 'Unable to update verification status.')
+        } finally {
+            setSaving(false)
         }
+    }
+
+    const openRejectionDialog = (id) => {
+        setRejectionTarget(id)
+        setRejectionReason('')
+    }
+
+    const submitRejection = () => {
+        const reason = rejectionReason.trim()
+        if (!reason) {
+            setError('Please enter a rejection reason.')
+            return
+        }
+        handleDecision(rejectionTarget, 'rejected', reason)
+        setRejectionTarget(null)
     }
 
     return (
@@ -189,13 +219,12 @@ function Verification() {
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center justify-end">
                                                                 <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <button
-                                                                            type="button"
-                                                                            className={`inline-flex items-center justify-center rounded-lg p-2 transition ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
-                                                                        >
-                                                                            <MoreVertical className="h-4 w-4" />
-                                                                        </button>
+                                                                    <DropdownMenuTrigger
+                                                                        variant="ghost"
+                                                                        size="icon-sm"
+                                                                        className={isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}
+                                                                    >
+                                                                        <MoreVertical className="h-4 w-4" />
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
                                                                         <DropdownMenuItem onClick={() => navigate(`/admin-dashboard/verification/${row.id}`)}>
@@ -204,7 +233,7 @@ function Verification() {
                                                                         <DropdownMenuItem onClick={() => handleDecision(row.id, 'approved')}>
                                                                             Approve
                                                                         </DropdownMenuItem>
-                                                                        <DropdownMenuItem onClick={() => handleDecision(row.id, 'rejected')}>
+                                                                        <DropdownMenuItem onClick={() => openRejectionDialog(row.id)}>
                                                                             Reject
                                                                         </DropdownMenuItem>
                                                                     </DropdownMenuContent>
@@ -233,6 +262,33 @@ function Verification() {
                             )}
                         </div>
                     </div>
+
+                    <Dialog open={Boolean(rejectionTarget)} onOpenChange={(open) => { if (!open) setRejectionTarget(null) }}>
+                        <DialogContent className={isDark ? 'border-slate-700 bg-slate-900 text-white' : ''}>
+                            <DialogHeader>
+                                <DialogTitle className={isDark ? 'text-white' : ''}>Reject Verification</DialogTitle>
+                                <DialogDescription className={isDark ? 'text-slate-400' : ''}>
+                                    Enter the reason that will be saved with this rejection.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(event) => setRejectionReason(event.target.value)}
+                                placeholder="Rejection reason"
+                                rows={4}
+                                autoFocus
+                                className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${isDark ? 'border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:border-slate-500' : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:border-slate-400'}`}
+                            />
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setRejectionTarget(null)} disabled={saving}>
+                                    Cancel
+                                </Button>
+                                <Button type="button" variant="destructive" onClick={submitRejection} disabled={saving}>
+                                    {saving ? 'Saving...' : 'Reject User'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </main>
             </div>
         </div>

@@ -4,8 +4,11 @@ import { useAuth } from '../../hooks/useAuth'
 import { getDashboardRoute } from '../../services/authService'
 
 export default function GoogleLoginButton() {
+    const googleLoginEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true' && Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
     const navigate = useNavigate()
     const { googleLogin } = useAuth()
+
+    if (!googleLoginEnabled) return null
 
     const handleSuccess = async (credentialResponse) => {
         try {
