@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
     Check, ChevronRight, ChevronLeft, Building2, Car,
-    Plus, X, Loader2, Home, CarFront
+    Plus, X, Loader2, Home, CarFront,
+    Upload, ImagePlus, CheckCircle2, AlertCircle,
+    Sofa, BedDouble, Bath, House
 } from 'lucide-react'
 import { createProperty, getMyManagedCompanies } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
@@ -260,12 +262,12 @@ function Step1({ form, onChange, errors }) {
                 />
             </FormField>
 
-            <FormField label="Description">
+            <FormField label="Description" required error={errors.description}>
                 <textarea
                     rows={5}
                     value={form.description}
                     onChange={(e) => onChange('description', e.target.value)}
-                    className={textareaClass}
+                    className={`${textareaClass} ${errors.description ? 'border-red-500' : ''}`}
                     placeholder="Describe the property — location highlights, nearby amenities, unique features..."
                 />
             </FormField>
@@ -464,24 +466,57 @@ function Step2({ form, onChange, errors, companies, companiesLoading, onAddCompa
 // ─── Step 3: Location ────────────────────────────────────────────────────────
 
 function Step3({ form, onChange, errors }) {
+    const [locationLoading, setLocationLoading] = useState(false)
+    const [locationError, setLocationError] = useState('')
+
+    const handleUseMyLocation = () => {
+        if (!navigator.geolocation) {
+            setLocationError('Geolocation is not supported by your browser.')
+            return
+        }
+
+        setLocationLoading(true)
+        setLocationError('')
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                onChange('latitude', position.coords.latitude.toString())
+                onChange('longitude', position.coords.longitude.toString())
+                setLocationLoading(false)
+            },
+            () => {
+                setLocationError(
+                    'Unable to get your location. Please allow location permission and try again.'
+                )
+                setLocationLoading(false)
+            }
+        )
+    }
+
     return (
         <div className="space-y-5">
             <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Location
+                </h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Help renters find your property accurately.
                 </p>
             </div>
 
-            <FormField label="Address">
+            {/* Address */}
+            <FormField label="Address" required error={errors.address}>
                 <Input
                     value={form.address}
                     onChange={(e) => onChange('address', e.target.value)}
                     placeholder="Street address or building name"
+                    className={errors.address ? 'border-red-500' : ''}
                 />
             </FormField>
 
             <div className="grid gap-4 sm:grid-cols-2">
+
+                {/* City */}
                 <FormField label="City" required error={errors.city}>
                     <Input
                         value={form.city}
@@ -490,6 +525,8 @@ function Step3({ form, onChange, errors }) {
                         className={errors.city ? 'border-red-500' : ''}
                     />
                 </FormField>
+
+                {/* Region */}
                 <FormField label="Region" required error={errors.region}>
                     <Input
                         value={form.region}
@@ -498,35 +535,67 @@ function Step3({ form, onChange, errors }) {
                         className={errors.region ? 'border-red-500' : ''}
                     />
                 </FormField>
-                <FormField label="Kebele">
+
+                {/* Kebele */}
+                <FormField label="Kebele" required error={errors.kebele}>
                     <Input
                         value={form.kebele}
                         onChange={(e) => onChange('kebele', e.target.value)}
-                        placeholder="Kebele (optional)"
+                        placeholder="Enter kebele"
+                        className={errors.kebele ? 'border-red-500' : ''}
                     />
                 </FormField>
             </div>
 
+            {/* GPS Coordinates */}
             <div>
-                <p className="mb-3 text-sm font-medium text-slate-500 dark:text-slate-400">
-                    GPS Coordinates <span className="text-xs">(optional)</span>
-                </p>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                        GPS Coordinates <span className="text-xs">(optional)</span>
+                    </p>
+
+                    <button
+                        type="button"
+                        onClick={handleUseMyLocation}
+                        disabled={locationLoading}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#c99b43] px-3 py-2 text-xs font-semibold text-[#c99b43] transition hover:bg-[#c99b43]/10 disabled:opacity-60"
+                    >
+                        {locationLoading ? (
+                            <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Getting location...
+                            </>
+                        ) : (
+                            'Use My Location'
+                        )}
+                    </button>
+                </div>
+
+                {locationError && (
+                    <p className={errorClass}>{locationError}</p>
+                )}
+
                 <div className="grid gap-4 sm:grid-cols-2">
                     <FormField label="Latitude">
                         <Input
                             type="number"
                             step="any"
                             value={form.latitude}
-                            onChange={(e) => onChange('latitude', e.target.value)}
+                            onChange={(e) =>
+                                onChange('latitude', e.target.value)
+                            }
                             placeholder="9.0054"
                         />
                     </FormField>
+
                     <FormField label="Longitude">
                         <Input
                             type="number"
                             step="any"
                             value={form.longitude}
-                            onChange={(e) => onChange('longitude', e.target.value)}
+                            onChange={(e) =>
+                                onChange('longitude', e.target.value)
+                            }
                             placeholder="38.7636"
                         />
                     </FormField>
@@ -535,7 +604,6 @@ function Step3({ form, onChange, errors }) {
         </div>
     )
 }
-
 // ─── Step 4: Property Details ────────────────────────────────────────────────
 
 function Step4({ form, onChange, errors }) {
@@ -551,24 +619,42 @@ function Step4({ form, onChange, errors }) {
                     </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField label="Bedrooms" required error={errors['house_detail.bedrooms']}>
-                        <Input
-                            type="number" min="0"
-                            value={form.house_detail.bedrooms}
-                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bedrooms: e.target.value })}
-                            placeholder="3"
-                            className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''}
-                        />
-                    </FormField>
-                    <FormField label="Bathrooms" required error={errors['house_detail.bathrooms']}>
-                        <Input
-                            type="number" min="0"
-                            value={form.house_detail.bathrooms}
-                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bathrooms: e.target.value })}
-                            placeholder="2"
-                            className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''}
-                        />
-                    </FormField>
+                    <Input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={form.house_detail.bedrooms}
+                        onChange={(e) => {
+                            const value = e.target.value
+
+                            if (value === '' || /^\d+$/.test(value)) {
+                                onChange('house_detail', {
+                                    ...form.house_detail,
+                                    bedrooms: value,
+                                })
+                            }
+                        }}
+                        placeholder="3"
+                        className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''}
+                    />
+                    <Input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={form.house_detail.bathrooms}
+                        onChange={(e) => {
+                            const value = e.target.value
+
+                            if (value === '' || /^\d+$/.test(value)) {
+                                onChange('house_detail', {
+                                    ...form.house_detail,
+                                    bathrooms: value,
+                                })
+                            }
+                        }}
+                        placeholder="2"
+                        className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''}
+                    />
                     <FormField label="Area (sqft)" required error={errors['house_detail.area_sqft']}>
                         <Input
                             type="number" min="0"
@@ -696,117 +782,538 @@ function Step4({ form, onChange, errors }) {
 
 // ─── Step 5: Features & Images ───────────────────────────────────────────────
 
+// ─── Step 5: Features & Images ───────────────────────────────────────────────
+
 function Step5({ form, onChange, errors }) {
+    const MIN_IMAGES = 3
+    const MAX_IMAGES = 12
+    const MAX_FILE_SIZE = 5 * 1024 * 1024
+
+    const isHouse = form.listing_type === 'house'
+
+    const imageSuggestions = isHouse
+        ? [
+            {
+                Icon: House,
+                title: 'Front View',
+                description: 'Show the exterior of the property',
+            },
+            {
+                Icon: Sofa,
+                title: 'Living Room',
+                description: 'Show the salon or main living area',
+            },
+            {
+                Icon: BedDouble,
+                title: 'Bedroom',
+                description: 'Show at least one bedroom',
+            },
+            {
+                Icon: Bath,
+                title: 'Bathroom',
+                description: 'Show a clean bathroom',
+            },
+        ]
+        : [
+            {
+                Icon: CarFront,
+                title: 'Front View',
+                description: 'Show the front of the vehicle',
+            },
+            {
+                Icon: Car,
+                title: 'Side View',
+                description: 'Show the full side of the vehicle',
+            },
+            {
+                Icon: CarFront,
+                title: 'Interior',
+                description: 'Show seats and dashboard',
+            },
+            {
+                Icon: ImagePlus,
+                title: 'Additional View',
+                description: 'Show important details or condition',
+            },
+        ]
+
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files)
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-        const invalid = files.filter((f) => !validTypes.includes(f.type))
-        if (invalid.length) {
-            onChange('_imageError', 'Only JPEG, PNG, WebP and GIF images are allowed.')
+
+        if (!files.length) return
+
+        const validTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+        ]
+
+        const invalidFiles = files.filter(
+            (file) => !validTypes.includes(file.type)
+        )
+
+        if (invalidFiles.length > 0) {
+            onChange(
+                '_imageError',
+                'Only JPEG, PNG and WebP images are allowed.'
+            )
+
+            e.target.value = ''
             return
         }
-        const oversized = files.filter((f) => f.size > 5 * 1024 * 1024)
-        if (oversized.length) {
-            onChange('_imageError', 'Each image must be under 5 MB.')
+
+        const oversizedFiles = files.filter(
+            (file) => file.size > MAX_FILE_SIZE
+        )
+
+        if (oversizedFiles.length > 0) {
+            onChange(
+                '_imageError',
+                'Each image must be smaller than 5 MB.'
+            )
+
+            e.target.value = ''
             return
         }
-        onChange('images', [...form.images, ...files])
+
+        // Prevent duplicate files
+        const newFiles = files.filter(
+            (newFile) =>
+                !form.images.some(
+                    (existingFile) =>
+                        existingFile.name === newFile.name &&
+                        existingFile.size === newFile.size
+                )
+        )
+
+        const remainingSlots = MAX_IMAGES - form.images.length
+
+        if (remainingSlots <= 0) {
+            onChange(
+                '_imageError',
+                `You can upload a maximum of ${MAX_IMAGES} images.`
+            )
+
+            e.target.value = ''
+            return
+        }
+
+        const filesToAdd = newFiles.slice(0, remainingSlots)
+
+        onChange('images', [
+            ...form.images,
+            ...filesToAdd,
+        ])
+
         onChange('_imageError', '')
+
+        // Reset input so the same file can be selected again
+        e.target.value = ''
     }
 
-    const removeImage = (idx) =>
-        onChange('images', form.images.filter((_, i) => i !== idx))
+    const removeImage = (index) => {
+        const updatedImages = form.images.filter(
+            (_, i) => i !== index
+        )
+
+        onChange('images', updatedImages)
+
+        if (updatedImages.length >= MIN_IMAGES) {
+            onChange('_imageError', '')
+        }
+    }
+
+    const uploadedCount = form.images.length
+    const hasMinimumImages = uploadedCount >= MIN_IMAGES
+
+    const progressPercentage = Math.min(
+        (uploadedCount / MIN_IMAGES) * 100,
+        100
+    )
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-7">
+
+            {/* Header */}
             <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Features & Images</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Features & Images
+                </h3>
+
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Select amenities and upload photos for your listing.
+                    Add amenities and clear photos to make your listing more attractive.
                 </p>
             </div>
 
+            {/* Features */}
             <div>
-                <p className={labelClass}>Features & Amenities</p>
+                <p className={labelClass}>
+                    Features & Amenities
+                </p>
+
                 <FeatureMultiSelect
                     selectedFeatures={form.selectedFeatures}
-                    onChange={(features) => onChange('selectedFeatures', features)}
+                    onChange={(features) =>
+                        onChange('selectedFeatures', features)
+                    }
                 />
             </div>
 
-            <div>
-                <p className={labelClass}>Property Images</p>
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 transition hover:border-[#c99b43] dark:border-slate-700 dark:bg-slate-900">
-                    <div className="rounded-xl bg-[#c99b43]/10 p-3">
-                        <Plus className="h-6 w-6 text-[#c99b43]" />
-                    </div>
-                    <div className="text-center">
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Click to upload images
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">JPEG, PNG, WebP up to 5 MB each</p>
-                    </div>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="sr-only"
-                        onChange={handleImageChange}
-                    />
-                </label>
-                {errors._imageError && <p className={errorClass}>{errors._imageError}</p>}
+            {/* Image Section */}
+            <div className="space-y-4">
 
-                {form.images.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                        {form.images.map((file, idx) => (
-                            <div key={idx} className="group relative overflow-hidden rounded-2xl">
+                {/* Section header */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+                    <div>
+                        <div className="flex items-center gap-2">
+
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                Property Images
+                            </p>
+
+                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                                Required
+                            </span>
+
+                        </div>
+
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            Upload at least {MIN_IMAGES} clear images.
+                            Maximum {MAX_IMAGES} images.
+                        </p>
+                    </div>
+
+                    {/* Upload status */}
+                    <div
+                        className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${hasMinimumImages
+                            ? 'bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+                            }`}
+                    >
+                        {hasMinimumImages ? (
+                            <>
+                                <CheckCircle2 className="h-4 w-4" />
+                                {uploadedCount} images uploaded
+                            </>
+                        ) : (
+                            <>
+                                <AlertCircle className="h-4 w-4" />
+                                {uploadedCount} / {MIN_IMAGES} minimum
+                            </>
+                        )}
+                    </div>
+
+                </div>
+
+                {/* Progress bar */}
+                <div className="space-y-1.5">
+
+                    <div className="flex justify-between text-[11px] text-slate-500">
+                        <span>Minimum photo requirement</span>
+
+                        <span>
+                            {uploadedCount} of {MIN_IMAGES}
+                        </span>
+                    </div>
+
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+
+                        <div
+                            className={`h-full rounded-full transition-all duration-500 ${hasMinimumImages
+                                ? 'bg-green-500'
+                                : 'bg-[#c99b43]'
+                                }`}
+                            style={{
+                                width: `${progressPercentage}%`
+                            }}
+                        />
+
+                    </div>
+
+                </div>
+
+                {/* Photo suggestions */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+
+                    <div className="mb-3 flex items-center gap-2">
+
+                        <ImagePlus className="h-4 w-4 text-[#c99b43]" />
+
+                        <div>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                Recommended photos
+                            </p>
+
+                            <p className="text-xs text-slate-500">
+                                Clear photos from these areas help renters understand your property.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+
+                        {imageSuggestions.map(
+                            ({ Icon, title, description }) => (
+
+                                <div
+                                    key={title}
+                                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950"
+                                >
+
+                                    <div className="rounded-xl bg-[#c99b43]/10 p-2 text-[#c99b43]">
+
+                                        <Icon className="h-4 w-4" />
+
+                                    </div>
+
+                                    <div>
+                                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                            {title}
+                                        </p>
+
+                                        <p className="mt-0.5 text-[11px] text-slate-500">
+                                            {description}
+                                        </p>
+                                    </div>
+
+                                </div>
+
+                            )
+                        )}
+
+                    </div>
+
+                </div>
+
+                {/* Upload area */}
+                {uploadedCount < MAX_IMAGES && (
+
+                    <label
+                        className={`
+                            flex cursor-pointer flex-col items-center justify-center gap-3
+                            rounded-2xl border-2 border-dashed p-8
+                            transition-all duration-200
+                            ${errors._imageError
+                                ? 'border-red-400 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20'
+                                : 'border-slate-300 bg-slate-50 hover:border-[#c99b43] hover:bg-[#c99b43]/5 dark:border-slate-700 dark:bg-slate-900'
+                            }
+                        `}
+                    >
+
+                        <div className="rounded-2xl bg-[#c99b43]/10 p-4">
+
+                            <Upload className="h-7 w-7 text-[#c99b43]" />
+
+                        </div>
+
+                        <div className="text-center">
+
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                Upload property photos
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                                Drag and drop is supported by your browser or click to browse
+                            </p>
+
+                            <p className="mt-1 text-[11px] text-slate-400">
+                                JPEG, PNG or WebP · Maximum 5 MB per image
+                            </p>
+
+                        </div>
+
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            className="sr-only"
+                            onChange={handleImageChange}
+                        />
+
+                    </label>
+
+                )}
+
+                {/* Error */}
+                {(errors._imageError || form._imageError) && (
+
+                    <div className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950/30 dark:text-red-400">
+
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+
+                        {errors._imageError || form._imageError}
+
+                    </div>
+
+                )}
+
+                {/* Image previews */}
+                {uploadedCount > 0 && (
+
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+
+                        {form.images.map((file, index) => (
+
+                            <div
+                                key={`${file.name}-${file.size}-${index}`}
+                                className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900"
+                            >
+
                                 <img
                                     src={URL.createObjectURL(file)}
-                                    alt={`Preview ${idx + 1}`}
-                                    className="h-28 w-full object-cover"
+                                    alt={`Property preview ${index + 1}`}
+                                    className="h-32 w-full object-cover transition duration-300 group-hover:scale-105"
                                 />
+
+                                {/* Image number */}
+                                <div className="absolute left-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                                    {index + 1}
+                                </div>
+
+                                {/* Remove button */}
                                 <button
                                     type="button"
-                                    onClick={() => removeImage(idx)}
-                                    className="absolute right-1.5 top-1.5 rounded-full bg-red-500 p-1 text-white opacity-0 transition group-hover:opacity-100"
+                                    onClick={() => removeImage(index)}
+                                    className="absolute right-2 top-2 rounded-full bg-red-500 p-1.5 text-white shadow-md transition hover:scale-110 hover:bg-red-600"
+                                    aria-label={`Remove image ${index + 1}`}
                                 >
-                                    <X className="h-3 w-3" />
+                                    <X className="h-3.5 w-3.5" />
                                 </button>
+
+                                {/* Filename */}
+                                <div className="truncate px-2 py-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                    {file.name}
+                                </div>
+
                             </div>
+
                         ))}
+
                     </div>
+
                 )}
+
+                {/* Success message */}
+                {hasMinimumImages && (
+
+                    <div className="flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-900/50 dark:bg-green-950/20">
+
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
+
+                        <div>
+
+                            <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+                                Minimum photo requirement completed
+                            </p>
+
+                            <p className="mt-1 text-xs text-green-700 dark:text-green-400">
+                                You can add more photos to make your listing more attractive.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                )}
+
             </div>
+
         </div>
     )
 }
-
 // ─── Validation ──────────────────────────────────────────────────────────────
 
 function validateStep(step, form) {
     const errors = {}
+
     if (step === 1) {
-        if (!form.property_name.trim()) errors.property_name = 'Property name is required.'
-        else if (form.property_name.trim().length < 3) errors.property_name = 'Must be at least 3 characters.'
+        if (!form.property_name.trim()) {
+            errors.property_name = 'Property name is required.'
+        } else if (form.property_name.trim().length < 3) {
+            errors.property_name = 'Must be at least 3 characters.'
+        }
+
+        if (!form.description.trim()) {
+            errors.description = 'Description is required.'
+        } else if (form.description.trim().length < 30) {
+            errors.description = 'Description must be at least 30 characters.'
+        }
     }
     if (step === 2) {
         if (!form.price || parseFloat(form.price) <= 0) errors.price = 'Enter a valid price greater than 0.'
         if (form.ownership === 'company' && !form.company) errors.company = 'Please select one of your managed companies.'
     }
     if (step === 3) {
-        if (!form.city.trim()) errors.city = 'City is required.'
-        if (!form.region.trim()) errors.region = 'Region is required.'
+        if (!form.address.trim()) {
+            errors.address = 'Address is required.'
+        }
+
+        if (!form.city.trim()) {
+            errors.city = 'City is required.'
+        }
+
+        if (!form.region.trim()) {
+            errors.region = 'Region is required.'
+        }
+
+        if (!form.kebele.trim()) {
+            errors.kebele = 'Kebele is required.'
+        }
     }
     if (step === 4) {
         if (form.listing_type === 'house') {
-            if (!form.house_detail.bedrooms) errors['house_detail.bedrooms'] = 'Bedrooms is required.'
-            if (!form.house_detail.bathrooms) errors['house_detail.bathrooms'] = 'Bathrooms is required.'
-            if (!form.house_detail.area_sqft) errors['house_detail.area_sqft'] = 'Area is required.'
+            const bedrooms = Number(form.house_detail.bedrooms)
+            const bathrooms = Number(form.house_detail.bathrooms)
+
+            if (
+                !form.house_detail.bedrooms ||
+                !Number.isInteger(bedrooms) ||
+                bedrooms <= 0
+            ) {
+                errors['house_detail.bedrooms'] =
+                    'Bedrooms must be a positive whole number.'
+            }
+
+            if (
+                !form.house_detail.bathrooms ||
+                !Number.isInteger(bathrooms) ||
+                bathrooms <= 0
+            ) {
+                errors['house_detail.bathrooms'] =
+                    'Bathrooms must be a positive whole number.'
+            }
+
+            if (!form.house_detail.area_sqft) {
+                errors['house_detail.area_sqft'] = 'Area is required.'
+            }
         } else {
-            if (!form.car_detail.brand.trim()) errors['car_detail.brand'] = 'Brand is required.'
-            if (!form.car_detail.model.trim()) errors['car_detail.model'] = 'Model is required.'
-            if (!form.car_detail.year) errors['car_detail.year'] = 'Year is required.'
-            if (!form.car_detail.seating_capacity) errors['car_detail.seating_capacity'] = 'Seating capacity is required.'
+            if (!form.car_detail.brand.trim()) {
+                errors['car_detail.brand'] = 'Brand is required.'
+            }
+
+            if (!form.car_detail.model.trim()) {
+                errors['car_detail.model'] = 'Model is required.'
+            }
+
+            if (!form.car_detail.year) {
+                errors['car_detail.year'] = 'Year is required.'
+            }
+
+            if (!form.car_detail.seating_capacity) {
+                errors['car_detail.seating_capacity'] =
+                    'Seating capacity is required.'
+            }
+        }
+    }
+    if (step === 5) {
+        const MIN_IMAGES = 3
+
+        if (!Array.isArray(form.images) || form.images.length < MIN_IMAGES) {
+            errors._imageError =
+                `Please upload at least ${MIN_IMAGES} clear images. ` +
+                `You currently have ${form.images?.length || 0}.`
         }
     }
     return errors
@@ -1017,6 +1524,12 @@ export default function AddProperty() {
     }
 
     const handleSubmit = async () => {
+        const stepErrors = validateStep(5, form)
+
+        if (Object.keys(stepErrors).length > 0) {
+            setErrors(stepErrors)
+            return
+        }
         setLoading(true)
         setGeneralError(null)
         try {

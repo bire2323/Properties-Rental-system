@@ -29,6 +29,40 @@ function Login() {
     remember: false,
   })
 
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  })
+
+  const validateForm = () => {
+    const newErrors = {
+      email: '',
+      password: '',
+    }
+
+    const email = formData.email.trim()
+
+    if (!email) {
+      newErrors.email = 'Email address is required.'
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+      if (!emailRegex.test(email)) {
+        newErrors.email = 'Please enter a valid email address.'
+      }
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required.'
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters.'
+    }
+
+    setErrors(newErrors)
+
+    return !newErrors.email && !newErrors.password
+  }
+
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
 
@@ -36,6 +70,14 @@ function Login() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }))
+
+    // Clear the error while the user corrects the field
+    if (name === 'email' || name === 'password') {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: '',
+      }))
+    }
   }
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -64,12 +106,21 @@ function Login() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
     setErrorMessage('')
+
+    // Stop submission if client-side validation fails
+    const isValid = validateForm()
+
+    if (!isValid) {
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
       const result = await login({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
       })
 
@@ -80,7 +131,6 @@ function Login() {
       setIsSubmitting(false)
     }
   }
-
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,_#fffdf9_0%,_#f7fbff_100%)] text-slate-900 transition-colors dark:bg-[linear-gradient(180deg,_#05101f_0%,_#0a2140_22%,_#08172d_100%)] dark:text-white">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -139,20 +189,29 @@ function Login() {
                       value={formData.email}
                       onChange={handleChange}
                       onKeyDown={handleKeyDown}
-                      className="h-13 rounded-2xl border-slate-200 bg-slate-50/90 pl-11 pr-4 shadow-sm focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/20 dark:border-slate-800 dark:bg-slate-900/80"
+                      aria-invalid={!!errors.email}
+                      className={`h-13 rounded-2xl bg-slate-50/90 pl-11 pr-4 shadow-sm focus-visible:ring-[#d4a756]/20 dark:bg-slate-900/80 ${errors.email
+                        ? 'border-rose-500 focus-visible:border-rose-500 focus-visible:ring-rose-500/20'
+                        : 'border-slate-200 focus-visible:border-[#d4a756] dark:border-slate-800'
+                        }`}
                     />
                   </div>
+                  {errors.email && (
+                    <p className="text-sm text-rose-600 dark:text-rose-400">
+                      {errors.email}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-4">
                     <label
                       htmlFor="password"
-
                       className="text-sm font-medium text-slate-700 dark:text-slate-200"
                     >
                       Password
                     </label>
+
                     <a
                       href="/"
                       className="text-sm font-medium text-[#b27a23] transition hover:text-[#8c5c14]"
@@ -163,6 +222,7 @@ function Login() {
 
                   <div className="group relative">
                     <Lock className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
+
                     <Input
                       id="password"
                       name="password"
@@ -171,8 +231,13 @@ function Login() {
                       value={formData.password}
                       onChange={handleChange}
                       onKeyDown={handleKeyDown}
-                      className="h-13 rounded-2xl border-slate-200 bg-slate-50/90 pl-11 pr-12 shadow-sm focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/20 dark:border-slate-800 dark:bg-slate-900/80"
+                      aria-invalid={!!errors.password}
+                      className={`h-13 rounded-2xl bg-slate-50/90 pl-11 pr-12 shadow-sm dark:bg-slate-900/80 ${errors.password
+                          ? 'border-rose-500 focus-visible:border-rose-500 focus-visible:ring-rose-500/20'
+                          : 'border-slate-200 focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/20 dark:border-slate-800'
+                        }`}
                     />
+
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
@@ -182,6 +247,12 @@ function Login() {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+
+                  {errors.password && (
+                    <p className="text-sm text-rose-600 dark:text-rose-400">
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">

@@ -272,7 +272,18 @@ class OwnerVerificationDocument(models.Model):
     document_image = models.ImageField(
         upload_to="owner_verification_documents/"
     )
+ # Required when document_type = national_id
+    document_front_image = models.ImageField(
+        upload_to="owner_verification_documents/front/",
+        blank=True,
+        null=True
+    )
 
+    document_back_image = models.ImageField(
+        upload_to="owner_verification_documents/back/",
+        blank=True,
+        null=True
+    )
     is_verified = models.BooleanField(
         default=False
     )

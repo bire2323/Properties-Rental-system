@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Trash2, Edit3, ArrowLeft, MapPin, DollarSign, CalendarDays } from 'lucide-react'
+import { Trash2, Edit3, ArrowLeft, MapPin, DollarSign, CalendarDays, X } from 'lucide-react'
 import { getPropertyById, deleteProperty } from '../../api/property/propertyApi'
 import { getImageUrl } from '../../lib/utils'
 import { getFeatureIcon } from '../../lib/featureIcons'
@@ -15,6 +15,8 @@ export default function OwnerPropertyDetails() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [deleting, setDeleting] = useState(false)
+
+    const [previewImage, setPreviewImage] = useState(null)
 
     useEffect(() => {
         async function loadProperty() {
@@ -51,7 +53,12 @@ export default function OwnerPropertyDetails() {
         }
     }
 
-    const imageUrl = property?.main_image?.image || property?.images?.[0]?.image || ''
+    const imageUrl =
+        property?.main_image?.image ||
+        property?.images?.[0]?.image ||
+        ''
+
+    const galleryImages = property?.images || []
 
     const handleImgError = (e) => {
         // Prevent infinite onError loops by clearing the handler before setting a fallback
@@ -100,122 +107,183 @@ export default function OwnerPropertyDetails() {
             ) : !property ? (
                 <EmptyState title="Property not found" description="This property could not be loaded." />
             ) : (
-                <div className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
-                    <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                        <div className="rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-900">
-                            {getImageUrl(imageUrl) ? (
-                                <img src={getImageUrl(imageUrl)} alt={property.property_name} onError={handleImgError} className="h-80 w-full object-cover" />
-                            ) : (
-                                <div className="flex h-80 items-center justify-center bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400">No image available</div>
-                            )}
-                        </div>
-                        <div className="space-y-4">
-                            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
-                                    <MapPin className="h-4 w-4" />
-                                    {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
-                                </span>
-                                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
-                                    <DollarSign className="h-4 w-4" />
-                                    ETB {parseFloat(property.price || 0).toLocaleString()}
-                                </span>
-                                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
-                                    <CalendarDays className="h-4 w-4" />
-                                    {property.is_available ? 'Available' : 'Unavailable'}
-                                </span>
+
+                <>
+                    {/* Image Gallery */}
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                        <div className="grid gap-2 p-2 lg:grid-cols-[1.7fr_1fr]">
+
+                            {/* Main Image */}
+                            <div className="overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
+                                {getImageUrl(imageUrl) ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewImage(getImageUrl(imageUrl))}
+                                        className="block h-full w-full cursor-zoom-in"
+                                    >
+                                        <img
+                                            src={getImageUrl(imageUrl)}
+                                            alt={property.property_name}
+                                            onError={handleImgError}
+                                            className="h-80 w-full object-cover transition duration-300 hover:scale-[1.02]"
+                                        />
+                                    </button>
+                                ) : (
+                                    <div className="flex h-[320px] items-center justify-center bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 sm:h-[400px] lg:h-[500px]">
+                                        No image available
+                                    </div>
+                                )}
                             </div>
-                            <div>
-                                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{property.property_name}</h2>
-                                <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{property.description}</p>
+
+                            {/* Additional Images */}
+                            <div className="grid grid-cols-2 content-start gap-3">
+                                {property.images?.slice(0, 8).map((image) => {
+                                    const galleryImageUrl = getImageUrl(image.image || image)
+
+                                    return (
+                                        <button
+                                            key={image.id}
+                                            type="button"
+                                            onClick={() => setPreviewImage(galleryImageUrl)}
+                                            className="group overflow-hidden rounded-lg cursor-zoom-in"
+                                        >
+                                            <img
+                                                src={galleryImageUrl}
+                                                alt={property.property_name}
+                                                onError={handleImgError}
+                                                className="h-20 md:h-40 w-full object-cover transition duration-300 group-hover:scale-110"
+                                            />
+                                        </button>
+                                    )
+                                })}
                             </div>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Created</p>
-                                <p className="mt-2 font-semibold text-slate-900 dark:text-white">{new Date(property.created_at).toLocaleDateString()}</p>
-                            </div>
-                            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Updated</p>
-                                <p className="mt-2 font-semibold text-slate-900 dark:text-white">{new Date(property.updated_at).toLocaleDateString()}</p>
-                            </div>
-                        </div>
-                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
-                            {property.features?.length ? (
-                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                    {property.features.map((feature) => {
-                                        const Icon = getFeatureIcon(feature.name)
-                                        return (
-                                            <div
-                                                key={feature.id}
-                                                className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4 dark:bg-slate-900"
-                                            >
-                                                <Icon className="h-5 w-5 text-[#c99b43]" />
-                                                <span className="font-medium text-slate-900 dark:text-white">{feature.name}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">No features listed for this property.</p>
-                            )}
                         </div>
                     </div>
-                    <div className="space-y-6">
-                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Property details</h3>
-                            <div className="mt-5 space-y-4 text-sm text-slate-600 dark:text-slate-300">
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    <div>
-                                        <p className="text-slate-500 dark:text-slate-400">Type</p>
-                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">{property.listing_type}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-slate-500 dark:text-slate-400">Security deposit</p>
-                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">ETB {parseFloat(property.security_deposit || 0).toLocaleString()}</p>
-                                    </div>
+
+                    {/* Property Information */}
+                    <div className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
+                        <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                            <div className="space-y-4">
+                                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
+                                        <MapPin className="h-4 w-4" />
+                                        {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
+                                        <DollarSign className="h-4 w-4" />
+                                        ETB {parseFloat(property.price || 0).toLocaleString()}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
+                                        <CalendarDays className="h-4 w-4" />
+                                        {property.is_available ? 'Available' : 'Unavailable'}
+                                    </span>
                                 </div>
-                                {(property.house_detail || property.car_detail) && (
-                                    <div className="space-y-3">
-                                        <p className="text-slate-500 dark:text-slate-400">Specific details</p>
-                                        <div className="grid gap-3 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2">
-                                            {Object.entries(property.listing_type === 'house' ? property.house_detail : property.car_detail).map(([key, value]) => {
-                                                if (key === 'id' || key === 'property') return null;
-                                                if (value === null || value === undefined || value === '') return null;
-                                                return (
-                                                    <div key={key} className="rounded-3xl bg-slate-50 p-4 dark:bg-slate-900">
-                                                        <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{key.replace('_', ' ')}</p>
-                                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">{String(value)}</p>
-                                                    </div>
-                                                )
-                                            })}
+                                <div>
+                                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{property.property_name}</h2>
+                                    <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{property.description}</p>
+                                </div>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Created</p>
+                                    <p className="mt-2 font-semibold text-slate-900 dark:text-white">{new Date(property.created_at).toLocaleDateString()}</p>
+                                </div>
+                                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Updated</p>
+                                    <p className="mt-2 font-semibold text-slate-900 dark:text-white">{new Date(property.updated_at).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Features & amenities</h3>
+                                {property.features?.length ? (
+                                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                        {property.features.map((feature) => {
+                                            const Icon = getFeatureIcon(feature.name)
+                                            return (
+                                                <div
+                                                    key={feature.id}
+                                                    className="flex items-center gap-3 rounded-3xl bg-slate-50 p-4 dark:bg-slate-900"
+                                                >
+                                                    <Icon className="h-5 w-5 text-[#c99b43]" />
+                                                    <span className="font-medium text-slate-900 dark:text-white">{feature.name}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">No features listed for this property.</p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="space-y-6">
+                            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Property details</h3>
+                                <div className="mt-5 space-y-4 text-sm text-slate-600 dark:text-slate-300">
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <p className="text-slate-500 dark:text-slate-400">Type</p>
+                                            <p className="mt-2 font-semibold text-slate-900 dark:text-white">{property.listing_type}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-slate-500 dark:text-slate-400">Security deposit</p>
+                                            <p className="mt-2 font-semibold text-slate-900 dark:text-white">ETB {parseFloat(property.security_deposit || 0).toLocaleString()}</p>
                                         </div>
                                     </div>
-                                )}
-                                {property.company && (
-                                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-                                        <p className="text-slate-500 dark:text-slate-400">Company</p>
-                                        <p className="mt-2 font-semibold text-slate-900 dark:text-white">{property.company.name}</p>
-                                        {property.company.region && <p className="text-sm text-slate-600 dark:text-slate-300">{property.company.region}</p>}
-                                    </div>
-                                )}
+                                    {(property.house_detail || property.car_detail) && (
+                                        <div className="space-y-3">
+                                            <p className="text-slate-500 dark:text-slate-400">Specific details</p>
+                                            <div className="grid gap-3 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2">
+                                                {Object.entries(property.listing_type === 'house' ? property.house_detail : property.car_detail).map(([key, value]) => {
+                                                    if (key === 'id' || key === 'property') return null;
+                                                    if (value === null || value === undefined || value === '') return null;
+                                                    return (
+                                                        <div key={key} className="rounded-3xl bg-slate-50 p-4 dark:bg-slate-900">
+                                                            <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{key.replace('_', ' ')}</p>
+                                                            <p className="mt-2 font-semibold text-slate-900 dark:text-white">{String(value)}</p>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {property.company && (
+                                        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+                                            <p className="text-slate-500 dark:text-slate-400">Company</p>
+                                            <p className="mt-2 font-semibold text-slate-900 dark:text-white">{property.company.name}</p>
+                                            {property.company.region && <p className="text-sm text-slate-600 dark:text-slate-300">{property.company.region}</p>}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </>
+            )}
 
-                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Media gallery</h3>
-                            <div className="mt-5 grid gap-3">
-                                {property.images?.length ? (
-                                    property.images.map((image) => (
-                                        <img key={image.id} src={getImageUrl(image)} alt={property.property_name} onError={handleImgError} className="h-28 w-full rounded-3xl object-cover" />
-                                    ))
-                                ) : (
-                                    <div className="rounded-3xl bg-slate-100 p-8 text-center text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">No additional images</div>
-                                )}
-                            </div>
-                        </div>
+            {previewImage && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <div
+                        className="relative flex max-h-[90vh] w-full max-w-6xl items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setPreviewImage(null)}
+                            className="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black"
+                            aria-label="Close preview"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
 
-                        <div></div>
+                        <img
+                            src={previewImage}
+                            alt={property?.property_name || 'Property preview'}
+                            onError={handleImgError}
+                            className="max-h-[90vh] max-w-full rounded-lg object-contain shadow-2xl"
+                        />
                     </div>
                 </div>
             )}

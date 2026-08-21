@@ -49,38 +49,61 @@ export default function BecomeOwnerPage() {
     // Step 3: Agreements
     agree_to_terms: false,
     agree_to_verification: false,
-    // Step 4: Verification Documents
+
     document_type: 'national_id',
     document_number: '',
     document_image: null,
+    document_front_image: null,
+    document_back_image: null,
   })
   const [previewUrl, setPreviewUrl] = useState(null)
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState(null)
+
+  const [documentFrontPreviewUrl, setDocumentFrontPreviewUrl] = useState(null)
+  const [documentBackPreviewUrl, setDocumentBackPreviewUrl] = useState(null)
 
   // ─── Validation ──────────────────────────────────────────────────────
 
   const validateStep1 = () => {
     const newErrors = {}
-    if (!formData.city.trim()) newErrors.city = 'City is required.'
-    if (!formData.country.trim()) newErrors.country = 'Country is required.'
+
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required.'
+    }
+
+    if (!formData.country.trim()) {
+      newErrors.country = 'Country is required.'
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required.'
+    }
+
     setErrors(newErrors)
+
     return Object.keys(newErrors).length === 0
   }
 
   const validateStep2 = () => {
     const newErrors = {}
-    if (!formData.date_of_birth) {
-      newErrors.date_of_birth = 'Date of birth is required.'
-    }
+
+    // Date of birth is optional
+
     if (!formData.phone_number.trim()) {
       newErrors.phone_number = 'Phone number is required.'
-    } else if (!/^\+?[0-9]{7,15}$/.test(formData.phone_number.replace(/\s/g, ''))) {
-      newErrors.phone_number = 'Enter a valid phone number (e.g., +251911234567).'
+    } else if (
+      !/^\+?[0-9]{7,15}$/.test(
+        formData.phone_number.replace(/\s/g, '')
+      )
+    ) {
+      newErrors.phone_number =
+        'Enter a valid phone number (e.g., +251911234567).'
     }
+
     setErrors(newErrors)
+
     return Object.keys(newErrors).length === 0
   }
-
   const validateStep3 = () => {
     const newErrors = {}
     if (!formData.agree_to_terms) {
@@ -95,10 +118,26 @@ export default function BecomeOwnerPage() {
 
   const validateStep4 = () => {
     const newErrors = {}
-    if (!formData.document_image) {
-      newErrors.document_image = 'Please upload your verification document.'
+
+    if (formData.document_type === 'national_id') {
+      if (!formData.document_front_image) {
+        newErrors.document_front_image =
+          'Please upload the front side of your National ID.'
+      }
+
+      if (!formData.document_back_image) {
+        newErrors.document_back_image =
+          'Please upload the back side of your National ID.'
+      }
+    } else {
+      if (!formData.document_image) {
+        newErrors.document_image =
+          'Please upload your verification document.'
+      }
     }
+
     setErrors(newErrors)
+
     return Object.keys(newErrors).length === 0
   }
 
@@ -106,34 +145,138 @@ export default function BecomeOwnerPage() {
 
   const handleChange = (e) => {
     const { name, value, type, checked, files } = e.target
-    setErrors((prev) => ({ ...prev, [name]: '' }))
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: '',
+    }))
 
     if (type === 'file') {
       const file = files[0]
+
       if (name === 'profile_image') {
-        setFormData((prev) => ({ ...prev, profile_image: file }))
+        setFormData((prev) => ({
+          ...prev,
+          profile_image: file,
+        }))
+
         if (file) {
           const reader = new FileReader()
-          reader.onloadend = () => setPreviewUrl(reader.result)
+
+          reader.onloadend = () => {
+            setPreviewUrl(reader.result)
+          }
+
           reader.readAsDataURL(file)
         } else {
           setPreviewUrl(null)
         }
-      } else if (name === 'document_image') {
-        setFormData((prev) => ({ ...prev, document_image: file }))
+
+        return
+      }
+
+      if (name === 'document_image') {
+        setFormData((prev) => ({
+          ...prev,
+          document_image: file,
+        }))
+
         if (file) {
           const reader = new FileReader()
-          reader.onloadend = () => setDocumentPreviewUrl(reader.result)
+
+          reader.onloadend = () => {
+            setDocumentPreviewUrl(reader.result)
+          }
+
           reader.readAsDataURL(file)
         } else {
           setDocumentPreviewUrl(null)
         }
+
+        return
       }
-    } else if (type === 'checkbox') {
-      setFormData((prev) => ({ ...prev, [name]: checked }))
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }))
+
+      if (name === 'document_front_image') {
+        setFormData((prev) => ({
+          ...prev,
+          document_front_image: file,
+        }))
+
+        if (file) {
+          const reader = new FileReader()
+
+          reader.onloadend = () => {
+            setDocumentFrontPreviewUrl(reader.result)
+          }
+
+          reader.readAsDataURL(file)
+        } else {
+          setDocumentFrontPreviewUrl(null)
+        }
+
+        return
+      }
+
+      if (name === 'document_back_image') {
+        setFormData((prev) => ({
+          ...prev,
+          document_back_image: file,
+        }))
+
+        if (file) {
+          const reader = new FileReader()
+
+          reader.onloadend = () => {
+            setDocumentBackPreviewUrl(reader.result)
+          }
+
+          reader.readAsDataURL(file)
+        } else {
+          setDocumentBackPreviewUrl(null)
+        }
+
+        return
+      }
     }
+
+    if (type === 'checkbox') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: checked,
+      }))
+
+      return
+    }
+
+    if (name === 'document_type') {
+      setFormData((prev) => ({
+        ...prev,
+        document_type: value,
+
+        // Reset document files when document type changes
+        document_image: null,
+        document_front_image: null,
+        document_back_image: null,
+      }))
+
+      setDocumentPreviewUrl(null)
+      setDocumentFrontPreviewUrl(null)
+      setDocumentBackPreviewUrl(null)
+
+      setErrors((prev) => ({
+        ...prev,
+        document_image: '',
+        document_front_image: '',
+        document_back_image: '',
+      }))
+
+      return
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
   }
 
   const handleKeyDown = (e, fields) => {
@@ -187,10 +330,31 @@ export default function BecomeOwnerPage() {
       payload.append('city', formData.city)
       payload.append('country', formData.country)
       payload.append('address', formData.address)
-      payload.append('date_of_birth', formData.date_of_birth)
+      if (formData.date_of_birth) {
+        payload.append('date_of_birth', formData.date_of_birth)
+      }
       payload.append('phone_number', formData.phone_number)
-      if (formData.profile_image) {
-        payload.append('profile_image', formData.profile_image)
+      if (formData.document_type === 'national_id') {
+        if (formData.document_front_image) {
+          payload.append(
+            'document_front_image',
+            formData.document_front_image
+          )
+        }
+
+        if (formData.document_back_image) {
+          payload.append(
+            'document_back_image',
+            formData.document_back_image
+          )
+        }
+      } else {
+        if (formData.document_image) {
+          payload.append(
+            'document_image',
+            formData.document_image
+          )
+        }
       }
       payload.append('agree_to_terms', formData.agree_to_terms)
       payload.append('agree_to_verification', formData.agree_to_verification)
@@ -297,11 +461,24 @@ export default function BecomeOwnerPage() {
                       <Input name="country" value={formData.country} onChange={handleChange} placeholder="e.g., Ethiopia" className="h-12 w-full" required />
                       {errors.country && <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">{errors.country}</p>}
                     </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Address <span className="text-slate-400">(optional)</span></label>
-                      <Input name="address" value={formData.address} onChange={handleChange} placeholder="e.g., 123 Bole Road" className="h-12 w-full" />
-                      {errors.address && <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">{errors.address}</p>}
-                    </div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Address <span className="text-red-500">*</span>
+                    </label>
+
+                    <Input
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      placeholder="e.g., 123 Bole Road"
+                      className="h-12 w-full"
+                      required
+                    />
+
+                    {errors.address && (
+                      <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">
+                        {errors.address}
+                      </p>
+                    )}
                     <div className="pt-4">
                       <Button type="button" onClick={handleNext} className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] py-3 text-base font-semibold text-slate-950 hover:opacity-90">
                         Next Step <ArrowRight className="ml-2 h-5 w-5" />
@@ -319,11 +496,24 @@ export default function BecomeOwnerPage() {
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Personal Details</h2>
                   </div>
                   <form onSubmit={(e) => e.preventDefault()} onKeyDown={(e) => handleKeyDown(e, ['date_of_birth', 'phone_number'])}>
-                    <div>
+                    {/* <div>
                       <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Date of Birth <span className="text-red-500">*</span></label>
                       <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className="h-12 w-full" required />
                       {errors.date_of_birth && <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">{errors.date_of_birth}</p>}
-                    </div>
+                    </div> */}
+
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Date of Birth{' '}
+                      <span className="text-slate-400">(optional)</span>
+                    </label>
+
+                    <Input
+                      type="date"
+                      name="date_of_birth"
+                      value={formData.date_of_birth}
+                      onChange={handleChange}
+                      className="h-12 w-full"
+                    />
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number <span className="text-red-500">*</span></label>
                       <Input type="tel" name="phone_number" value={formData.phone_number} onChange={handleChange} placeholder="+251911234567" className="h-12 w-full" required />
@@ -408,6 +598,7 @@ export default function BecomeOwnerPage() {
                   </div>
                   <form onSubmit={handleSubmit} onKeyDown={(e) => handleKeyDown(e, ['document_type', 'document_number', 'document_image'])}>
                     {/* Document Type */}
+
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Document Type <span className="text-red-500">*</span></label>
                       <select
@@ -442,37 +633,161 @@ export default function BecomeOwnerPage() {
                     </div>
 
                     {/* Document Image Upload */}
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Document Image <span className="text-red-500">*</span></label>
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <label
-                            htmlFor="document_image"
-                            className="flex h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 px-4 text-sm transition hover:border-[#c99b43] hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-[#c99b43] dark:hover:bg-slate-800"
-                          >
-                            <ImagePlus className="mr-2 h-5 w-5 text-slate-400" />
-                            <span className="text-slate-600 dark:text-slate-400">
-                              {formData.document_image ? formData.document_image.name : 'Upload document image'}
-                            </span>
-                            <input
-                              id="document_image"
-                              type="file"
-                              name="document_image"
-                              accept="image/*"
-                              onChange={handleChange}
-                              className="hidden"
-                              required
-                            />
+                    {/* National ID requires Front and Back images */}
+                    {formData.document_type === 'national_id' ? (
+                      <div className="space-y-4">
+
+                        {/* Front Side */}
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                            National ID Front
+                            <span className="ml-1 text-red-500">*</span>
                           </label>
-                        </div>
-                        {documentPreviewUrl && (
-                          <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 border-[#c99b43]">
-                            <img src={documentPreviewUrl} alt="Document preview" className="h-full w-full object-cover" />
+
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <label
+                                htmlFor="document_front_image"
+                                className="flex h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 px-4 text-sm transition hover:border-[#c99b43] hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-[#c99b43] dark:hover:bg-slate-800"
+                              >
+                                <ImagePlus className="mr-2 h-5 w-5 text-slate-400" />
+
+                                <span className="truncate text-slate-600 dark:text-slate-400">
+                                  {formData.document_front_image
+                                    ? formData.document_front_image.name
+                                    : 'Upload front side'}
+                                </span>
+
+                                <input
+                                  id="document_front_image"
+                                  type="file"
+                                  name="document_front_image"
+                                  accept="image/*"
+                                  onChange={handleChange}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+
+                            {documentFrontPreviewUrl && (
+                              <div className="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border-2 border-[#c99b43]">
+                                <img
+                                  src={documentFrontPreviewUrl}
+                                  alt="National ID front preview"
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            )}
                           </div>
+
+                          {errors.document_front_image && (
+                            <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">
+                              {errors.document_front_image}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Back Side */}
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                            National ID Back
+                            <span className="ml-1 text-red-500">*</span>
+                          </label>
+
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <label
+                                htmlFor="document_back_image"
+                                className="flex h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 px-4 text-sm transition hover:border-[#c99b43] hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-[#c99b43] dark:hover:bg-slate-800"
+                              >
+                                <ImagePlus className="mr-2 h-5 w-5 text-slate-400" />
+
+                                <span className="truncate text-slate-600 dark:text-slate-400">
+                                  {formData.document_back_image
+                                    ? formData.document_back_image.name
+                                    : 'Upload back side'}
+                                </span>
+
+                                <input
+                                  id="document_back_image"
+                                  type="file"
+                                  name="document_back_image"
+                                  accept="image/*"
+                                  onChange={handleChange}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+
+                            {documentBackPreviewUrl && (
+                              <div className="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border-2 border-[#c99b43]">
+                                <img
+                                  src={documentBackPreviewUrl}
+                                  alt="National ID back preview"
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {errors.document_back_image && (
+                            <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">
+                              {errors.document_back_image}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Other documents require one image */
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                          Document Image
+                          <span className="ml-1 text-red-500">*</span>
+                        </label>
+
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <label
+                              htmlFor="document_image"
+                              className="flex h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 px-4 text-sm transition hover:border-[#c99b43] hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-[#c99b43] dark:hover:bg-slate-800"
+                            >
+                              <ImagePlus className="mr-2 h-5 w-5 text-slate-400" />
+
+                              <span className="truncate text-slate-600 dark:text-slate-400">
+                                {formData.document_image
+                                  ? formData.document_image.name
+                                  : 'Upload document image'}
+                              </span>
+
+                              <input
+                                id="document_image"
+                                type="file"
+                                name="document_image"
+                                accept="image/*"
+                                onChange={handleChange}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+
+                          {documentPreviewUrl && (
+                            <div className="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border-2 border-[#c99b43]">
+                              <img
+                                src={documentPreviewUrl}
+                                alt="Document preview"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {errors.document_image && (
+                          <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">
+                            {errors.document_image}
+                          </p>
                         )}
                       </div>
-                      {errors.document_image && <p className="mt-1 text-[9px] text-red-500 dark:text-red-400">{errors.document_image}</p>}
-                    </div>
+                    )}
 
                     {errors.general && (
                       <div className="rounded-xl bg-red-50 p-3 dark:bg-red-950/30">

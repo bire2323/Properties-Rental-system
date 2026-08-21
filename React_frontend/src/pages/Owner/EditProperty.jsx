@@ -1,8 +1,17 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-    ChevronLeft, ChevronRight, Check,
-    Building2, Car, Plus, X, Loader2
+    ChevronLeft,
+    ChevronRight,
+    Check,
+    Building2,
+    Car,
+    Plus,
+    X,
+    Loader2,
+    MapPin,
+    Navigation,
+    ImagePlus
 } from 'lucide-react'
 import { getPropertyById, updateProperty, getMyManagedCompanies, createProperty } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
@@ -117,7 +126,29 @@ function StepProgress({ currentStep }) {
         </div>
     )
 }
+const MIN_IMAGES = 3
 
+function getRemainingImageCount(form) {
+    if (!form) return 0
+
+    const existingImages = Array.isArray(form.existingImages)
+        ? form.existingImages
+        : []
+
+    const deletedImageIds = Array.isArray(form.deletedImageIds)
+        ? form.deletedImageIds
+        : []
+
+    const newImages = Array.isArray(form.newImages)
+        ? form.newImages
+        : []
+
+    const remainingExistingImages = existingImages.filter(
+        (image) => image?.id && !deletedImageIds.includes(image.id)
+    )
+
+    return remainingExistingImages.length + newImages.length
+}
 // ─── Validation ──────────────────────────────────────────────────────────────
 
 function validateStep(step, form) {
@@ -142,14 +173,89 @@ function validateStep(step, form) {
     }
     if (step === 4) {
         if (form.listing_type === 'house') {
-            if (!form.house_detail?.bedrooms) errors['house_detail.bedrooms'] = 'Bedrooms is required.'
-            if (!form.house_detail?.bathrooms) errors['house_detail.bathrooms'] = 'Bathrooms is required.'
-            if (!form.house_detail?.area_sqft) errors['house_detail.area_sqft'] = 'Area is required.'
-        } else {
-            if (!form.car_detail?.brand?.trim()) errors['car_detail.brand'] = 'Brand is required.'
-            if (!form.car_detail?.model?.trim()) errors['car_detail.model'] = 'Model is required.'
-            if (!form.car_detail?.year) errors['car_detail.year'] = 'Year is required.'
-            if (!form.car_detail?.seating_capacity) errors['car_detail.seating_capacity'] = 'Seating capacity is required.'
+            const h = form.house_detail || {}
+
+            // Bedrooms
+            if (h.bedrooms === '' || h.bedrooms === null) {
+                errors['house_detail.bedrooms'] = 'Bedrooms is required.'
+            } else if (Number(h.bedrooms) < 0) {
+                errors['house_detail.bedrooms'] =
+                    'Bedrooms cannot be negative.'
+            }
+
+            // Bathrooms
+            if (h.bathrooms === '' || h.bathrooms === null) {
+                errors['house_detail.bathrooms'] = 'Bathrooms is required.'
+            } else if (Number(h.bathrooms) < 0) {
+                errors['house_detail.bathrooms'] =
+                    'Bathrooms cannot be negative.'
+            }
+
+            // Area
+            if (
+                h.area_sqft === '' ||
+                h.area_sqft === null ||
+                Number(h.area_sqft) <= 0
+            ) {
+                errors['house_detail.area_sqft'] =
+                    'Area must be greater than 0.'
+            }
+
+            // Total Rooms
+            if (
+                h.total_rooms === '' ||
+                h.total_rooms === null ||
+                Number(h.total_rooms) <= 0
+            ) {
+                errors['house_detail.total_rooms'] =
+                    'Total rooms must be greater than 0.'
+            }
+        }
+
+        if (form.listing_type === 'car') {
+            const c = form.car_detail || {}
+
+            if (!c.brand?.trim()) {
+                errors['car_detail.brand'] = 'Brand is required.'
+            }
+
+            if (!c.model?.trim()) {
+                errors['car_detail.model'] = 'Model is required.'
+            }
+
+            if (!c.year) {
+                errors['car_detail.year'] = 'Year is required.'
+            }
+
+            if (Number(c.year) < 1900) {
+                errors['car_detail.year'] =
+                    'Enter a valid year.'
+            }
+
+            if (!c.seating_capacity) {
+                errors['car_detail.seating_capacity'] =
+                    'Seating capacity is required.'
+            } else if (Number(c.seating_capacity) < 1) {
+                errors['car_detail.seating_capacity'] =
+                    'Seating capacity must be at least 1.'
+            }
+
+            if (c.mileage === '' || c.mileage === null) {
+                errors['car_detail.mileage'] =
+                    'Mileage is required.'
+            } else if (Number(c.mileage) < 0) {
+                errors['car_detail.mileage'] =
+                    'Mileage cannot be negative.'
+            }
+        }
+    }
+    if (step === 5) {
+        const totalImages = getRemainingImageCount(form)
+
+        if (totalImages < MIN_IMAGES) {
+            errors.images =
+                `At least ${MIN_IMAGES} images are required. ` +
+                `You currently have ${totalImages}.`
         }
     }
     return errors
@@ -203,17 +309,33 @@ function buildUpdatePayload(form) {
 
     // CRITICAL: Send new images ONLY if user actually uploaded them
     if (form.newImages?.length > 0) {
-        form.newImages.forEach((file) => fd.append('images', file))
+        form.newImages.forEach((image) => {
+            fd.append('images', image.file)
+        })
     }
 
     // Send deleted image IDs if user explicitly removed any
     if (form.deletedImageIds?.length > 0) {
-        fd.append('deleted_image_ids', JSON.stringify(form.deletedImageIds))
+        fd.append(
+            'deleted_image_ids',
+            JSON.stringify(form.deletedImageIds)
+        )
     }
 
     return fd
 }
+function validateAllSteps(form) {
+    const allErrors = {}
 
+    for (let step = 1; step <= STEPS.length; step++) {
+        Object.assign(
+            allErrors,
+            validateStep(step, form)
+        )
+    }
+
+    return allErrors
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -230,6 +352,10 @@ export default function EditProperty() {
     const [saving, setSaving] = useState(false)
     const [loadError, setLoadError] = useState(null)
     const [companies, setCompanies] = useState([])
+
+
+    const [gettingLocation, setGettingLocation] = useState(false)
+    const [locationError, setLocationError] = useState(null)
 
     useEffect(() => {
         async function load() {
@@ -364,17 +490,57 @@ export default function EditProperty() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-    // const handleNext = () => {
-    //     const stepErrors = validateStep(currentStep, form)
-    //     if (Object.keys(stepErrors).length > 0) {
-    //         setErrors(stepErrors)
-    //         return
-    //     }
-    //     setErrors({})
-    //     setCurrentStep((prev) => Math.min(prev + 1, STEPS.length))
-    //     window.scrollTo({ top: 0, behavior: 'smooth' })
-    // }
+    const handleNewImages = (event) => {
+        const files = Array.from(event.target.files || [])
 
+        if (!files.length) return
+
+        const validImages = []
+        const invalidFiles = []
+
+        files.forEach((file) => {
+            if (!file.type.startsWith('image/')) {
+                invalidFiles.push(file.name)
+                return
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                invalidFiles.push(
+                    `${file.name} exceeds the 5MB limit`
+                )
+                return
+            }
+
+            validImages.push({
+                file,
+                preview: URL.createObjectURL(file),
+            })
+        })
+
+        if (invalidFiles.length > 0) {
+            setGeneralError(
+                `Some files could not be added: ${invalidFiles.join(', ')}`
+            )
+        }
+
+        if (validImages.length > 0) {
+            setForm((prev) => ({
+                ...prev,
+                newImages: [
+                    ...(prev.newImages || []),
+                    ...validImages,
+                ],
+            }))
+
+            setErrors((prev) => {
+                const next = { ...prev }
+                delete next.images
+                return next
+            })
+        }
+
+        event.target.value = ''
+    }
     const handleFormKeyDown = useCallback(
         (event) => {
             if (event.key !== 'Enter' || event.shiftKey || event.target.tagName === 'TEXTAREA') return
@@ -411,8 +577,88 @@ export default function EditProperty() {
         },
         [currentStep, handleNext]
     )
+    const handleUseMyLocation = () => {
+        setLocationError(null)
 
+        if (!navigator.geolocation) {
+            setLocationError(
+                'Geolocation is not supported by your browser.'
+            )
+            return
+        }
+
+        setGettingLocation(true)
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords
+
+                setForm((prev) => ({
+                    ...prev,
+                    latitude: latitude.toFixed(6),
+                    longitude: longitude.toFixed(6),
+                }))
+
+                setGettingLocation(false)
+            },
+            (error) => {
+                let message = 'Unable to get your location.'
+
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        message =
+                            'Location permission was denied. Please allow location access in your browser.'
+                        break
+
+                    case error.POSITION_UNAVAILABLE:
+                        message =
+                            'Your current location is unavailable.'
+                        break
+
+                    case error.TIMEOUT:
+                        message =
+                            'Location request timed out. Please try again.'
+                        break
+
+                    default:
+                        message =
+                            'An unexpected error occurred while getting your location.'
+                }
+
+                setLocationError(message)
+                setGettingLocation(false)
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000,
+            }
+        )
+    }
     const handleSubmit = async () => {
+
+        const allErrors = validateAllSteps(form)
+
+        if (Object.keys(allErrors).length > 0) {
+            setErrors(allErrors)
+
+            const firstErrorStep = Math.min(
+                ...Object.keys(allErrors).map(getErrorStep)
+            )
+
+            setCurrentStep(firstErrorStep)
+
+            setGeneralError(
+                'Please fix all validation errors before saving.'
+            )
+
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            })
+
+            return
+        }
         const isDraft = location.pathname.includes('/draft/edit')
         if (isDraft) {
             setSaving(true);
@@ -463,13 +709,48 @@ export default function EditProperty() {
             setSaving(false)
         }
     }
+    const handleNonNegativeNumber = (field, value) => {
+        if (value === '' || Number(value) >= 0) {
+            onChange('house_detail', {
+                ...form.house_detail,
+                [field]: value
+            })
+        }
+    }
 
     const handleRemoveExistingImage = (imageId) => {
-        onChange('deletedImageIds', [...(form.deletedImageIds || []), imageId])
+        if (form.deletedImageIds?.includes(imageId)) {
+            return
+        }
+
+        onChange(
+            'deletedImageIds',
+            [
+                ...(form.deletedImageIds || []),
+                imageId,
+            ]
+        )
+    }
+    const handleRestoreExistingImage = (imageId) => {
+        onChange(
+            'deletedImageIds',
+            form.deletedImageIds.filter(
+                (id) => id !== imageId
+            )
+        )
     }
 
     const handleRemoveNewImage = (index) => {
-        const updated = form.newImages.filter((_, i) => i !== index)
+        const imageToRemove = form.newImages[index]
+
+        if (imageToRemove?.preview) {
+            URL.revokeObjectURL(imageToRemove.preview)
+        }
+
+        const updated = form.newImages.filter(
+            (_, i) => i !== index
+        )
+
         onChange('newImages', updated)
     }
 
@@ -638,7 +919,7 @@ export default function EditProperty() {
                                             <option value="yearly">Per Year</option>
                                         </select>
                                     </FormField>
-                                    <FormField label="Security Deposit" required>
+                                    <FormField label="Security Deposit" >
                                         <Input
                                             type="number"
                                             step="0.01"
@@ -646,7 +927,7 @@ export default function EditProperty() {
                                             value={form.security_deposit}
                                             onKeyDown={handleFormKeyDown}
                                             onChange={(e) => onChange('security_deposit', e.target.value)}
-                                            required
+
                                         />
                                     </FormField>
                                     <FormField label="Status" required>
@@ -681,53 +962,73 @@ export default function EditProperty() {
                             </>
                         )}
 
-                        {/* ── Step 3 ── */}
-                        {/* {currentStep === 3 && (
-                            <>
-                                <div>
-                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
-                                </div>
-                                <FormField label="Address">
-                                    <Input value={form.address} onChange={(e) => onChange('address', e.target.value)} placeholder="Street address" />
-                                </FormField>
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <FormField label="City" required error={errors.city}>
-                                        <Input value={form.city}
-                                            onkeydown={handleFormKeyDown}
-                                            onChange={(e) => onChange('city', e.target.value)}
-                                            className={errors.city ? 'border-red-500' : ''} />
-                                    </FormField>
-                                    <FormField label="Region" required error={errors.region}>
-                                        <Input value={form.region}
-                                            onkeydown={handleFormKeyDown}
-                                            onChange={(e) => onChange('region', e.target.value)}
-                                            className={errors.region ? 'border-red-500' : ''} />
-                                    </FormField>
-                                    <FormField label="Kebele">
-                                        <Input value={form.kebele}
-                                            onkeydown={handleFormKeyDown}
-                                            onChange={(e) => onChange('kebele', e.target.value)} placeholder="Kebele (eg. o1, 02..)" />
-                                    </FormField>
-                                </div>
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <FormField label="Latitude">
-                                        <Input type="number" step="any"
-                                            onkeydown={handleFormKeyDown}
-                                            value={form.latitude} onChange={(e) => onChange('latitude', e.target.value)} placeholder="9.0054" required />
-                                    </FormField>
-                                    <FormField label="Longitude">
-                                        <Input type="number" step="any"
-                                            onkeydown={handleFormKeyDown}
-                                            value={form.longitude} onChange={(e) => onChange('longitude', e.target.value)} placeholder="38.7636" required />
-                                    </FormField>
-                                </div>
-                            </>
-                        )} */}
                         {currentStep === 3 && (
                             <>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Location</h3>
+                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                                        Location
+                                    </h3>
+
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                        Enter the property location manually or use your current location.
+                                    </p>
                                 </div>
+
+                                {/* Use My Location */}
+                                <div className="rounded-2xl border border-[#c99b43]/30 bg-[#c99b43]/5 p-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                                        <div className="flex items-start gap-3">
+                                            <div className="rounded-xl bg-[#c99b43]/10 p-2 text-[#c99b43]">
+                                                <MapPin className="h-5 w-5" />
+                                            </div>
+
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                    Use My Current Location
+                                                </p>
+
+                                                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                    Automatically fill the latitude and longitude using your device location.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            onClick={handleUseMyLocation}
+                                            disabled={gettingLocation}
+                                            className="bg-[#c99b43] text-white hover:bg-[#b08838]"
+                                        >
+                                            {gettingLocation ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Getting Location...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Navigation className="mr-2 h-4 w-4" />
+                                                    Use My Location
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+
+                                    {locationError && (
+                                        <p className="mt-3 text-xs text-red-500">
+                                            {locationError}
+                                        </p>
+                                    )}
+
+                                    {(form.latitude || form.longitude) && (
+                                        <div className="mt-3 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                                            <Check className="h-4 w-4" />
+                                            Location coordinates have been set.
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Address */}
                                 <FormField label="Address" required>
                                     <Input
                                         value={form.address}
@@ -737,57 +1038,99 @@ export default function EditProperty() {
                                         required
                                     />
                                 </FormField>
+
+                                {/* City / Region */}
                                 <div className="grid gap-4 sm:grid-cols-2">
-                                    <FormField label="City" required error={errors.city}>
+
+                                    <FormField
+                                        label="City"
+                                        required
+                                        error={errors.city}
+                                    >
                                         <Input
                                             value={form.city}
                                             onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('city', e.target.value)}
-                                            className={errors.city ? 'border-red-500' : ''}
+                                            onChange={(e) =>
+                                                onChange('city', e.target.value)
+                                            }
+                                            className={
+                                                errors.city ? 'border-red-500' : ''
+                                            }
+                                            placeholder="e.g. Addis Ababa"
                                             required
                                         />
                                     </FormField>
-                                    <FormField label="Region" required error={errors.region}>
+
+                                    <FormField
+                                        label="Region"
+                                        required
+                                        error={errors.region}
+                                    >
                                         <Input
                                             value={form.region}
                                             onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('region', e.target.value)}
-                                            className={errors.region ? 'border-red-500' : ''}
+                                            onChange={(e) =>
+                                                onChange('region', e.target.value)
+                                            }
+                                            className={
+                                                errors.region ? 'border-red-500' : ''
+                                            }
+                                            placeholder="e.g. Addis Ababa"
                                             required
                                         />
                                     </FormField>
-                                    <FormField label="Kebele" required error={errors.kebele}>
-                                        <Input
-                                            value={form.kebele}
-                                            onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('kebele', e.target.value)}
-                                            placeholder="Kebele (e.g. 01, 02...)"
-                                            className={errors.kebele ? 'border-red-500' : ''}
-                                            required
-                                        />
-                                    </FormField>
+
                                 </div>
+
+                                {/* Kebele */}
+                                <FormField
+                                    label="Kebele"
+                                    required
+                                    error={errors.kebele}
+                                >
+                                    <Input
+                                        value={form.kebele}
+                                        onKeyDown={handleFormKeyDown}
+                                        onChange={(e) =>
+                                            onChange('kebele', e.target.value)
+                                        }
+                                        placeholder="e.g. 01, 02..."
+                                        className={
+                                            errors.kebele ? 'border-red-500' : ''
+                                        }
+                                        required
+                                    />
+                                </FormField>
+
+                                {/* Coordinates */}
                                 <div className="grid gap-4 sm:grid-cols-2">
+
                                     <FormField label="Latitude">
                                         <Input
                                             type="number"
                                             step="any"
                                             onKeyDown={handleFormKeyDown}
                                             value={form.latitude}
-                                            onChange={(e) => onChange('latitude', e.target.value)}
+                                            onChange={(e) =>
+                                                onChange('latitude', e.target.value)
+                                            }
                                             placeholder="9.0054"
                                         />
                                     </FormField>
+
                                     <FormField label="Longitude">
                                         <Input
                                             type="number"
                                             step="any"
                                             onKeyDown={handleFormKeyDown}
                                             value={form.longitude}
-                                            onChange={(e) => onChange('longitude', e.target.value)}
+                                            onChange={(e) =>
+                                                onChange('longitude', e.target.value)
+                                            }
                                             placeholder="38.7636"
                                         />
                                     </FormField>
+
                                 </div>
                             </>
                         )}
@@ -856,8 +1199,14 @@ export default function EditProperty() {
                                             min="0"
                                             value={form.house_detail.bedrooms}
                                             onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bedrooms: e.target.value })}
-                                            className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''}
+                                            onChange={(e) =>
+                                                handleNonNegativeNumber('bedrooms', e.target.value)
+                                            }
+                                            className={
+                                                errors['house_detail.bedrooms']
+                                                    ? 'border-red-500'
+                                                    : ''
+                                            }
                                             required
                                         />
                                     </FormField>
@@ -867,8 +1216,14 @@ export default function EditProperty() {
                                             min="0"
                                             value={form.house_detail.bathrooms}
                                             onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, bathrooms: e.target.value })}
-                                            className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''}
+                                            onChange={(e) =>
+                                                handleNonNegativeNumber('bathrooms', e.target.value)
+                                            }
+                                            className={
+                                                errors['house_detail.bathrooms']
+                                                    ? 'border-red-500'
+                                                    : ''
+                                            }
                                             required
                                         />
                                     </FormField>
@@ -896,33 +1251,55 @@ export default function EditProperty() {
                                             <option value="unfurnished">Unfurnished</option>
                                         </select>
                                     </FormField>
-                                    <FormField label="Room Number" required>
+                                    <FormField label="Room Number">
                                         <Input
                                             type="number"
                                             min="0"
                                             value={form.house_detail.room_number}
                                             onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, room_number: e.target.value })}
-                                            required
+                                            onChange={(e) =>
+                                                onChange('house_detail', {
+                                                    ...form.house_detail,
+                                                    room_number: e.target.value
+                                                })
+                                            }
                                         />
                                     </FormField>
-                                    <FormField label="Total Rooms" required>
+                                    <FormField
+                                        label="Total Rooms"
+                                        required
+                                        error={errors['house_detail.total_rooms']}
+                                    >
                                         <Input
                                             type="number"
-                                            min="0"
+                                            min="1"
                                             value={form.house_detail.total_rooms}
                                             onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, total_rooms: e.target.value })}
+                                            onChange={(e) =>
+                                                onChange('house_detail', {
+                                                    ...form.house_detail,
+                                                    total_rooms: e.target.value
+                                                })
+                                            }
+                                            className={
+                                                errors['house_detail.total_rooms']
+                                                    ? 'border-red-500'
+                                                    : ''
+                                            }
                                             required
                                         />
                                     </FormField>
-                                    <FormField label="Distance from Main Road" required>
+                                    <FormField label="Distance from Main Road">
                                         <Input
                                             value={form.house_detail.distance_from_main_road}
                                             onKeyDown={handleFormKeyDown}
-                                            onChange={(e) => onChange('house_detail', { ...form.house_detail, distance_from_main_road: e.target.value })}
+                                            onChange={(e) =>
+                                                onChange('house_detail', {
+                                                    ...form.house_detail,
+                                                    distance_from_main_road: e.target.value
+                                                })
+                                            }
                                             placeholder="e.g. 500 m"
-                                            required
                                         />
                                     </FormField>
                                 </div>
@@ -1065,7 +1442,13 @@ export default function EditProperty() {
                                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                         Update amenities and images. Existing images are kept unless you explicitly remove them.
                                     </p>
+
                                 </div>
+                                {errors.images && (
+                                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400">
+                                        {errors.images}
+                                    </div>
+                                )}
 
                                 <div>
                                     <p className={labelClass}>Features & Amenities</p>
@@ -1074,7 +1457,20 @@ export default function EditProperty() {
                                         onChange={(features) => onChange('selectedFeatures', features)}
                                     />
                                 </div>
+                                <div className="flex items-center justify-between">
+                                    <p className={labelClass}>
+                                        Property Images
+                                    </p>
 
+                                    <span
+                                        className={`text-xs font-medium ${getRemainingImageCount(form) >= 3
+                                            ? 'text-green-600'
+                                            : 'text-red-500'
+                                            }`}
+                                    >
+                                        {getRemainingImageCount(form)} / minimum 3 images
+                                    </span>
+                                </div>
                                 {/* EXISTING IMAGES WITH DELETE BUTTONS */}
                                 {form.existingImages?.length > 0 && (
                                     <div>
@@ -1106,53 +1502,87 @@ export default function EditProperty() {
                                         </div>
                                     </div>
                                 )}
+                                {form.newImages?.length > 0 && (
+                                    <div className="mt-4">
 
-                                {/* NEW IMAGES UPLOAD */}
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                                New Images ({form.newImages.length})
+                                            </p>
+
+                                            <span className="text-xs text-slate-400">
+                                                These will be uploaded when you save.
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+
+                                            {form.newImages.map((image, idx) => (
+                                                <div
+                                                    key={`${image.file.name}-${idx}`}
+                                                    className="group relative overflow-hidden rounded-2xl"
+                                                >
+                                                    <img
+                                                        src={image.preview}
+                                                        alt={`New property image ${idx + 1}`}
+                                                        className="h-32 w-full object-cover"
+                                                    />
+
+                                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                                        <p className="truncate text-xs text-white">
+                                                            {image.file.name}
+                                                        </p>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleRemoveNewImage(idx)
+                                                        }
+                                                        className="absolute right-2 top-2 rounded-full bg-red-500 p-2 text-white shadow-md opacity-0 transition group-hover:opacity-100"
+                                                        title="Remove image"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div>
                                     <p className={labelClass}>
-                                        Upload New Images <span className="text-slate-400 text-xs">(optional)</span>
+                                        Upload New Images
+                                        <span className="ml-1 text-xs text-slate-400">
+                                            (PNG, JPG, WEBP — max 5MB each)
+                                        </span>
                                     </p>
-                                    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition hover:border-[#c99b43] dark:border-slate-700 dark:bg-slate-900">
-                                        <Plus className="h-6 w-6 text-[#c99b43]" />
-                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                            Click to upload new images
-                                        </p>
+
+                                    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition hover:border-[#c99b43] hover:bg-[#c99b43]/5 dark:border-slate-700 dark:bg-slate-900">
+
+                                        <div className="rounded-2xl bg-[#c99b43]/10 p-3">
+                                            <ImagePlus className="h-6 w-6 text-[#c99b43]" />
+                                        </div>
+
+                                        <div className="text-center">
+                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                                Add property images
+                                            </p>
+
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                Click here to select one or more images
+                                            </p>
+                                        </div>
+
                                         <input
                                             type="file"
-                                            accept="image/*"
+                                            accept="image/png,image/jpeg,image/webp"
                                             multiple
                                             className="sr-only"
-                                            onChange={(e) => onChange('newImages', Array.from(e.target.files))}
-                                        // ✅ Add 'required' if you want to force at least one image
-                                        // required
+                                            onChange={handleNewImages}
                                         />
                                     </label>
-                                    {form.newImages?.length > 0 && (
-                                        <div className="mt-3">
-                                            <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                                                New Images (to be added)
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                                {form.newImages.map((file, idx) => (
-                                                    <div key={idx} className="relative group">
-                                                        <img
-                                                            src={URL.createObjectURL(file)}
-                                                            alt={`New ${idx + 1}`}
-                                                            className="h-28 w-full rounded-2xl object-cover"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveNewImage(idx)}
-                                                            className="absolute top-1 right-1 rounded-full bg-red-500 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
-                                                            title="Remove image"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </>
                         )}

@@ -71,6 +71,8 @@ function VerificationDetail() {
     const fullName = `${ownerData?.first_name || ''} ${ownerData?.last_name || ''}`.trim() || ownerData?.email || 'Owner'
     const profileImage = ownerData?.profile_image || ownerData?.profile?.profile_image || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80'
     const documentImage = document?.document_image || null
+    const documentFrontImage = document?.document_front_image || null
+    const documentBackImage = document?.document_back_image || null
 
     const handleDecision = async (status, reason = '') => {
         setSaving(true)
@@ -306,6 +308,30 @@ function VerificationDetail() {
                                         </a>
                                     </div>
                                 )}
+                                {documentFrontImage && (
+                                    <div className="mt-6">
+                                        <label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            Document Image front
+                                        </label>
+                                        <div className="mt-3">
+                                            <img
+                                                src={documentFrontImage}
+                                                alt="Document"
+                                                className="max-h-96 rounded-lg object-cover"
+                                            />
+                                        </div>
+                                        <a
+                                            href={documentFrontImage}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className={`mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${isDark ? 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            Download Document
+                                        </a>
+                                    </div>
+                                )}
+
                             </div>
 
                             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

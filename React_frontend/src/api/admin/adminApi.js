@@ -318,7 +318,18 @@ export async function getOwnerVerificationDetail(userId) {
                 document_image: resolveMediaUrl(document.document_image),
             }))
         }
-
+ if (Array.isArray(data?.verification_documents?.document_front_image)) {
+            data.verification_documents = data.verification_documents.map((document) => ({
+                ...document,
+                document_front_image: resolveMediaUrl(document.document_front_image),
+            }))
+        }
+         if (Array.isArray(data?.verification_documents?.document_back_image)) {
+            data.verification_documents = data.verification_documents.map((document) => ({
+                ...document,
+                document_back_image: resolveMediaUrl(document.document_back_image),
+            }))
+        }
         return data
     } catch (error) {
         console.error('Error fetching owner verification detail:', error)

@@ -60,7 +60,7 @@ function validateForm(formData) {
 
   if (!formData.email.trim()) {
     errors.email = 'Email address is required.'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
     errors.email = 'Enter a valid email address.'
   }
 
@@ -87,6 +87,8 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // ─── Enter key navigation ──────────────────────────────────────
   const handleKeyDown = (e) => {
@@ -122,14 +124,43 @@ function Register() {
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
-    const nextData = { ...formData, [name]: value }
+
+    const nextData = {
+      ...formData,
+      [name]: value,
+    }
+
     setFormData(nextData)
     setSuccessMessage('')
-    if (Object.keys(errors).length) {
-      applyValidation(nextData)
-    }
-  }
 
+    setErrors((prev) => {
+      const nextErrors = { ...prev }
+
+      delete nextErrors.submit
+
+      // Validate the field if it already had an error
+      if (nextErrors[name]) {
+        const validationErrors = validateForm(nextData)
+
+        if (validationErrors[name]) {
+          nextErrors[name] = validationErrors[name]
+        } else {
+          delete nextErrors[name]
+        }
+
+        // Password changes can affect confirm password validation
+        if (name === 'password' && nextErrors.confirmPassword) {
+          if (validationErrors.confirmPassword) {
+            nextErrors.confirmPassword = validationErrors.confirmPassword
+          } else {
+            delete nextErrors.confirmPassword
+          }
+        }
+      }
+
+      return nextErrors
+    })
+  }
   const handleAccountTypeChange = (value) => {
     const nextData = { ...formData, accountType: value }
     setFormData(nextData)
@@ -141,31 +172,97 @@ function Register() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const nextErrors = applyValidation(formData)
-    if (Object.keys(nextErrors).length) {
-      setSuccessMessage('')
+
+    setSuccessMessage('')
+
+    // Clear previous submit error
+    setErrors({})
+
+    const nextErrors = validateForm(formData)
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors)
       return
     }
 
+    setIsSubmitting(true)
+
     try {
       const payload = {
-        email: formData.email,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+        email: formData.email.trim(),
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
         password: formData.password,
         confirm_password: formData.confirmPassword,
-        role: formData.accountType, // 'tenant' or 'owner'
+        role: formData.accountType,
       }
 
       const result = await register(payload)
-      setSuccessMessage(result?.message || 'Account created successfully.')
+
+      setSuccessMessage(
+        result?.message || 'Account created successfully.'
+      )
+
       navigate(getDashboardRoute(result?.user?.role))
+
     } catch (error) {
+      console.error('Registration error:', error)
+
       setSuccessMessage('')
-      setErrors((prev) => ({
-        ...prev,
-        submit: error.message || 'Unable to create account right now.',
-      }))
+
+      /*
+       * Backend may return:
+       *
+       * {
+       *   email: ["A user with this email already exists."]
+       * }
+       *
+       * or:
+       *
+       * {
+       *   detail: "..."
+       * }
+       */
+
+      const backendData = error?.data || error?.response?.data
+
+      if (backendData?.email) {
+        setErrors({
+          email: Array.isArray(backendData.email)
+            ? backendData.email[0]
+            : backendData.email,
+        })
+      } else if (backendData?.first_name) {
+        setErrors({
+          firstName: Array.isArray(backendData.first_name)
+            ? backendData.first_name[0]
+            : backendData.first_name,
+        })
+      } else if (backendData?.last_name) {
+        setErrors({
+          lastName: Array.isArray(backendData.last_name)
+            ? backendData.last_name[0]
+            : backendData.last_name,
+        })
+      } else if (backendData?.password) {
+        setErrors({
+          password: Array.isArray(backendData.password)
+            ? backendData.password[0]
+            : backendData.password,
+        })
+      } else if (backendData?.detail) {
+        setErrors({
+          submit: backendData.detail,
+        })
+      } else {
+        setErrors({
+          submit:
+            error?.message ||
+            'Unable to create account right now. Please try again.',
+        })
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -340,18 +437,22 @@ function Register() {
                     </span>
                   </div>
                 </div>
-
-                <GoogleLoginButton />
+                <button className="w-full" disabled={isSubmitting}>
+                  <GoogleLoginButton />
+                </button>
 
                 <Button
                   type="submit"
                   size="lg"
-                  className="h-11 w-full rounded-xl bg-[linear-gradient(135deg,_#f4ce7c,_#c88a29)] text-sm font-semibold text-slate-950 shadow-[0_20px_40px_rgba(212,167,86,0.28)] hover:translate-y-[-1px] hover:opacity-95"
+                  disabled={isSubmitting}
+                  className="h-11 w-full rounded-xl bg-[linear-gradient(135deg,_#f4ce7c,_#c88a29)] text-sm font-semibold text-slate-950 shadow-[0_20px_40px_rgba(212,167,86,0.28)] hover:translate-y-[-1px] hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <span>Create Account</span>
-                  <ArrowRight size={14} />
-                </Button>
+                  <span>
+                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                  </span>
 
+                  {!isSubmitting && <ArrowRight size={14} />}
+                </Button>
                 <p className="text-center text-xs text-slate-500 dark:text-slate-400">
                   Already have an account?{' '}
                   <button

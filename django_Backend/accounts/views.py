@@ -67,6 +67,8 @@ def serialize_owner_verification_user(user, request):
     profile = getattr(user, 'profile', None)
     owner_profile = getattr(user, 'owner_profile', None)
     document = None
+    document_front= None
+    document_back= None
 
     if owner_profile:
         document = owner_profile.verification_documents.order_by('-created_at').first()
@@ -74,7 +76,12 @@ def serialize_owner_verification_user(user, request):
     full_name = f"{user.first_name} {user.last_name}".strip()
     status_value = owner_profile.verification_status if owner_profile else 'pending'
     profile_image_url = build_media_url(request, getattr(profile, 'profile_image', None))
+    
     document_image_url = build_media_url(request, getattr(document, 'document_image', None))
+    
+    document_front_image_url = build_media_url(request, getattr(document_front, 'document_front_image', None))
+    
+    document_back_image_url = build_media_url(request, getattr(document_back, 'document_back_image', None))
 
     if profile and profile.date_of_birth:
         date_of_birth = profile.date_of_birth.isoformat()
@@ -93,6 +100,8 @@ def serialize_owner_verification_user(user, request):
         'document_number': document.document_number if document else 'N/A',
         'document_id': document.id if document else None,
         'document_image': document_image_url,
+        "document_front_image": document_front_image_url,
+        "document_back_image": document_back_image_url,
         'registeredDate': (
             owner_profile.created_at.isoformat() if owner_profile and owner_profile.created_at else user.created_at.isoformat() if user.created_at else None
         ),
@@ -293,7 +302,7 @@ class BecomeOwnerAPIView(APIView):
             )
 
         # ─── 2. Validate required fields ───────────────────────────
-        required_fields = ['city', 'country', 'date_of_birth', 'phone_number']
+        required_fields = ['city', 'country', 'phone_number']
         missing = [f for f in required_fields if not request.data.get(f)]
         if missing:
             return Response(
@@ -332,6 +341,8 @@ class BecomeOwnerAPIView(APIView):
         document_type = request.data.get('document_type')
         document_number = request.data.get('document_number')  # optional
         document_image = request.FILES.get('document_image')
+        document_front_image = request.FILES.get("document_front_image")
+        document_back_image = request.FILES.get("document_back_image")
 
         if document_type and document_image:
             # Validate document_type against allowed choices
@@ -354,6 +365,8 @@ class BecomeOwnerAPIView(APIView):
                 document_type=document_type,
                 document_number=document_number or '',  # optional – save empty if not provided
                 document_image=document_image,
+                document_front_image=document_front_image,
+                document_back_image=document_back_image,
             )
 
         # ─── 8. Return response ──────────────────────────────────────
@@ -688,10 +701,6 @@ class AdminOwnerVerificationDecisionAPIView(APIView):
         owner_profile.save()
         return Response(serialize_owner_verification_user(user, request), status=status.HTTP_200_OK)
 
-
-# ============================================================
-# COOKIE TOKEN REFRESH VIEW
-# ============================================================
 
 class CookieTokenRefreshView(TokenRefreshView):
     """Use the refresh cookie for token rotation when the header is not available."""

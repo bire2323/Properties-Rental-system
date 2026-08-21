@@ -74,6 +74,8 @@ class OwnerVerificationDocumentSerializer(serializers.ModelSerializer):
             "document_type_display",
             "document_number",
             "document_image",
+            "document_front_image",
+            "document_back_image",
             "is_verified",
             "created_at",
             "updated_at",
