@@ -1,193 +1,219 @@
-import { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Car, MapPin, Search, SlidersHorizontal, Star, Heart, Grid3x3, List, ChevronDown, Fuel, Users, Settings2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Car, MapPin, Search, Star, Heart, Grid3x3, List, ChevronDown, Fuel, Users, Settings2, Loader2, AlertCircle, RefreshCw, Filter, X } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
+import { getAllProperties, getFavorites, addFavorite, removeFavorite } from '../../api/property/propertyApi'
+import { useAuth } from '../../hooks/useAuth'
+import { VehicleSidebarFilters } from './VehicleSidebarFilters'
 
-// Sample vehicles data
-const allVehicles = [
-  {
-    id: 1,
-    image: 'https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=800',
-    name: 'Toyota Corolla',
-    type: 'sedan',
-    location: 'Bole, Addis Ababa',
-    price: '3,500',
-    seats: 5,
-    fuel: 'Petrol',
-    rating: 4.8,
-    transmission: 'Automatic',
-  },
-  {
-    id: 2,
-    image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?q=80&w=800',
-    name: 'Hyundai Tucson',
-    type: 'suv',
-    location: 'CMC, Addis Ababa',
-    price: '5,200',
-    seats: 5,
-    fuel: 'Diesel',
-    rating: 4.9,
-    transmission: 'Automatic',
-  },
-  {
-    id: 3,
-    image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800',
-    name: 'Honda Fit',
-    type: 'hatchback',
-    location: 'Sarbet, Addis Ababa',
-    price: '2,900',
-    seats: 5,
-    fuel: 'Petrol',
-    rating: 4.6,
-    transmission: 'Manual',
-  },
-  {
-    id: 4,
-    image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800',
-    name: 'Ford Ranger',
-    type: 'pickup-truck',
-    location: 'Megenagna, Addis Ababa',
-    price: '6,400',
-    seats: 5,
-    fuel: 'Diesel',
-    rating: 4.7,
-    transmission: 'Manual',
-  },
-  {
-    id: 5,
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=800',
-    name: 'Yamaha NMAX',
-    type: 'scooter',
-    location: 'Kazanchis, Addis Ababa',
-    price: '1,600',
-    seats: 2,
-    fuel: 'Petrol',
-    rating: 4.5,
-    transmission: 'Automatic',
-  },
-  {
-    id: 6,
-    image: 'https://images.unsplash.com/photo-1527786356703-4b100091cd2c?q=80&w=800',
-    name: 'Mercedes Sprinter',
-    type: 'van',
-    location: 'Piassa, Addis Ababa',
-    price: '7,200',
-    seats: 12,
-    fuel: 'Diesel',
-    rating: 5.0,
-    transmission: 'Automatic',
-  },
-  {
-    id: 7,
-    image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800',
-    name: 'BMW X5',
-    type: 'suv',
-    location: '4 Kilo, Addis Ababa',
-    price: '8,500',
-    seats: 7,
-    fuel: 'Petrol',
-    rating: 4.9,
-    transmission: 'Automatic',
-  },
-  {
-    id: 8,
-    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=800',
-    name: 'Audi A4',
-    type: 'sedan',
-    location: 'Old Airport, Addis Ababa',
-    price: '4,800',
-    seats: 5,
-    fuel: 'Petrol',
-    rating: 4.7,
-    transmission: 'Automatic',
-  },
-  {
-    id: 9,
-    image: 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?q=80&w=800',
-    name: 'Isuzu D-Max',
-    type: 'pickup-truck',
-    location: 'Lebu, Addis Ababa',
-    price: '5,900',
-    seats: 5,
-    fuel: 'Diesel',
-    rating: 4.8,
-    transmission: 'Manual',
-  },
-]
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
-const typeLabels = {
-  sedan: 'Sedan',
-  suv: 'SUV',
-  hatchback: 'Hatchback',
-  coupe: 'Coupe',
-  convertible: 'Convertible',
-  'pickup-truck': 'Pickup Truck',
-  van: 'Van',
-  minibus: 'Minibus',
-  bus: 'Bus',
-  motorcycle: 'Motorcycle',
-  scooter: 'Scooter',
-  bicycle: 'Bicycle',
-  truck: 'Truck',
-  trailer: 'Trailer',
+function resolveImageUrl(imagePath) {
+  if (!imagePath) return null
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath
+  }
+  return `${API_BASE_URL}${imagePath}`
+}
+
+function mapVehicleToCard(property) {
+  const mainImageUrl = property.main_image?.image
+    ? resolveImageUrl(property.main_image.image)
+    : 'https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=800'
+
+  const detail = property.car_detail || {}
+
+  const priceNum = parseFloat(property.price) || 0
+  const priceFormatted = priceNum.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+
+  const locationDisplay = [property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
+  const ratingSum = property.rating_summary || {}
+  const rating = parseFloat(ratingSum.average) || 0
+
+  return {
+    id: property.id,
+    image: mainImageUrl,
+    name: property.property_name || `${detail.brand || 'Vehicle'} ${detail.model || ''}`,
+    type: detail.model || 'Car',
+    location: locationDisplay,
+    price: priceFormatted,
+    priceRaw: priceNum,
+    seats: detail.seating_capacity || '-',
+    fuel: detail.fuel_type || '-',
+    transmission: detail.transmission || 'Auto',
+    rating: rating > 0 ? rating.toFixed(1) : 'New',
+    created_at: property.created_at,
+  }
+}
+
+function VehicleCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-48 animate-pulse bg-slate-200 dark:bg-slate-800" />
+      <div className="space-y-3 p-4">
+        <div className="h-5 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="flex gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+          <div className="h-4 w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-4 w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        </div>
+        <div className="flex items-center justify-between pt-2">
+          <div className="h-6 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-8 w-16 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function Vehicles() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [vehicleType, setVehicleType] = useState('all')
-  const [priceRange, setPriceRange] = useState('all')
+
+  const defaultFilters = {
+    search: '',
+    location: '',
+    brand: '',
+    fuel_type: '',
+    seating_capacity: 'any',
+    min_price: 0,
+    max_price: 200000,
+    is_available: '',
+  };
+
+  const [filters, setFilters] = useState(defaultFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid')
+
+  const [vehicles, setVehicles] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   const [favorites, setFavorites] = useState([])
+  const [favoriteLoading, setFavoriteLoading] = useState({})
 
-  const typeParam = searchParams.get('type') || 'all'
-  if (typeParam !== vehicleType && typeParam !== 'all') {
-    setVehicleType(typeParam)
-  } else if (typeParam === 'all' && vehicleType !== 'all') {
-    setVehicleType('all')
+  const fetchedRef = useRef(false)
+
+  // Debounced fetch for filters
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchVehicles();
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [filters]);
+
+  useEffect(() => {
+    if (user) {
+      fetchFavorites()
+    } else {
+      setFavorites([])
+    }
+  }, [user])
+
+  async function fetchVehicles() {
+    setLoading(true)
+    setError(null)
+    
+    const apiFilters = { ...filters, type: 'car' }; // Enforce car listing_type
+    
+    if (apiFilters.seating_capacity === 'any') delete apiFilters.seating_capacity;
+    
+    if (apiFilters.search) {
+      if (!apiFilters.location) {
+        apiFilters.location = apiFilters.search;
+      }
+    }
+    delete apiFilters.search;
+    
+    try {
+      const data = await getAllProperties(apiFilters)
+      const results = Array.isArray(data) ? data : data.results || []
+      setVehicles(results.map(mapVehicleToCard))
+    } catch (err) {
+      setError(err.message || 'Failed to load vehicles.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Get page title based on vehicle type
-  const getPageTitle = () => {
-    if (vehicleType === 'all') return 'All Vehicles'
-    return typeLabels[vehicleType] ? `${typeLabels[vehicleType]}s` : 'Vehicles'
+  async function fetchFavorites() {
+    try {
+      const data = await getFavorites()
+      const favoriteIds = data.map(fav => fav.property?.id || fav.property_id || fav)
+      setFavorites(favoriteIds)
+    } catch (err) {
+      console.error('Failed to fetch favorites:', err)
+    }
   }
 
-  // Toggle favorite
-  const toggleFavorite = (id) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
+  const toggleFavorite = async (propertyId) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    if (favoriteLoading[propertyId]) return
+
+    const isFavorite = favorites.includes(propertyId)
+
+    setFavorites(prev =>
+      isFavorite ? prev.filter(id => id !== propertyId) : [...prev, propertyId]
     )
+    setFavoriteLoading(prev => ({ ...prev, [propertyId]: true }))
+
+    try {
+      if (isFavorite) {
+        await removeFavorite(propertyId)
+      } else {
+        await addFavorite(propertyId)
+      }
+    } catch (err) {
+      setFavorites(prev =>
+        isFavorite ? [...prev, propertyId] : prev.filter(id => id !== propertyId)
+      )
+      console.error('Failed to toggle favorite:', err)
+    } finally {
+      setFavoriteLoading(prev => ({ ...prev, [propertyId]: false }))
+    }
   }
 
-  // Filter vehicles based on search and filters
-  const filteredVehicles = allVehicles.filter((vehicle) => {
-    const matchesSearch = vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.location.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = vehicleType === 'all' || vehicle.type === vehicleType
-    const matchesPrice = priceRange === 'all' ||
-      (priceRange === 'low' && parseInt(vehicle.price.replace(/,/g, '')) < 3000) ||
-      (priceRange === 'mid' && parseInt(vehicle.price.replace(/,/g, '')) >= 3000 && parseInt(vehicle.price.replace(/,/g, '')) < 6000) ||
-      (priceRange === 'high' && parseInt(vehicle.price.replace(/,/g, '')) >= 6000)
+  const handleClearAll = () => {
+    setFilters(defaultFilters);
+    setSearchParams({});
+    setIsFilterOpen(false);
+  };
 
-    return matchesSearch && matchesType && matchesPrice
-  })
+  const activeFilterCount =
+    (filters.search ? 1 : 0) +
+    (filters.location ? 1 : 0) +
+    (filters.brand ? 1 : 0) +
+    (filters.fuel_type ? 1 : 0) +
+    (filters.seating_capacity !== 'any' ? 1 : 0) +
+    (filters.min_price > 0 || filters.max_price < 200000 ? 1 : 0) +
+    (filters.is_available !== '' ? 1 : 0);
 
-  // Sort vehicles
-  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
+  const sortedVehicles = [...vehicles].sort((a, b) => {
     switch (sortBy) {
       case 'price-low':
-        return parseInt(a.price.replace(/,/g, '')) - parseInt(b.price.replace(/,/g, ''))
+        return a.priceRaw - b.priceRaw
       case 'price-high':
-        return parseInt(b.price.replace(/,/g, '')) - parseInt(a.price.replace(/,/g, ''))
+        return b.priceRaw - a.priceRaw
+      case 'newest':
+        return new Date(b.created_at) - new Date(a.created_at)
       case 'popular':
-        return b.rating - a.rating
+        return parseFloat(b.rating) - parseFloat(a.rating)
       default:
         return 0
     }
@@ -197,155 +223,44 @@ function Vehicles() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar />
 
-      {/* Search and Filter Section - Horizontal Layout */}
-      <section className="sticky top-24 z-40 border-b border-slate-200 bg-white py-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Desktop: Single Row Layout */}
-          <div className="hidden gap-3 lg:flex">
-            {/* Search Input - 50% width */}
-            <div className="relative flex-[2]">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-              <Input
-                placeholder="Search by vehicle name or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-12 w-full rounded-xl border-slate-300 bg-white pl-11 pr-4 text-sm shadow-sm transition-all placeholder:text-slate-400 hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
-              />
-            </div>
-
-            {/* Vehicle Type - 25% width */}
-            <div className="relative flex-1">
-              <Car className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-              <select
-                value={vehicleType}
-                onChange={(e) => {
-                  const nextType = e.target.value
-                  setVehicleType(nextType)
-                  if (nextType !== 'all') {
-                    setSearchParams({ type: nextType })
-                  } else {
-                    setSearchParams({})
-                  }
-                }}
-                className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm shadow-sm transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="all">All Types</option>
-                <option value="sedan">Sedan</option>
-                <option value="suv">SUV</option>
-                <option value="hatchback">Hatchback</option>
-                <option value="coupe">Coupe</option>
-                <option value="convertible">Convertible</option>
-                <option value="pickup-truck">Pickup Truck</option>
-                <option value="van">Van</option>
-                <option value="minibus">Minibus</option>
-                <option value="bus">Bus</option>
-                <option value="motorcycle">Motorcycle</option>
-                <option value="scooter">Scooter</option>
-                <option value="bicycle">Bicycle</option>
-                <option value="truck">Truck</option>
-                <option value="trailer">Trailer</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            </div>
-
-            {/* Price Range - 25% width */}
-            <div className="relative flex-1">
-              <SlidersHorizontal className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-              <select
-                value={priceRange}
-                onChange={(e) => setPriceRange(e.target.value)}
-                className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm shadow-sm transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="all">All Prices</option>
-                <option value="low">Under 3,000 ETB</option>
-                <option value="mid">3,000 - 6,000 ETB</option>
-                <option value="high">Above 6,000 ETB</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            </div>
-          </div>
-
-          {/* Mobile: Optimized Layout */}
-          <div className="space-y-3 lg:hidden">
-            {/* Search Input - Full Width */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="Search vehicles..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-12 w-full rounded-xl border-slate-300 pl-10 pr-4 shadow-sm"
-              />
-            </div>
-
-            {/* Vehicle Type & Price - Single Row */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Vehicle Type */}
-              <div className="relative">
-                <Car className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={vehicleType}
-                  onChange={(e) => {
-                    const nextType = e.target.value
-                    setVehicleType(nextType)
-                    if (nextType !== 'all') {
-                      setSearchParams({ type: nextType })
-                    } else {
-                      setSearchParams({})
-                    }
-                  }}
-                  className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-10 pr-8 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="all">All Types</option>
-                  <option value="sedan">Sedan</option>
-                  <option value="suv">SUV</option>
-                  <option value="hatchback">Hatchback</option>
-                  <option value="pickup-truck">Pickup Truck</option>
-                  <option value="van">Van</option>
-                  <option value="scooter">Scooter</option>
-                  <option value="motorcycle">Motorcycle</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              </div>
-
-              {/* Price Range */}
-              <div className="relative">
-                <SlidersHorizontal className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={priceRange}
-                  onChange={(e) => setPriceRange(e.target.value)}
-                  className="h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-10 pr-8 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="all">All Prices</option>
-                  <option value="low">&lt; 3K</option>
-                  <option value="mid">3K - 6K</option>
-                  <option value="high">&gt; 6K</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Toolbar - Showing Count & Sort */}
-      <section className="border-b border-slate-200 bg-white py-4 dark:border-slate-800 dark:bg-slate-900">
+      {/* Toolbar */}
+      <section className="sticky top-20 z-30 border-b border-slate-200 bg-white py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {/* Left: Page Title & Count */}
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                {getPageTitle()}
+                Vehicles for Rent
               </h1>
               <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">
-                <span className="font-bold text-[#c99b43]">{sortedVehicles.length}</span>{' '}
-                {sortedVehicles.length === 1 ? 'Vehicle' : 'Vehicles'} Available
+                {loading ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-bold text-[#c99b43]">{sortedVehicles.length}</span>{' '}
+                    {sortedVehicles.length === 1 ? 'Vehicle' : 'Vehicles'} Available
+                  </>
+                )}
               </p>
             </div>
 
-            {/* Right: Sort & View Toggle */}
-            <div className="flex items-center gap-3">
-              {/* Sort Dropdown */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                className="lg:hidden"
+                onClick={() => setIsFilterOpen(true)}
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#c99b43] text-xs font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+
               <div className="relative">
                 <select
                   value={sortBy}
@@ -360,8 +275,7 @@ function Vehicles() {
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               </div>
 
-              {/* View Toggle */}
-              <div className="flex items-center gap-1 rounded-lg border border-slate-300 p-1 dark:border-slate-700">
+              <div className="hidden sm:flex items-center gap-1 rounded-lg border border-slate-300 p-1 dark:border-slate-700">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`rounded p-1.5 transition-colors ${viewMode === 'grid'
@@ -388,134 +302,238 @@ function Vehicles() {
         </div>
       </section>
 
-      {/* Vehicles Grid */}
+      {/* Main Layout */}
       <section className="bg-slate-50 py-8 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {sortedVehicles.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {sortedVehicles.map((vehicle) => (
-                <Card
-                  key={vehicle.id}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900"
-                >
-                  {/* Image Container */}
-                  <div className="relative h-48 overflow-hidden sm:h-52 lg:h-48">
-                    <img
-                      src={vehicle.image}
-                      alt={vehicle.name}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
+          <div className="flex gap-8">
 
-                    {/* Type Badge */}
-                    <div className="absolute left-3 top-3">
-                      <span className="inline-flex rounded-full bg-[#c99b43] px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-md sm:px-3 sm:py-1 sm:text-xs">
-                        {typeLabels[vehicle.type]}
-                      </span>
-                    </div>
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:block w-[280px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
+              <VehicleSidebarFilters
+                filters={filters}
+                setFilters={setFilters}
+                onClearAll={handleClearAll}
+              />
+            </aside>
 
-                    {/* Favorite Button */}
-                    <button
-                      onClick={() => toggleFavorite(vehicle.id)}
-                      className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-white dark:bg-slate-900/95 dark:hover:bg-slate-900 sm:h-8 sm:w-8"
-                      aria-label="Add to favorites"
+            {/* Content Area */}
+            <main className="flex-1 min-w-0">
+              {loading && (
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <VehicleCardSkeleton key={i} />
+                  ))}
+                </div>
+              )}
+
+              {!loading && error && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="rounded-full bg-red-100 p-6 dark:bg-red-900/30">
+                    <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400" />
+                  </div>
+                  <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
+                    Failed to Load Vehicles
+                  </h3>
+                  <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
+                    {error}
+                  </p>
+                  <Button
+                    onClick={fetchVehicles}
+                    className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 shadow-sm hover:opacity-90"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Try Again
+                  </Button>
+                </div>
+              )}
+
+              {!loading && !error && sortedVehicles.length > 0 && (
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                  {sortedVehicles.map((vehicle) => (
+                    <Card
+                      key={vehicle.id}
+                      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900 ${
+                        viewMode === 'list' ? 'flex flex-row h-32 sm:h-48' : ''
+                      }`}
                     >
-                      <Heart
-                        className={`h-4 w-4 transition-colors sm:h-4.5 sm:w-4.5 ${favorites.includes(vehicle.id)
-                            ? 'fill-red-500 text-red-500'
-                            : 'text-slate-600 dark:text-slate-400'
-                          }`}
-                      />
-                    </button>
+                      {/* Image Container */}
+                      <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-2/5 sm:w-1/3 shrink-0 h-full' : 'h-32 sm:h-48 lg:h-44'}`}>
+                        <img
+                          src={vehicle.image}
+                          alt={vehicle.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
 
-                    {/* Rating Badge */}
-                    <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 shadow-md backdrop-blur-sm dark:bg-slate-900/95 sm:px-2.5 sm:py-1">
-                      <Star className="h-3 w-3 fill-[#c99b43] text-[#c99b43] sm:h-3.5 sm:w-3.5" />
-                      <span className="text-[10px] font-semibold text-slate-900 dark:text-white sm:text-xs">
-                        {vehicle.rating}
-                      </span>
-                    </div>
+                        {/* Type Badge */}
+                        <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
+                          <span className="inline-flex rounded-full bg-[#c99b43] px-2 py-0.5 text-[9px] font-semibold text-white shadow-md sm:px-3 sm:py-1 sm:text-xs">
+                            {vehicle.type}
+                          </span>
+                        </div>
+
+                        {/* Favorite Button */}
+                        <button
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(vehicle.id);
+                          }}
+                          className="absolute right-2 top-2 sm:right-3 sm:top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/95 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-white dark:bg-slate-900/95 dark:hover:bg-slate-900 sm:h-8 sm:w-8"
+                          aria-label="Add to favorites"
+                        >
+                          {favoriteLoading[vehicle.id] ? (
+                            <Loader2 className="h-3 w-3 animate-spin text-slate-400 sm:h-4.5 sm:w-4.5" />
+                          ) : (
+                            <Heart
+                              className={`h-3 w-3 transition-colors sm:h-4.5 sm:w-4.5 ${favorites.includes(vehicle.id)
+                                  ? 'fill-red-500 text-red-500'
+                                  : 'text-slate-600 dark:text-slate-400'
+                                }`}
+                            />
+                          )}
+                        </button>
+
+                        {/* Rating Badge */}
+                        <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 flex items-center gap-1 rounded-full bg-white/95 px-1.5 py-0.5 shadow-md backdrop-blur-sm dark:bg-slate-900/95 sm:px-2.5 sm:py-1">
+                          <Star className="h-2.5 w-2.5 fill-[#c99b43] text-[#c99b43] sm:h-3.5 sm:w-3.5" />
+                          <span className="text-[9px] font-semibold text-slate-900 dark:text-white sm:text-xs">
+                            {vehicle.rating}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className={`p-3 sm:p-4 lg:p-4 flex flex-col justify-between ${viewMode === 'list' ? 'flex-1 min-w-0' : ''}`}>
+                        <div>
+                          {/* Title */}
+                          <h3 className="text-xs font-semibold text-slate-900 transition-colors group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d] sm:text-base lg:text-sm line-clamp-1">
+                            {vehicle.name}
+                          </h3>
+
+                          {/* Location */}
+                          <p className="mt-1 flex items-center gap-1 text-[10px] text-slate-600 dark:text-slate-400 sm:text-sm lg:text-xs truncate">
+                            <MapPin className="h-3 w-3 shrink-0 text-slate-400 sm:h-3.5 sm:w-3.5" />
+                            <span className="truncate">{vehicle.location}</span>
+                          </p>
+
+                          {/* Vehicle Details */}
+                          <div className={`mt-2 flex flex-wrap items-center gap-1 sm:gap-2 border-slate-200 text-[9px] text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:gap-3 lg:gap-2 lg:text-[11px] ${viewMode === 'list' ? '' : 'border-t pt-2 sm:pt-3'}`}>
+                            <div className="flex items-center gap-0.5 sm:gap-1">
+                              <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                              <span>{vehicle.seats}</span>
+                            </div>
+                            <div className="h-2 w-px bg-slate-300 dark:bg-slate-700 sm:h-3" />
+                            <div className="flex items-center gap-0.5 sm:gap-1">
+                              <Fuel className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                              <span className="truncate max-w-[30px] sm:max-w-none">{vehicle.fuel}</span>
+                            </div>
+                            <div className="h-2 w-px bg-slate-300 dark:bg-slate-700 sm:h-3" />
+                            <div className="flex items-center gap-0.5 sm:gap-1">
+                              <Settings2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                              <span className="hidden sm:inline-block">{vehicle.transmission}</span>
+                              <span className="inline-block sm:hidden">{vehicle.transmission.substring(0, 4)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Price & CTA */}
+                        <div className="mt-2 flex items-center justify-between sm:mt-4">
+                          <div className="flex flex-col sm:block">
+                            <span className="text-sm font-bold text-[#c99b43] sm:text-xl lg:text-lg">
+                              {vehicle.price}
+                            </span>
+                            <span className="text-[9px] text-slate-500 dark:text-slate-400 sm:text-xs">
+                              {' '}ETB/d
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="rounded-lg bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-7 px-2 text-[10px] font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:opacity-90 sm:h-8 sm:px-3 sm:py-1.5 sm:text-xs lg:px-2.5 lg:py-1"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/vehicles/${vehicle.id}`);
+                            }}
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {!loading && !error && sortedVehicles.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="rounded-full bg-slate-100 p-6 dark:bg-slate-800">
+                    <Car className="h-12 w-12 text-slate-400 dark:text-slate-600" />
                   </div>
-
-                  {/* Content */}
-                  <div className="p-3 sm:p-4 lg:p-4">
-                    {/* Title */}
-                    <h3 className="text-sm font-semibold text-slate-900 transition-colors group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d] sm:text-base lg:text-sm">
-                      {vehicle.name}
-                    </h3>
-
-                    {/* Location */}
-                    <p className="mt-1 flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 sm:text-sm lg:text-xs">
-                      <MapPin className="h-3 w-3 text-slate-400 sm:h-3.5 sm:w-3.5" />
-                      {vehicle.location}
-                    </p>
-
-                    {/* Vehicle Details */}
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-2.5 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:gap-3 sm:pt-3 lg:gap-2 lg:text-[11px]">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        <span>{vehicle.seats}</span>
-                      </div>
-                      <div className="h-3 w-px bg-slate-300 dark:bg-slate-700" />
-                      <div className="flex items-center gap-1">
-                        <Fuel className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        <span>{vehicle.fuel}</span>
-                      </div>
-                      <div className="h-3 w-px bg-slate-300 dark:bg-slate-700" />
-                      <div className="flex items-center gap-1">
-                        <Settings2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        <span>{vehicle.transmission}</span>
-                      </div>
-                    </div>
-
-                    {/* Price & CTA */}
-                    <div className="mt-3 flex items-center justify-between sm:mt-4">
-                      <div>
-                        <span className="text-lg font-bold text-[#c99b43] sm:text-xl lg:text-lg">
-                          {vehicle.price}
-                        </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 sm:text-xs">
-                          {' '}ETB/day
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="rounded-lg bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-2.5 py-1 text-[10px] font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:opacity-90 sm:px-3 sm:py-1.5 sm:text-xs lg:px-2.5 lg:py-1"
-                        onClick={() => navigate(`/vehicles/${vehicle.id}`)}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            // Empty State
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="rounded-full bg-slate-100 p-6 dark:bg-slate-800">
-                <Car className="h-12 w-12 text-slate-400 dark:text-slate-600" />
-              </div>
-              <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
-                No Vehicles Found
-              </h3>
-              <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
-                We couldn't find any vehicles matching your search criteria. Try adjusting your filters.
-              </p>
-              <Button
-                onClick={() => {
-                  setSearchTerm('')
-                  setVehicleType('all')
-                  setPriceRange('all')
-                }}
-                variant="outline"
-                className="mt-6 border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
-              >
-                Clear Filters
-              </Button>
-            </div>
-          )}
+                  <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
+                    No Vehicles Found
+                  </h3>
+                  <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
+                    We couldn't find any vehicles matching your search criteria. Try adjusting your filters.
+                  </p>
+                  <Button
+                    onClick={handleClearAll}
+                    variant="outline"
+                    className="mt-6 border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+            </main>
+          </div>
         </div>
       </section>
+
+      {/* Mobile/Tablet Drawer */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsFilterOpen(false)}
+              className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 lg:hidden"
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Filters</h2>
+                <button
+                  onClick={() => setIsFilterOpen(false)}
+                  className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar">
+                <VehicleSidebarFilters
+                  filters={filters}
+                  setFilters={setFilters}
+                  onClearAll={handleClearAll}
+                />
+                {/* Apply Button */}
+                <div className="mt-6">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950" 
+                    onClick={() => setIsFilterOpen(false)}
+                  >
+                    Show Results ({sortedVehicles.length})
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

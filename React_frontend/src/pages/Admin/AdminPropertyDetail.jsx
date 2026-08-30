@@ -205,13 +205,12 @@ function AdminPropertyDetail() {
                                 )}
                             </Card>
 
-                            {/* Property Title Card */}
                             <Card className={`p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                                 <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                     {propertyName}
                                 </h2>
                                 <p className={`mt-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                    {property.address && property.city ? `${property.address}, ${property.city}` : property.city || 'Location not provided'}
+                                    {property.address && (property.city_name || property.city?.name) ? `${property.address}, ${property.city_name || property.city?.name}` : (property.city_name || property.city?.name) || 'Location not provided'}
                                 </p>
                             </Card>
 
@@ -276,11 +275,11 @@ function AdminPropertyDetail() {
                                             <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{property.address}</span>
                                         </div>
                                     )}
-                                    {property.city && (
+                                    {(property.city_name || property.city?.name) && (
                                         <div className="flex gap-2">
                                             <Building2 className={`h-5 w-5 flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                                             <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
-                                                {property.city}{property.region ? `, ${property.region}` : ''}
+                                                {property.city_name || property.city?.name}{(property.region_name || property.region?.name) ? `, ${property.region_name || property.region?.name}` : ''}
                                                 {property.kebele ? `, ${property.kebele}` : ''}
                                             </span>
                                         </div>

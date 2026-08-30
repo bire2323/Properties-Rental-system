@@ -16,6 +16,7 @@ import AdminSetting from '../pages/Admin/AdminSetting'
 import AdminProfile from '../pages/Admin/AdminProfile'
 import Notification from '../pages/Admin/Notification'
 import NotificationDetail from '../pages/Admin/NotificationDetail'
+import Locations from '../pages/Admin/Locations'
 import OwnerDashboard from '../pages/Owner/OwnerDashboard'
 import OwnerLayout from '../pages/Owner/OwnerLayout'
 import OwnerBookings from '../pages/Owner/OwnerBookings'
@@ -224,6 +225,15 @@ function AppRoutes() {
                     element={
                         <AdminRoute>
                             <NotificationDetail />
+                        </AdminRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin-dashboard/locations"
+                    element={
+                        <AdminRoute>
+                            <Locations />
                         </AdminRoute>
                     }
                 />

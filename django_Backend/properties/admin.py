@@ -1,9 +1,77 @@
 from django.contrib import admin
-from .models import Property, HouseDetail, CarDetail, Feature, PropertyImage, Company, CompanyVerificationDocument
+from django.db.models import Count
+from .models import (
+    Property, HouseDetail, CarDetail, Feature, PropertyImage,
+    Company, CompanyVerificationDocument, Region, City,
+)
 
 
 # ---------------------------------------------------------------------------
-# Inlines
+# Location Management — Region & City
+# ---------------------------------------------------------------------------
+
+class CityInline(admin.TabularInline):
+    """Show cities directly within the Region admin."""
+    model = City
+    extra = 1
+    fields = ('name',)
+    show_change_link = True
+
+
+@admin.register(Region)
+class RegionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'city_count', 'property_count', 'company_count', 'created_at')
+    search_fields = ('name',)
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = [CityInline]
+    ordering = ('name',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            _city_count=Count('cities', distinct=True),
+            _property_count=Count('properties', distinct=True),
+            _company_count=Count('companies', distinct=True),
+        )
+
+    @admin.display(description='Cities', ordering='_city_count')
+    def city_count(self, obj):
+        return obj._city_count
+
+    @admin.display(description='Properties', ordering='_property_count')
+    def property_count(self, obj):
+        return obj._property_count
+
+    @admin.display(description='Companies', ordering='_company_count')
+    def company_count(self, obj):
+        return obj._company_count
+
+
+@admin.register(City)
+class CityAdmin(admin.ModelAdmin):
+    list_display = ('name', 'region', 'property_count', 'company_count', 'created_at')
+    list_filter = ('region',)
+    search_fields = ('name', 'region__name')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('region__name', 'name')
+    autocomplete_fields = ('region',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('region').annotate(
+            _property_count=Count('properties', distinct=True),
+            _company_count=Count('companies', distinct=True),
+        )
+
+    @admin.display(description='Properties', ordering='_property_count')
+    def property_count(self, obj):
+        return obj._property_count
+
+    @admin.display(description='Companies', ordering='_company_count')
+    def company_count(self, obj):
+        return obj._company_count
+
+
+# ---------------------------------------------------------------------------
+# Inlines — HouseDetail, CarDetail, PropertyImage
 # ---------------------------------------------------------------------------
 
 class HouseDetailInline(admin.StackedInline):
@@ -33,9 +101,10 @@ class PropertyImageInline(admin.TabularInline):
 class CompanyAdmin(admin.ModelAdmin):
     list_display = ('name', 'city', 'region', 'is_verified', 'created_at')
     list_filter = ('is_verified', 'region')
-    search_fields = ('name', 'city', 'region', 'contact_email')
+    search_fields = ('name', 'city__name', 'region__name', 'contact_email')
     filter_horizontal = ('managers',)
     readonly_fields = ('created_at', 'updated_at')
+    autocomplete_fields = ('region', 'city')
 
     fieldsets = (
         ('Basic Information', {
@@ -43,7 +112,7 @@ class CompanyAdmin(admin.ModelAdmin):
                        'contact_phone', 'website')
         }),
         ('Location', {
-            'fields': ('address', 'city', 'region')
+            'fields': ('address', 'region', 'city')
         }),
         ('Management', {
             'fields': ('managers', 'is_verified')
@@ -86,13 +155,14 @@ class PropertyAdmin(admin.ModelAdmin):
         'property_name', 'owner', 'company', 'listing_type',
         'price', 'rental_unit', 'city', 'region', 'status', 'is_available', 'created_at',
     )
-    list_filter = ('listing_type', 'status', 'is_available', 'rental_unit', 'city', 'region')
+    list_filter = ('listing_type', 'status', 'is_available', 'rental_unit', 'region', 'city')
     search_fields = (
-        'property_name', 'city', 'region', 'address',
+        'property_name', 'city__name', 'region__name', 'address',
         'owner__username', 'owner__email', 'company__name',
     )
     readonly_fields = ('created_at', 'updated_at')
     inlines = [HouseDetailInline, CarDetailInline, PropertyImageInline]
+    autocomplete_fields = ('region', 'city')
 
     fieldsets = (
         ('Basic Information', {
@@ -100,7 +170,7 @@ class PropertyAdmin(admin.ModelAdmin):
                        'listing_type', 'price', 'rental_unit', 'security_deposit')
         }),
         ('Location', {
-            'fields': ('address', 'city', 'region', 'kebele', 'latitude', 'longitude')
+            'fields': ('address', 'region', 'city', 'kebele', 'latitude', 'longitude')
         }),
         ('Status & Amenities', {
             'fields': ('status', 'is_available', 'features')

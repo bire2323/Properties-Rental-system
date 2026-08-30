@@ -20,6 +20,7 @@ import { Input } from '../../components/ui/input'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
 import { useAuth } from '../../hooks/useAuth'
+import { useLocationSelector } from '../../hooks/useLocationSelector'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -167,8 +168,8 @@ function validateStep(step, form) {
         if (form.ownership === 'company' && !form.company) errors.company = 'Please select a company.'
     }
     if (step === 3) {
-        if (!form.city?.trim()) errors.city = 'City is required.'
-        if (!form.region?.trim()) errors.region = 'Region is required.'
+        if (!form.city) errors.city = 'City is required.'
+        if (!form.region) errors.region = 'Region is required.'
         if (!form.kebele?.trim()) errors.kebele = 'Kebele is required.';
     }
     if (step === 4) {
@@ -275,8 +276,8 @@ function buildUpdatePayload(form) {
     fd.append('status', "active")
     if (form.company) fd.append('company', form.company)
     if (form.address?.trim()) fd.append('address', form.address.trim())
-    fd.append('city', form.city.trim())
-    fd.append('region', form.region.trim())
+    if (form.city) fd.append('city', form.city)
+    if (form.region) fd.append('region', form.region)
     if (form.kebele?.trim()) fd.append('kebele', form.kebele.trim())
     if (form.latitude) fd.append('latitude', form.latitude)
     if (form.longitude) fd.append('longitude', form.longitude)
@@ -357,6 +358,20 @@ export default function EditProperty() {
     const [gettingLocation, setGettingLocation] = useState(false)
     const [locationError, setLocationError] = useState(null)
 
+    const {
+        regions,
+        cities,
+        selectedRegionId,
+        selectedCityId,
+        setRegionId,
+        setCityId,
+        loading: locLoading,
+        error: locError,
+    } = useLocationSelector({
+        initialRegionId: form?.region,
+        initialCityId: form?.city,
+    })
+
     useEffect(() => {
         async function load() {
             setLoading(true)
@@ -414,8 +429,8 @@ export default function EditProperty() {
                     ownership: data.company ? 'company' : 'personal',
                     company: data.company?.id || null,
                     address: data.address || '',
-                    city: data.city || '',
-                    region: data.region || '',
+                    city: data.city?.id || null,
+                    region: data.region?.id || null,
                     kebele: data.kebele || '',
                     latitude: data.latitude || '',
                     longitude: data.longitude || '',
@@ -473,6 +488,19 @@ export default function EditProperty() {
             return next
         })
     }, [])
+
+    const handleRegionChange = (e) => {
+        const id = e.target.value ? Number(e.target.value) : null
+        setRegionId(id)
+        onChange('region', id)
+        onChange('city', null)
+    }
+
+    const handleCityChange = (e) => {
+        const id = e.target.value ? Number(e.target.value) : null
+        setCityId(id)
+        onChange('city', id)
+    }
 
     const handleNext = () => {
 
@@ -1042,42 +1070,46 @@ export default function EditProperty() {
                                 {/* City / Region */}
                                 <div className="grid gap-4 sm:grid-cols-2">
 
-                                    <FormField
-                                        label="City"
-                                        required
-                                        error={errors.city}
-                                    >
-                                        <Input
-                                            value={form.city}
-                                            onKeyDown={handleFormKeyDown}
-                                            onChange={(e) =>
-                                                onChange('city', e.target.value)
-                                            }
-                                            className={
-                                                errors.city ? 'border-red-500' : ''
-                                            }
-                                            placeholder="e.g. Addis Ababa"
-                                            required
-                                        />
+                                    <FormField label="Region" required error={errors.region}>
+                                        {locLoading ? (
+                                            <div className="flex h-12 w-full items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-900">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Loading regions...
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={selectedRegionId ?? ''}
+                                                onChange={handleRegionChange}
+                                                className={`${selectClass} ${errors.region ? 'border-red-500' : ''}`}
+                                            >
+                                                <option value="">— Select a Region —</option>
+                                                {regions.map((r) => (
+                                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </FormField>
 
-                                    <FormField
-                                        label="Region"
-                                        required
-                                        error={errors.region}
-                                    >
-                                        <Input
-                                            value={form.region}
-                                            onKeyDown={handleFormKeyDown}
-                                            onChange={(e) =>
-                                                onChange('region', e.target.value)
-                                            }
-                                            className={
-                                                errors.region ? 'border-red-500' : ''
-                                            }
-                                            placeholder="e.g. Addis Ababa"
-                                            required
-                                        />
+                                    {/* City — disabled until region is chosen */}
+                                    <FormField label="City" required error={errors.city}>
+                                        <select
+                                            value={selectedCityId ?? ''}
+                                            onChange={handleCityChange}
+                                            disabled={!selectedRegionId || locLoading}
+                                            className={`${selectClass} disabled:cursor-not-allowed disabled:opacity-50 ${errors.city ? 'border-red-500' : ''}`}
+                                        >
+                                            <option value="">
+                                                {!selectedRegionId ? '— Select a Region first —' : '— Select a City —'}
+                                            </option>
+                                            {cities.map((c) => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                        {cities.length === 0 && selectedRegionId && !locLoading && (
+                                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                                No cities found for this region. Please contact an administrator.
+                                            </p>
+                                        )}
                                     </FormField>
 
                                 </div>
@@ -1085,7 +1117,6 @@ export default function EditProperty() {
                                 {/* Kebele */}
                                 <FormField
                                     label="Kebele"
-                                    required
                                     error={errors.kebele}
                                 >
                                     <Input
@@ -1094,11 +1125,10 @@ export default function EditProperty() {
                                         onChange={(e) =>
                                             onChange('kebele', e.target.value)
                                         }
-                                        placeholder="e.g. 01, 02..."
+                                        placeholder="e.g. 01, 02 (optional)"
                                         className={
                                             errors.kebele ? 'border-red-500' : ''
                                         }
-                                        required
                                     />
                                 </FormField>
 

@@ -289,7 +289,7 @@ function PropertyDetails() {
       </section>
 
       {/* ─── Image Gallery ──────────────────────────────────────────── */}
-      <section className="bg-white py-8 dark:bg-slate-900">
+      {/* <section className="bg-white py-8 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="relative cursor-pointer overflow-hidden rounded-[28px] border border-slate-200/70 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800">
             <img
@@ -343,6 +343,77 @@ function PropertyDetails() {
               ))}
             </div>
           )}
+        </div>
+      </section> */}
+
+      <section className="bg-white py-8 dark:bg-slate-900">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row">
+            {/* ─── Main Image ────────────────────────────────────────────── */}
+            <div className="relative flex-1 cursor-pointer overflow-hidden rounded-[28px] border border-slate-200/70 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 lg:flex-[2]">
+              <img
+                src={property.images[selectedImage] || property.mainImage}
+                alt={property.title}
+                className="h-96 w-full object-cover md:h-[500px] lg:h-[600px]"
+                onClick={() => setLightboxOpen(true)}
+              />
+              {/* Gradient overlay */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/65 via-slate-950/10 to-transparent" />
+              {/* Photo count badge */}
+              <div className="absolute bottom-5 left-5 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg backdrop-blur dark:bg-slate-900/80 dark:text-white">
+                {selectedImage + 1} / {property.images.length} Photos
+              </div>
+              {/* Navigation arrows */}
+              {property.images.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-lg hover:bg-white dark:bg-slate-900/90"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-lg hover:bg-white dark:bg-slate-900/90"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* ─── Thumbnail Grid ────────────────────────────────────────── */}
+            {property.images.length > 1 && (
+              <div className="grid flex-1 grid-cols-2 gap-2 lg:flex-[1]">
+                {property.images.slice(0, 4).map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`relative overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index
+                        ? 'border-[#c99b43] shadow-lg shadow-[#c99b43]/20'
+                        : 'border-transparent hover:border-slate-300'
+                      }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`View ${index + 1}`}
+                      className="h-28 w-full object-cover md:h-36 lg:h-40"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image';
+                      }}
+                    />
+                    {/* If there are more than 4 images, show a "+N" overlay on the last thumbnail */}
+                    {index === 3 && property.images.length > 4 && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-lg font-bold text-white backdrop-blur-sm">
+                        +{property.images.length - 4}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

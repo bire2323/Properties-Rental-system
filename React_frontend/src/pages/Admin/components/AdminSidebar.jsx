@@ -29,6 +29,7 @@ const managementLinks = [
     { label: 'Verification', path: '/admin-dashboard/verification', icon: ShieldCheck },
     { label: 'Reports & Complaints', path: '/admin-dashboard/reports', icon: BarChart3 },
     { label: 'Payments', path: '/admin-dashboard/payments', icon: WalletCards },
+    { label: 'Locations', path: '/admin-dashboard/locations', icon: MapPinned },
 ]
 
 const settingsLinks = [

@@ -30,6 +30,36 @@ class Currency(models.TextChoices):
     USD = "USD", "US Dollar (USD)"
 
 
+class Region(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Region'
+        verbose_name_plural = 'Regions'
+
+    def __str__(self):
+        return self.name
+
+
+class City(models.Model):
+    name = models.CharField(max_length=100)
+    region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name='cities')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['region__name', 'name']
+        unique_together = ('name', 'region')
+        verbose_name = 'City'
+        verbose_name_plural = 'Cities'
+
+    def __str__(self):
+        return f"{self.name}, {self.region.name}"
+
+
 class Company(models.Model):
     """
     Represents a rental or real-estate company that can manage multiple
@@ -48,8 +78,9 @@ class Company(models.Model):
 
     # Location
     address = models.CharField(max_length=255, blank=True, null=True)
-    city = models.CharField(max_length=100)
-    region = models.CharField(max_length=100)
+    
+    city = models.ForeignKey('City', on_delete=models.PROTECT, null=True, blank=True, related_name='companies')
+    region = models.ForeignKey('Region', on_delete=models.PROTECT, null=True, blank=True, related_name='companies')
 
     # Management — one or more users can manage this company
     managers = models.ManyToManyField(
@@ -177,8 +208,10 @@ class Property(models.Model):
 
     # Location — Ethiopian-style administrative structure
     address = models.CharField(max_length=255, blank=True, null=True)
-    city = models.CharField(max_length=100)
-    region = models.CharField(max_length=100, blank=True, null=True)
+    
+    city = models.ForeignKey('City', on_delete=models.PROTECT, null=True, blank=True, related_name='properties')
+    region = models.ForeignKey('Region', on_delete=models.PROTECT, null=True, blank=True, related_name='properties')
+    
     kebele = models.CharField(max_length=100, blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

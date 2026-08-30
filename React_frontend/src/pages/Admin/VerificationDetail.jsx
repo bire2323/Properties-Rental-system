@@ -332,6 +332,8 @@ function VerificationDetail() {
                                     </div>
                                 )}
 
+
+
                             </div>
 
                             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

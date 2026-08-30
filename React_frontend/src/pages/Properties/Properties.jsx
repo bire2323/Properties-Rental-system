@@ -97,13 +97,14 @@ function Properties() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const defaultFilters = {
-    searchTerm: '',
-    propertyType: 'all',
-    priceRange: [0, 200000],
+    search: '',
+    location: '',
+    type: 'all',
+    min_price: 0,
+    max_price: 200000,
     bedrooms: 'any',
-    bathrooms: 'any',
-    availability: 'all',
-    selectedFeatures: [],
+    is_available: '',
+    features: [],
   };
 
   const [filters, setFilters] = useState(defaultFilters);
@@ -120,12 +121,16 @@ function Properties() {
 
   const fetchedRef = useRef(false)
 
+  // Debounced fetch for filters
   useEffect(() => {
-    if (!fetchedRef.current) {
-      fetchedRef.current = true
-      fetchProperties()
-    }
-  }, [])
+    const handler = setTimeout(() => {
+      fetchProperties();
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [filters]);
 
   useEffect(() => {
     if (user) {
@@ -139,15 +144,34 @@ function Properties() {
   useEffect(() => {
     const typeParam = searchParams.get('type')
     if (typeParam && ['house', 'car', 'all'].includes(typeParam.toLowerCase())) {
-      setFilters(prev => ({ ...prev, propertyType: typeParam.toLowerCase() }))
+      setFilters(prev => ({ ...prev, type: typeParam.toLowerCase() }))
     }
   }, [searchParams])
 
   async function fetchProperties() {
     setLoading(true)
     setError(null)
+    
+    // Prepare backend-compatible filters
+    const apiFilters = { ...filters };
+    if (apiFilters.type === 'all') delete apiFilters.type;
+    if (apiFilters.bedrooms === 'any') delete apiFilters.bedrooms;
+    if (apiFilters.features && apiFilters.features.length === 0) delete apiFilters.features;
+    if (apiFilters.search) {
+      // Backend uses location for text search of city/region/address if we want to combine them, or we could pass `location=search`
+      // Actually, since we added location dropdown, we can pass both or just map search to a query string.
+      // Wait, backend supports `location` for city/address/region. The sidebar now has both search and location.
+      // If we pass both, the backend only looks at `location`. Let's map search to a custom param or just merge it into location if backend doesn't support generic search.
+      // For now, let's just pass `location: apiFilters.location || apiFilters.search` if we want, or leave it. We'll pass `location` and `search` as they are, but backend might ignore `search`.
+      // Actually we can just send `location` if search is set.
+      if (!apiFilters.location && apiFilters.search) {
+        apiFilters.location = apiFilters.search;
+      }
+    }
+    delete apiFilters.search; // Backend doesn't use `search`
+    
     try {
-      const data = await getAllProperties()
+      const data = await getAllProperties(apiFilters)
       const results = Array.isArray(data) ? data : data.results || []
       setProperties(results.map(mapPropertyToCard))
     } catch (err) {
@@ -204,61 +228,21 @@ function Properties() {
   };
 
   const activeFilterCount =
-    (filters.searchTerm ? 1 : 0) +
-    (filters.propertyType !== 'all' ? 1 : 0) +
-    (filters.priceRange[0] > 0 || filters.priceRange[1] < 200000 ? 1 : 0) +
+    (filters.search ? 1 : 0) +
+    (filters.location ? 1 : 0) +
+    (filters.type !== 'all' ? 1 : 0) +
+    (filters.min_price > 0 || filters.max_price < 200000 ? 1 : 0) +
     (filters.bedrooms !== 'any' ? 1 : 0) +
-    (filters.bathrooms !== 'any' ? 1 : 0) +
-    (filters.availability !== 'all' ? 1 : 0) +
-    filters.selectedFeatures.length;
+    (filters.is_available !== '' ? 1 : 0) +
+    (filters.features?.length || 0);
 
   const getPageTitle = () => {
-    if (filters.propertyType === 'all') return 'All Properties'
-    return `${filters.propertyType.charAt(0).toUpperCase() + filters.propertyType.slice(1)}s`
+    if (filters.type === 'all') return 'All Properties'
+    return `${(filters.type || '').charAt(0).toUpperCase() + (filters.type || '').slice(1)}s`
   }
 
-  const filteredProperties = properties.filter((property) => {
-    // 1. Search Match
-    const searchMatch = !filters.searchTerm ||
-      property.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-      property.location.toLowerCase().includes(filters.searchTerm.toLowerCase());
-
-    // 2. Type Match
-    const typeMatch = filters.propertyType === 'all' || property.listing_type === filters.propertyType;
-
-    // 3. Price Match
-    const priceMatch = property.priceRaw >= filters.priceRange[0] && property.priceRaw <= filters.priceRange[1];
-
-    // 4. Bedroom Match (houses only)
-    let bedMatch = true;
-    if (filters.propertyType !== 'car' && filters.bedrooms !== 'any' && property.listing_type === 'house') {
-      const reqBeds = parseInt(filters.bedrooms);
-      const propBeds = parseInt(property.beds);
-      bedMatch = !isNaN(propBeds) && propBeds >= reqBeds;
-    }
-
-    // 5. Bathroom Match (houses only)
-    let bathMatch = true;
-    if (filters.propertyType !== 'car' && filters.bathrooms !== 'any' && property.listing_type === 'house') {
-      const reqBaths = parseInt(filters.bathrooms);
-      const propBaths = parseInt(property.baths);
-      bathMatch = !isNaN(propBaths) && propBaths >= reqBaths;
-    }
-
-    // 6. Availability Match
-    let availabilityMatch = true;
-    if (filters.availability === 'available') availabilityMatch = property.is_available === true;
-    if (filters.availability === 'rented') availabilityMatch = property.is_available === false;
-
-    // 7. Features Match (AND logic)
-    let featureMatch = true;
-    if (filters.selectedFeatures.length > 0) {
-      const propFeatureIds = property.features.map(f => f.id);
-      featureMatch = filters.selectedFeatures.every(fId => propFeatureIds.includes(fId));
-    }
-
-    return searchMatch && typeMatch && priceMatch && bedMatch && bathMatch && availabilityMatch && featureMatch;
-  });
+  // Client-side filtering is no longer needed!
+  const filteredProperties = properties;
 
   const sortedProperties = [...filteredProperties].sort((a, b) => {
     switch (sortBy) {
@@ -374,7 +358,7 @@ function Properties() {
             {/* Content Area */}
             <main className="flex-1 min-w-0">
               {loading && (
-                <div className={viewMode === 'grid' ? "grid gap-6 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-4"}>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <PropertyCardSkeleton key={i} />
                   ))}
@@ -403,7 +387,7 @@ function Properties() {
               )}
 
               {!loading && !error && sortedProperties.length > 0 && (
-                <div className={viewMode === 'grid' ? 'grid gap-6 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-4'}>
+                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-4'}>
                   {sortedProperties.map((property) => (
                     <PropertyCard
                       key={property.id}
@@ -458,11 +442,11 @@ function Properties() {
               className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm lg:hidden"
             />
             <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-[300px] flex-col bg-white shadow-2xl dark:bg-slate-900 sm:w-[350px] lg:hidden"
+              className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 lg:hidden"
             >
               <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Filters</h2>
@@ -479,6 +463,15 @@ function Properties() {
                   setFilters={setFilters}
                   onClearAll={handleClearAll}
                 />
+                {/* Apply Button */}
+                <div className="mt-6">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950" 
+                    onClick={() => setIsFilterOpen(false)}
+                  >
+                    Show Results ({sortedProperties.length})
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </>

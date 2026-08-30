@@ -2,13 +2,16 @@ from rest_framework import viewsets, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q, Avg, Count, Prefetch
+from django.db.models.deletion import ProtectedError
+from collections import Counter
 from interactions.models import PropertyRating, Favorite
 from accounts.models import Notification
 from site_settings.models import SiteSettings
-from .models import Property, Feature, Company, CompanyVerificationDocument
-from .permissions import PropertyPermission, CompanyPermission, CompanyDocumentPermission
+from .models import Property, Feature, Company, CompanyVerificationDocument, ListingType, Region, City
+from .permissions import PropertyPermission, CompanyPermission, CompanyDocumentPermission, AdminRolePermission
 from .serializers import (
     PropertySerializer,
     PropertyCreateSerializer,
@@ -16,6 +19,9 @@ from .serializers import (
     CompanySerializer,
     CompanyWriteSerializer,
     CompanyVerificationDocumentSerializer,
+    RegionSerializer,
+    RegionAdminSerializer,
+    CityAdminSerializer,
 )
 
 
@@ -25,6 +31,163 @@ class FeatureListView(ListAPIView):
     serializer_class = FeatureSerializer
     permission_classes = [AllowAny]
     pagination_class = None
+
+
+class RegionListAPIView(ListAPIView):
+    """
+    Public endpoint. Returns all Regions with their Cities nested inside.
+    Used for cascading Region → City dropdowns in create/edit forms and sidebar filters.
+    """
+    queryset = Region.objects.prefetch_related('cities').order_by('name')
+    serializer_class = RegionSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+
+class ListingNavigationOptionsAPIView(APIView):
+    """
+    Public endpoint used by the navigation bar and sidebar filters.
+    Returns:
+      - regions: structured Region → City hierarchy (replaces the old flat `locations` list)
+      - brands: unique car brands from active listings
+      - fuel_types: unique fuel types from active listings
+
+    The `regions` field is the authoritative location source for all filters.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        # Return all managed regions/cities (not just those with active listings)
+        # This ensures new regions admin-created are immediately available
+        regions = Region.objects.prefetch_related('cities').order_by('name')
+
+        active_car_properties = Property.objects.filter(
+            status='active', is_available=True, listing_type=ListingType.CAR
+        )
+
+        car_brands = (
+            active_car_properties
+            .exclude(car_detail__brand__isnull=True)
+            .exclude(car_detail__brand__exact='')
+            .values_list('car_detail__brand', flat=True)
+            .distinct()
+        )
+
+        fuel_types = (
+            active_car_properties
+            .exclude(car_detail__fuel_type__isnull=True)
+            .exclude(car_detail__fuel_type__exact='')
+            .values_list('car_detail__fuel_type', flat=True)
+            .distinct()
+        )
+
+        return Response({
+            'regions': RegionSerializer(regions, many=True).data,
+            'brands': [{'value': b, 'label': b} for b in sorted(car_brands)],
+            'fuel_types': [{'value': ft, 'label': ft.title()} for ft in sorted(fuel_types)],
+        })
+
+
+def _protected_objects_summary(protected_objects):
+    counter = Counter(
+        (
+            obj._meta.verbose_name if hasattr(obj, '_meta') else 'record',
+            obj._meta.verbose_name_plural if hasattr(obj, '_meta') else 'records',
+        )
+        for obj in protected_objects
+    )
+    return ', '.join(
+        f'{count} {plural if count != 1 else singular}'
+        for (singular, plural), count in sorted(counter.items(), key=lambda item: item[0][1])
+    )
+
+
+class RegionAdminViewSet(viewsets.ModelViewSet):
+    """Admin-only CRUD for managed regions."""
+
+    serializer_class = RegionAdminSerializer
+    permission_classes = [AdminRolePermission]
+    lookup_field = 'id'
+    pagination_class = None
+
+    def get_queryset(self):
+        return (
+            Region.objects
+            .annotate(
+                city_count=Count('cities', distinct=True),
+                property_count=Count('properties', distinct=True),
+                company_count=Count('companies', distinct=True),
+            )
+            .order_by('name')
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        region = self.get_object()
+
+        if region.cities.exists():
+            return Response(
+                {
+                    'detail': (
+                        'This region cannot be deleted because it still contains cities. '
+                        'Delete or move its cities first.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            region.delete()
+        except ProtectedError as exc:
+            summary = _protected_objects_summary(exc.protected_objects)
+            message = 'This region cannot be deleted because it is still in use.'
+            if summary:
+                message = f'This region cannot be deleted because it is still used by {summary}.'
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CityAdminViewSet(viewsets.ModelViewSet):
+    """Admin-only CRUD for managed cities."""
+
+    serializer_class = CityAdminSerializer
+    permission_classes = [AdminRolePermission]
+    lookup_field = 'id'
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = (
+            City.objects
+            .select_related('region')
+            .annotate(
+                property_count=Count('properties', distinct=True),
+                company_count=Count('companies', distinct=True),
+            )
+            .order_by('region__name', 'name')
+        )
+
+        region_id = self.request.query_params.get('region_id')
+        if region_id:
+            try:
+                queryset = queryset.filter(region_id=int(region_id))
+            except (TypeError, ValueError):
+                pass
+
+        return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        city = self.get_object()
+        try:
+            city.delete()
+        except ProtectedError as exc:
+            summary = _protected_objects_summary(exc.protected_objects)
+            message = 'This city cannot be deleted because it is still in use.'
+            if summary:
+                message = f'This city cannot be deleted because it is still used by {summary}.'
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
@@ -38,6 +201,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
             'company',
             'house_detail',
             'car_detail',
+            'city',
+            'city__region',
+            'region',
         ).prefetch_related(
             'images',
             'features',
@@ -60,12 +226,28 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 ),
             )
 
+        # ── Location filtering via ForeignKey IDs ──────────────────────────
+        region_id = self.request.query_params.get('region_id')
+        if region_id:
+            try:
+                queryset = queryset.filter(region_id=int(region_id))
+            except (ValueError, TypeError):
+                pass
+
+        city_id = self.request.query_params.get('city_id')
+        if city_id:
+            try:
+                queryset = queryset.filter(city_id=int(city_id))
+            except (ValueError, TypeError):
+                pass
+
+        # Legacy text-based location search (kept for backwards compatibility)
         location = self.request.query_params.get('location')
-        if location:
+        if location and not region_id and not city_id:
             queryset = queryset.filter(
-                Q(city__icontains=location) |
+                Q(city__name__icontains=location) |
                 Q(address__icontains=location) |
-                Q(region__icontains=location)
+                Q(region__name__icontains=location)
             )
 
         min_price = self.request.query_params.get('min_price')
@@ -91,6 +273,39 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 Q(listing_type='car') & Q(car_detail__brand__icontains=brand)
             )
 
+        car_model = self.request.query_params.get('model')
+        if car_model:
+            queryset = queryset.filter(
+                Q(listing_type='car') & Q(car_detail__model__icontains=car_model)
+            )
+
+        min_year = self.request.query_params.get('min_year')
+        if min_year:
+            try:
+                queryset = queryset.filter(Q(listing_type='car') & Q(car_detail__year__gte=int(min_year)))
+            except ValueError:
+                pass
+
+        max_year = self.request.query_params.get('max_year')
+        if max_year:
+            try:
+                queryset = queryset.filter(Q(listing_type='car') & Q(car_detail__year__lte=int(max_year)))
+            except ValueError:
+                pass
+
+        fuel_type = self.request.query_params.get('fuel_type')
+        if fuel_type:
+            queryset = queryset.filter(
+                Q(listing_type='car') & Q(car_detail__fuel_type__iexact=fuel_type)
+            )
+
+        seating_capacity = self.request.query_params.get('seating_capacity')
+        if seating_capacity:
+            try:
+                queryset = queryset.filter(Q(listing_type='car') & Q(car_detail__seating_capacity__gte=int(seating_capacity)))
+            except ValueError:
+                pass
+
         is_available = self.request.query_params.get('is_available')
         if is_available is not None and is_available != '':
             if is_available in ('true', 'True', '1'):
@@ -98,7 +313,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
             elif is_available in ('false', 'False', '0'):
                 queryset = queryset.filter(is_available=False)
 
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            from .models import ListingStatus
+            valid_statuses = {choice[0] for choice in ListingStatus.choices}
+            if status_param in valid_statuses:
+                queryset = queryset.filter(status=status_param)
+
         return queryset.order_by('-created_at')
+
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

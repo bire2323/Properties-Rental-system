@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { ArrowRight, Building2, CheckCircle, Key, MapPin, Search, Shield, Star, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/common/Navbar'
@@ -6,13 +7,12 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import Testimonials from '../../components/common/Testimonials'
-
 import { useAuth } from '../../hooks/useAuth'
+import { getAllProperties } from '../../api/property/propertyApi'
+import { getImageUrl } from '../../api/mediaHelper'
 
 const heroImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000'
-const property1 = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
-const property2 = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=800'
-const property3 = 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=800'
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
 
 const features = [
   {
@@ -37,54 +37,6 @@ const features = [
   },
 ]
 
-const properties = [
-  {
-    id: 1,
-    image: property1,
-    title: 'Modern Villa with Pool',
-    location: 'Bole, Addis Ababa',
-    price: '45,000',
-    beds: 4,
-    baths: 3,
-    area: '320',
-    rating: 4.9,
-  },
-
-  {
-    id: 2,
-    image: property2,
-    title: 'Luxury Apartment',
-    location: 'Kazanchis, Addis Ababa',
-    price: '35,000',
-    beds: 3,
-    baths: 2,
-    area: '180',
-    rating: 4.8,
-  },
-  {
-    id: 3,
-    image: property3,
-    title: 'Executive Penthouse',
-    location: 'CMC, Addis Ababa',
-    price: '65,000',
-    beds: 5,
-    baths: 4,
-    area: '450',
-    rating: 5.0,
-  },
-  {
-    id: 4,
-    image: property1,
-    title: 'Modern Villa with Pool',
-    location: 'Bole, Addis Ababa',
-    price: '45,000',
-    beds: 4,
-    baths: 3,
-    area: '320',
-    rating: 4.9,
-  },
-]
-
 const stats = [
   { number: '10K+', label: 'Properties' },
   { number: '5K+', label: 'Happy Clients' },
@@ -92,9 +44,76 @@ const stats = [
   { number: '98%', label: 'Satisfaction' },
 ]
 
+// ─── Map a raw backend property to what the card JSX expects ────────────────
+// Mirrors the same pattern used in Properties.jsx — single source of truth.
+function mapProperty(p) {
+  const imageUrl = getImageUrl(p.main_image) || FALLBACK_IMAGE
+
+  const isHouse = p.listing_type === 'house'
+  const detail = isHouse ? (p.house_detail || {}) : (p.car_detail || {})
+
+  const beds = isHouse ? (detail.bedrooms ?? null) : null
+  const baths = isHouse ? (detail.bathrooms ?? null) : null
+  const area = isHouse ? (detail.area_sqft ?? null) : null
+
+  const priceNum = parseFloat(p.price) || 0
+  const priceFormatted = priceNum.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+
+  const location = [p.city, p.region, p.kebele].filter(Boolean).join(', ') || 'Location Unspecified'
+
+  const averageRating = p.rating_summary?.average_rating ?? null
+
+  return {
+    id: p.id,
+    image: imageUrl,
+    title: p.property_name,
+    location,
+    price: priceFormatted,
+    rental_unit: p.rental_unit || 'monthly',
+    beds,
+    baths,
+    area,
+    rating: averageRating,
+    listing_type: p.listing_type,
+  }
+}
+
 function Home() {
   const navigate = useNavigate()
   const { user } = useAuth()
+
+  // ─── Top Properties fetch ─────────────────────────────────────────────────
+  const [topProperties, setTopProperties] = useState([])
+  const [propertiesLoading, setPropertiesLoading] = useState(true)
+  const [propertiesError, setPropertiesError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setPropertiesLoading(true)
+    setPropertiesError(null)
+
+    // Request only active, available listings — visibility enforced server-side.
+    // Slice to 4 client-side (no limit param on the backend).
+    getAllProperties({ status: 'active', is_available: 'true' })
+      .then((data) => {
+        if (cancelled) return
+        const raw = Array.isArray(data) ? data : (data?.results ?? [])
+        setTopProperties(raw.slice(0, 4).map(mapProperty))
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setPropertiesError(err?.message || 'Failed to load properties.')
+      })
+      .finally(() => {
+        if (!cancelled) setPropertiesLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [])
+
   const handlePostProperty = () => {
     if (user) {
       if (user.role === 'tenant') {
@@ -237,7 +256,7 @@ function Home() {
         </div>
       </section>
 
-      {/* Featured Properties */}
+      {/* Top Properties — real data from backend */}
       <section className="py-20 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -259,146 +278,144 @@ function Home() {
             </Button>
           </div>
 
-          {/* Grid: 1 column mobile → 2 columns tablet → 4 columns large screens */}
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {properties.map((property) => (
-              <Card
-                key={property.id}
-                className="group overflow-hidden border-slate-200 bg-white transition-all hover:shadow-2xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900"
-              >
-                <div className="relative overflow-hidden">
-                  <img
-                    src={property.image}
-                    alt={property.property_name}
-                    className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 backdrop-blur-sm dark:bg-slate-900/95">
-                    <Star className="h-3.5 w-3.5 fill-[#c99b43] text-[#c99b43]" />
-                    <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                      {property.rating}
-                    </span>
-                  </div>
-                  {/* Optional: "New" badge */}
-                  {property.isNew && (
-                    <div className="absolute left-3 top-3 rounded-full bg-[#c99b43] px-2.5 py-0.5 text-xs font-semibold text-white">
-                      New
+          {/* Loading state — 4 skeleton cards matching card dimensions */}
+          {propertiesLoading && (
+            <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="h-32 sm:h-56 animate-pulse bg-slate-200 dark:bg-slate-800" />
+                  <div className="space-y-2 sm:space-y-3 p-3 sm:p-5">
+                    <div className="h-4 sm:h-5 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-3 sm:h-4 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="flex gap-2 sm:gap-3 border-t border-slate-200 pt-2 sm:pt-3 dark:border-slate-800">
+                      <div className="h-3 sm:h-4 w-8 sm:w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-3 sm:h-4 w-8 sm:w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-3 sm:h-4 w-10 sm:w-14 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </div>
-                  )}
-                </div>
-
-                <div className="p-4 sm:p-5">
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
-                    {property.property_name}
-                  </h3>
-                  <p className="mt-1.5 flex items-center text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-                    <MapPin className="mr-1 h-3.5 w-3.5" />
-                    {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
-                  </p>
-
-                  <div className="mt-3 flex items-center gap-3 border-t border-slate-200 pt-3 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:text-sm">
-                    <span>{property.beds} Beds</span>
-                    <span>•</span>
-                    <span>{property.baths} Baths</span>
-                    <span>•</span>
-                    <span>{property.area} m²</span>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-lg font-bold text-[#c99b43] sm:text-xl">
-                        {property.price}
-                      </span>
-                      <span className="text-xs text-slate-600 dark:text-slate-400"> ETB/mo</span>
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="h-4 sm:h-6 w-16 sm:w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-7 sm:h-8 w-16 sm:w-24 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
                     </div>
-                    <Button
-                      size="sm"
-                      className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-3 py-1.5 text-xs text-slate-950 hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
-                      onClick={() => navigate(`/properties/${property.id}`)}
-                    >
-                      View Details
-                    </Button>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error state */}
+          {!propertiesLoading && propertiesError && (
+            <div className="mt-12 flex items-center justify-center rounded-xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/40 dark:bg-red-950/20">
+              <div>
+                <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                  Could not load properties
+                </p>
+                <p className="mt-1 text-xs text-red-500 dark:text-red-500">{propertiesError}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-4 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                  onClick={() => navigate('/properties')}
+                >
+                  Browse all listings
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!propertiesLoading && !propertiesError && topProperties.length === 0 && (
+            <div className="mt-12 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-12 text-center dark:border-slate-800 dark:bg-slate-900/50">
+              <div>
+                <p className="text-base font-medium text-slate-700 dark:text-slate-300">
+                  No properties available right now
+                </p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Check back soon or browse all listings.
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-4 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 hover:opacity-90"
+                  onClick={() => navigate('/properties')}
+                >
+                  Browse all listings
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Property cards — real data */}
+          {!propertiesLoading && !propertiesError && topProperties.length > 0 && (
+            <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {topProperties.map((property) => (
+                <Card
+                  key={property.id}
+                  className="group overflow-hidden rounded-xl sm:rounded-2xl border-slate-200 bg-white transition-all hover:shadow-2xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="relative overflow-hidden h-32 sm:h-56">
+                    <img
+                      src={property.image}
+                      alt={property.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => { e.target.src = FALLBACK_IMAGE }}
+                    />
+                    {/* Rating badge — only shown when a rating exists */}
+                    {property.rating !== null && (
+                      <div className="absolute right-2 top-2 sm:right-3 sm:top-3 flex items-center gap-1 rounded-full bg-white/95 px-1.5 py-0.5 sm:px-2.5 sm:py-1 backdrop-blur-sm dark:bg-slate-900/95">
+                        <Star className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 fill-[#c99b43] text-[#c99b43]" />
+                        <span className="text-[9px] sm:text-xs font-semibold text-slate-900 dark:text-white">
+                          {property.rating}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 sm:p-5">
+                    <h3 className="text-xs sm:text-lg font-semibold text-slate-900 dark:text-white line-clamp-1">
+                      {property.title}
+                    </h3>
+                    <p className="mt-1 flex items-center text-[10px] sm:text-sm text-slate-600 dark:text-slate-400 truncate">
+                      <MapPin className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+                      <span className="truncate">{property.location}</span>
+                    </p>
+
+                    {/* House-specific details — only rendered when fields are present */}
+                    {property.listing_type === 'house' && (property.beds !== null || property.baths !== null || property.area !== null) && (
+                      <div className="mt-2 sm:mt-3 flex items-center gap-1.5 sm:gap-3 border-t border-slate-200 pt-2 sm:pt-3 text-[9px] sm:text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+                        {property.beds !== null && <span>{property.beds} Beds</span>}
+                        {property.beds !== null && property.baths !== null && <span>•</span>}
+                        {property.baths !== null && <span>{property.baths} Baths</span>}
+                        {property.area !== null && <><span className="hidden sm:inline">•</span><span className="truncate max-w-[30px] sm:max-w-none">{property.area} m²</span></>}
+                      </div>
+                    )}
+
+                    <div className="mt-2 sm:mt-3 flex items-center justify-between">
+                      <div className="flex flex-col sm:block">
+                        <span className="text-sm sm:text-xl font-bold text-[#c99b43]">
+                          {property.price}
+                        </span>
+                        <span className="text-[9px] sm:text-xs text-slate-600 dark:text-slate-400">
+                          {' '}ETB/{property.rental_unit}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-7 px-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm text-slate-950 hover:opacity-90"
+                        onClick={() => navigate(`/properties/${property.id}`)}
+                      >
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Featured Properties */}
-      {/* <section className="py-20 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
-                Featured Properties
-              </h2>
-              <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
-                Handpicked premium properties just for you
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
-              onClick={() => navigate('/properties')}
-            >
-              View All
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {properties.map((property) => (
-              <Card
-                key={property.id}
-                className="group overflow-hidden border-slate-200 bg-white transition-all hover:shadow-2xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900"
-              >
-                <div className="relative overflow-hidden">
-                  <img
-                    src={property.image}
-                    alt={property.property_name}
-                    className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 backdrop-blur-sm dark:bg-slate-900/95">
-                    <Star className="h-4 w-4 fill-[#c99b43] text-[#c99b43]" />
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{property.rating}</span>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
-                  <p className="mt-2 flex items-center text-sm text-slate-600 dark:text-slate-400">
-                    <MapPin className="mr-1 h-4 w-4" />
-                    {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
-                  </p>
-
-                  <div className="mt-4 flex items-center gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
-                    <span>{property.beds} Beds</span>
-                    <span>•</span>
-                    <span>{property.baths} Baths</span>
-                    <span>•</span>
-                    <span>{property.area} m²</span>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <div>
-                      <span className="text-2xl font-bold text-[#c99b43]">{property.price}</span>
-                      <span className="text-sm text-slate-600 dark:text-slate-400"> ETB/mo</span>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 hover:opacity-90"
-                      onClick={() => navigate('/properties')}
-                    >
-                      View Details
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section> */}
       <Testimonials />
 
       <section className="relative flex overflow-hidden flex-wrap min-h-[70vh] w-full items-center mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">

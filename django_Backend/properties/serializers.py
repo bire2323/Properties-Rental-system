@@ -13,7 +13,97 @@ from .models import (
     Feature,
     Company,
     CompanyVerificationDocument,
+    Region,
+    City,
 )
+
+
+# ---------------------------------------------------------------------------
+# Location — Region & City
+# ---------------------------------------------------------------------------
+
+class CitySerializer(serializers.ModelSerializer):
+    region_id = serializers.IntegerField(source='region.id', read_only=True)
+    region_name = serializers.CharField(source='region.name', read_only=True)
+
+    class Meta:
+        model = City
+        fields = ['id', 'name', 'region_id', 'region_name']
+
+
+class RegionSerializer(serializers.ModelSerializer):
+    cities = CitySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Region
+        fields = ['id', 'name', 'cities']
+
+
+class RegionAdminSerializer(serializers.ModelSerializer):
+    city_count = serializers.SerializerMethodField()
+    property_count = serializers.SerializerMethodField()
+    company_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Region
+        fields = ['id', 'name', 'city_count', 'property_count', 'company_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_city_count(self, obj):
+        return getattr(obj, 'city_count', obj.cities.count())
+
+    def get_property_count(self, obj):
+        return getattr(obj, 'property_count', obj.properties.count())
+
+    def get_company_count(self, obj):
+        return getattr(obj, 'company_count', obj.companies.count())
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Region name cannot be blank.')
+        qs = Region.objects.filter(name__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(f'A region named "{value}" already exists.')
+        return value
+
+
+class CityAdminSerializer(serializers.ModelSerializer):
+    region_name = serializers.CharField(source='region.name', read_only=True)
+    property_count = serializers.SerializerMethodField()
+    company_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = City
+        fields = ['id', 'name', 'region', 'region_name', 'property_count', 'company_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'region_name', 'created_at', 'updated_at']
+
+    def get_property_count(self, obj):
+        return getattr(obj, 'property_count', obj.properties.count())
+
+    def get_company_count(self, obj):
+        return getattr(obj, 'company_count', obj.companies.count())
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('City name cannot be blank.')
+        return value
+
+    def validate(self, data):
+        name = data.get('name', getattr(self.instance, 'name', '')).strip()
+        region = data.get('region', getattr(self.instance, 'region', None))
+        if name and region:
+            qs = City.objects.filter(name__iexact=name, region=region)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {'name': f'A city named "{name}" already exists in region "{region.name}".'}
+                )
+        return data
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +176,12 @@ class CompanySerializer(serializers.ModelSerializer):
     """Read serializer for company details and public company data."""
     manager_ids = serializers.SerializerMethodField()
     documents = serializers.SerializerMethodField()
+    city = CitySerializer(read_only=True)
+    region = RegionSerializer(read_only=True, default=None)
+
+    # Flattened display helpers for backwards compatibility
+    city_name = serializers.CharField(source='city.name', read_only=True, default='')
+    region_name = serializers.CharField(source='region.name', read_only=True, default='')
 
     class Meta:
         model = Company
@@ -99,7 +195,9 @@ class CompanySerializer(serializers.ModelSerializer):
             'website',
             'address',
             'city',
+            'city_name',
             'region',
+            'region_name',
             'is_verified',
             'manager_ids',
             'documents',
@@ -126,6 +224,17 @@ class CompanySerializer(serializers.ModelSerializer):
 
 class CompanyWriteSerializer(serializers.ModelSerializer):
     """Write serializer for creating/updating companies."""
+    city = serializers.PrimaryKeyRelatedField(
+        queryset=City.objects.select_related('region').all(),
+        required=False,
+        allow_null=True,
+    )
+    region = serializers.PrimaryKeyRelatedField(
+        queryset=Region.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = Company
         fields = [
@@ -136,9 +245,18 @@ class CompanyWriteSerializer(serializers.ModelSerializer):
             'contact_phone',
             'website',
             'address',
-            'city',
             'region',
+            'city',
         ]
+
+    def validate(self, data):
+        region = data.get('region') or (self.instance.region if self.instance else None)
+        city = data.get('city') or (self.instance.city if self.instance else None)
+        if city and region and city.region_id != region.id:
+            raise serializers.ValidationError(
+                {'city': f'City "{city.name}" does not belong to region "{region.name}".'}
+            )
+        return data
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +311,14 @@ class PropertySerializer(serializers.ModelSerializer):
     house_detail = HouseDetailSerializer(read_only=True)
     car_detail = CarDetailSerializer(read_only=True)
 
+    # Nested location objects
+    city = CitySerializer(read_only=True)
+    region = RegionSerializer(read_only=True, default=None)
+
+    # Flat display helpers (city_name, region_name) for backwards compatibility
+    city_name = serializers.CharField(source='city.name', read_only=True, default='')
+    region_name = serializers.CharField(source='region.name', read_only=True, default='')
+
     class Meta:
         model = Property
         fields = [
@@ -208,7 +334,9 @@ class PropertySerializer(serializers.ModelSerializer):
             'security_deposit',
             'address',
             'city',
+            'city_name',
             'region',
+            'region_name',
             'kebele',
             'latitude',
             'longitude',
@@ -288,6 +416,18 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
 
+    # location FK fields — client passes integer IDs
+    city = serializers.PrimaryKeyRelatedField(
+        queryset=City.objects.select_related('region').all(),
+        required=False,
+        allow_null=True,
+    )
+    region = serializers.PrimaryKeyRelatedField(
+        queryset=Region.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
     house_detail = serializers.JSONField(write_only=True, required=False, allow_null=True)
     car_detail = serializers.JSONField(write_only=True, required=False, allow_null=True)
 
@@ -319,8 +459,8 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             'security_deposit',
             'company',
             'address',
-            'city',
             'region',
+            'city',
             'kebele',
             'latitude',
             'longitude',
@@ -376,6 +516,14 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
                 data['price'] = Decimal(price)
             except InvalidOperation:
                 raise serializers.ValidationError({'price': 'Enter a valid decimal value.'})
+
+        # Validate that City belongs to the submitted Region
+        region = data.get('region') or (self.instance.region if self.instance else None)
+        city = data.get('city') or (self.instance.city if self.instance else None)
+        if city and region and city.region_id != region.id:
+            raise serializers.ValidationError(
+                {'city': f'City "{city.name}" does not belong to region "{region.name}".'}
+            )
 
         listing_type = data.get('listing_type') or (self.instance.listing_type if self.instance else None)
         house_detail = data.get('house_detail')

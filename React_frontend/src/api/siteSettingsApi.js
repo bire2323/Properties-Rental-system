@@ -1,6 +1,8 @@
 import { refreshToken } from './authApi'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+let siteSettingsPromise = null
+let siteSettingsCache = null
 
 async function request(path = '', options = {}, canRefresh = options.method !== 'GET') {
     const headers = { ...(options.headers || {}) }
@@ -40,8 +42,26 @@ async function request(path = '', options = {}, canRefresh = options.method !== 
     return payload
 }
 
-export function getSiteSettings() {
-    return request('', { method: 'GET' }, false)
+export function getSiteSettings({ force = false } = {}) {
+    if (!force) {
+        if (siteSettingsCache) {
+            return Promise.resolve(siteSettingsCache)
+        }
+        if (siteSettingsPromise) {
+            return siteSettingsPromise
+        }
+    }
+
+    siteSettingsPromise = request('', { method: 'GET' }, false)
+        .then((payload) => {
+            siteSettingsCache = payload
+            return payload
+        })
+        .finally(() => {
+            siteSettingsPromise = null
+        })
+
+    return siteSettingsPromise
 }
 
 export function updateSiteSettings(values, logoFile) {
@@ -50,7 +70,12 @@ export function updateSiteSettings(values, logoFile) {
         if (value !== undefined && value !== null) body.append(key, value)
     })
     if (logoFile) body.append('logo', logoFile)
-    return request('', { method: 'PATCH', body })
+    siteSettingsCache = null
+    siteSettingsPromise = null
+    return request('', { method: 'PATCH', body }).then((payload) => {
+        siteSettingsCache = payload
+        return payload
+    })
 }
 
 export function getPaymentMethods() {

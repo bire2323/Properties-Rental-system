@@ -1,4 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+let navigationOptionsPromise = null
+let navigationOptionsCache = null
 
 /**
  * Generic request helper — mirrors the pattern in authApi.js.
@@ -47,6 +49,44 @@ export async function getFeatures() {
 /** Alias for getFeatures */
 export async function getAllFeatures() {
     return getFeatures()
+}
+
+/**
+ * GET /api/properties/navigation-options/
+ * Returns public navbar-safe listing options supported by the backend.
+ */
+export async function getListingNavigationOptions({ force = false } = {}) {
+    if (!force) {
+        if (navigationOptionsCache) {
+            return navigationOptionsCache
+        }
+        if (navigationOptionsPromise) {
+            return navigationOptionsPromise
+        }
+    }
+
+    navigationOptionsPromise = request('/api/properties/navigation-options/', { method: 'GET' })
+        .then((payload) => {
+            navigationOptionsCache = payload
+            return payload
+        })
+        .finally(() => {
+            navigationOptionsPromise = null
+        })
+
+    return navigationOptionsPromise
+}
+
+/**
+ * GET /api/properties/regions/
+ * Returns all Regions with their nested Cities.
+ * Used for cascading Region → City dropdowns in forms and filters.
+ *
+ * Response shape:
+ *   [{ id, name, cities: [{ id, name, region_id, region_name }, ...] }, ...]
+ */
+export async function getRegions() {
+    return request('/api/properties/regions/', { method: 'GET' })
 }
 
 // ─── Properties ─────────────────────────────────────────────────────────────

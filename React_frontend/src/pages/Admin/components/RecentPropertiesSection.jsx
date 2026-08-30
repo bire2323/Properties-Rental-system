@@ -8,7 +8,7 @@ export default function RecentPropertiesSection({ recentProperties = [] }) {
     const displayProperties = Array.isArray(recentProperties)
         ? recentProperties.map((property, index) => {
             const rawName = property.title || property.property_name || 'Untitled Property'
-            const rawLocation = property.location || property.city || property.address || property.region || '—'
+            const rawLocation = property.location || property.city_name || property.city?.name || property.address || property.region_name || property.region?.name || '—'
             const defaultImage = 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=200&q=80'
             let image = defaultImage
             if (typeof property.main_image === 'string') {

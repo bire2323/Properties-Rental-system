@@ -48,32 +48,32 @@ export default function OwnerDashboard() {
     const recentProperties = ownerProperties.slice(0, 3)
 
     return (
-        <div className="space-y-8">
-            <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <div className="space-y-6 sm:space-y-8">
+            <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="absolute inset-0 bg-gradient-to-r from-[#f8e6ba]/80 via-white/0 to-[#dfeaf7]/80 dark:from-[#201d17]/60 dark:via-slate-950/10 dark:to-[#0f172a]/60" aria-hidden="true" />
                 <img
                     src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80"
                     alt="Modern house"
-                    className="absolute -right-16 top-6 h-44 w-44 rounded-[2rem] object-cover opacity-30 blur-[1px] grayscale-[0.1] sm:h-56 sm:w-56 dark:opacity-35"
+                    className="absolute -right-16 top-6 h-32 w-32 sm:h-44 sm:w-44 lg:h-56 lg:w-56 rounded-[2rem] object-cover opacity-30 blur-[1px] grayscale-[0.1] dark:opacity-35"
                 />
                 <img
                     src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80"
                     alt="Luxury car"
-                    className="absolute -left-14 bottom-2 h-36 w-36 rounded-[2rem] object-cover opacity-35 blur-[1px] grayscale-[0.1] sm:h-48 sm:w-48 dark:opacity-30"
+                    className="absolute -left-14 bottom-2 h-28 w-28 sm:h-36 sm:w-36 lg:h-48 lg:w-48 rounded-[2rem] object-cover opacity-35 blur-[1px] grayscale-[0.1] dark:opacity-30"
                 />
 
-                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+                <div className="relative flex flex-col gap-5 sm:gap-6 xl:flex-row xl:items-center xl:justify-between">
                     <div className="max-w-2xl">
-                        <p className="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Welcome back</p>
-                        <h2 className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{user?.first_name ? `Welcome back, ${user.first_name}` : 'Welcome back'}</h2>
-                        <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300">Manage your properties, bookings, and rental activity from one place.</p>
+                        <p className="text-[10px] sm:text-sm font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Welcome back</p>
+                        <h2 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white">{user?.first_name ? `Welcome back, ${user.first_name}` : 'Welcome back'}</h2>
+                        <p className="mt-2 sm:mt-3 max-w-xl text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 dark:text-slate-300">Manage your properties, bookings, and rental activity from one place.</p>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 xl:auto-cols-fr xl:grid-flow-col">
                         <button
                             type="button"
                             onClick={() => navigate('/owner/properties/add')}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[#c99b43] px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-white transition hover:bg-[#b08838]"
                         >
                             <Plus className="h-4 w-4" />
                             Add Property
@@ -81,7 +81,7 @@ export default function OwnerDashboard() {
                         <button
                             type="button"
                             onClick={() => navigate('/owner/properties')}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl border border-slate-200 bg-white px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                         >
                             <ArrowRight className="h-4 w-4" />
                             View Properties
@@ -96,22 +96,22 @@ export default function OwnerDashboard() {
                 {loading ? (
                     <LoadingSkeleton />
                 ) : error ? (
-                    <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/50 dark:text-red-300">
+                    <div className="rounded-2xl sm:rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/50 dark:text-red-300">
                         <p className="font-semibold">Unable to load dashboard data.</p>
                         <p className="mt-2">{error}</p>
                     </div>
                 ) : (
-                    <div className="grid gap-6 xl:grid-cols-4">
-                        <StatCard icon={<Home className="h-5 w-5" />} label="Total Properties" value={totalProperties} description="Your active portfolio" accent="bg-[#f6e6c1] text-[#7f5c20]" />
-                        <StatCard icon={<Building2 className="h-5 w-5" />} label="Available" value={availableProperties} description="Ready for new bookings" accent="bg-[#e6f8ef] text-[#1d6f4f]" />
-                        <StatCard icon={<CalendarCheck className="h-5 w-5" />} label="Rented" value={rentedProperties} description="Currently occupied" accent="bg-[#ede9ff] text-[#5a3d9f]" />
-                        <StatCard icon={<DollarSign className="h-5 w-5" />} label="Monthly Value" value={`ETB ${rentalValue.toLocaleString()}`} description="Estimated property rents" accent="bg-[#fdeedb] text-[#a05713]" />
+                    <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
+                        <StatCard icon={<Home className="h-4 w-4 sm:h-5 sm:w-5" />} label="Total" value={totalProperties} description="Your active portfolio" accent="bg-[#f6e6c1] text-[#7f5c20]" />
+                        <StatCard icon={<Building2 className="h-4 w-4 sm:h-5 sm:w-5" />} label="Available" value={availableProperties} description="Ready for bookings" accent="bg-[#e6f8ef] text-[#1d6f4f]" />
+                        <StatCard icon={<CalendarCheck className="h-4 w-4 sm:h-5 sm:w-5" />} label="Rented" value={rentedProperties} description="Currently occupied" accent="bg-[#ede9ff] text-[#5a3d9f]" />
+                        <StatCard icon={<DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />} label="Value" value={`ETB ${rentalValue.toLocaleString()}`} description="Estimated monthly rents" accent="bg-[#fdeedb] text-[#a05713]" />
                     </div>
                 )}
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[2fr_0.6fr]">
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Property overview</h3>

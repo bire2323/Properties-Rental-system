@@ -61,7 +61,7 @@ const mapProperty = (property) => ({
     name: property.title || property.property_name || 'Untitled Property',
     owner: property.owner_name || property.owner_email || 'Unknown Owner',
     type: property.listing_type === 'house' ? 'House' : property.listing_type === 'car' ? 'Car' : 'Property',
-    location: property.location || property.city || property.address || 'Location not provided',
+    location: property.location || property.city_name || property.city?.name || property.address || 'Location not provided',
     price: formatPrice(property.price),
     status: property.is_available ? 'Available' : 'Rented',
     date: formatDate(property.created_at),

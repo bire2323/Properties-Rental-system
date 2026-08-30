@@ -4,13 +4,14 @@ import {
     Check, ChevronRight, ChevronLeft, Building2, Car,
     Plus, X, Loader2, Home, CarFront,
     Upload, ImagePlus, CheckCircle2, AlertCircle,
-    Sofa, BedDouble, Bath, House
+    Sofa, BedDouble, Bath, House, MapPin
 } from 'lucide-react'
 import { createProperty, getMyManagedCompanies } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { useAuth } from '../../hooks/useAuth'
+import { useLocationSelector } from '../../hooks/useLocationSelector'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -39,8 +40,8 @@ const INITIAL_STATE = {
     company: null,
     // Step 3
     address: '',
-    city: '',
-    region: '',
+    region: null,
+    city: null,
     kebele: '',
     latitude: '',
     longitude: '',
@@ -469,6 +470,34 @@ function Step3({ form, onChange, errors }) {
     const [locationLoading, setLocationLoading] = useState(false)
     const [locationError, setLocationError] = useState('')
 
+    const {
+        regions,
+        cities,
+        selectedRegionId,
+        selectedCityId,
+        setRegionId,
+        setCityId,
+        loading: locLoading,
+        error: locError,
+    } = useLocationSelector({
+        initialRegionId: form.region,
+        initialCityId: form.city,
+    })
+
+    // Keep form state in sync with hook state
+    const handleRegionChange = (e) => {
+        const id = e.target.value ? Number(e.target.value) : null
+        setRegionId(id)
+        onChange('region', id)
+        onChange('city', null)
+    }
+
+    const handleCityChange = (e) => {
+        const id = e.target.value ? Number(e.target.value) : null
+        setCityId(id)
+        onChange('city', id)
+    }
+
     const handleUseMyLocation = () => {
         if (!navigator.geolocation) {
             setLocationError('Geolocation is not supported by your browser.')
@@ -514,34 +543,64 @@ function Step3({ form, onChange, errors }) {
                 />
             </FormField>
 
+            {/* Location error banner */}
+            {locError && (
+                <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {locError}
+                </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
-
-                {/* City */}
-                <FormField label="City" required error={errors.city}>
-                    <Input
-                        value={form.city}
-                        onChange={(e) => onChange('city', e.target.value)}
-                        placeholder="e.g. Addis Ababa"
-                        className={errors.city ? 'border-red-500' : ''}
-                    />
-                </FormField>
-
                 {/* Region */}
                 <FormField label="Region" required error={errors.region}>
-                    <Input
-                        value={form.region}
-                        onChange={(e) => onChange('region', e.target.value)}
-                        placeholder="e.g. Addis Ababa City Administration"
-                        className={errors.region ? 'border-red-500' : ''}
-                    />
+                    {locLoading ? (
+                        <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-900">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading regions...
+                        </div>
+                    ) : (
+                        <select
+                            value={selectedRegionId ?? ''}
+                            onChange={handleRegionChange}
+                            className={`${selectClass} ${errors.region ? 'border-red-500' : ''}`}
+                        >
+                            <option value="">— Select a Region —</option>
+                            {regions.map((r) => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                        </select>
+                    )}
+                </FormField>
+
+                {/* City — disabled until region is chosen */}
+                <FormField label="City" required error={errors.city}>
+                    <select
+                        value={selectedCityId ?? ''}
+                        onChange={handleCityChange}
+                        disabled={!selectedRegionId || locLoading}
+                        className={`${selectClass} disabled:cursor-not-allowed disabled:opacity-50 ${errors.city ? 'border-red-500' : ''}`}
+                    >
+                        <option value="">
+                            {!selectedRegionId ? '— Select a Region first —' : '— Select a City —'}
+                        </option>
+                        {cities.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                    {cities.length === 0 && selectedRegionId && !locLoading && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                            No cities found for this region. Please contact an administrator.
+                        </p>
+                    )}
                 </FormField>
 
                 {/* Kebele */}
-                <FormField label="Kebele" required error={errors.kebele}>
+                <FormField label="Kebele" error={errors.kebele}>
                     <Input
                         value={form.kebele}
                         onChange={(e) => onChange('kebele', e.target.value)}
-                        placeholder="Enter kebele"
+                        placeholder="Enter kebele (optional)"
                         className={errors.kebele ? 'border-red-500' : ''}
                     />
                 </FormField>
@@ -566,7 +625,10 @@ function Step3({ form, onChange, errors }) {
                                 Getting location...
                             </>
                         ) : (
-                            'Use My Location'
+                            <>
+                                <MapPin className="h-3.5 w-3.5" />
+                                Use My Location
+                            </>
                         )}
                     </button>
                 </div>

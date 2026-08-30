@@ -6,15 +6,11 @@ import uuid
 
 
 class PaymentTransaction(models.Model):
-    """
-    Represents a payment transaction for a booking or other platform charges.
-    Supports multiple payment methods and tracks external provider references.
-    """
+    
     class PaymentMethod(models.TextChoices):
         TELEBIRR = "telebirr", "Telebirr"
         CHAPA = "chapa", "Chapa"
         CBE_BIRR = "cbe_birr", "CBE Birr"
-        STRIPE = "stripe", "Stripe"
         CASH = "cash", "Cash"
         OTHER = "other", "Other"
 
