@@ -60,6 +60,36 @@ class City(models.Model):
         return f"{self.name}, {self.region.name}"
 
 
+class Category(models.Model):
+    """
+    Centralized categories for property and vehicle listings.
+    Categories are separated by listing_type (e.g. house or car).
+    """
+    name = models.CharField(max_length=100)
+    listing_type = models.CharField(
+        max_length=20,
+        choices=ListingType.choices,
+        help_text='The type of listing this category applies to.'
+    )
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(
+        default=True, 
+        help_text='Inactive categories cannot be selected for new listings.'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Category'
+        verbose_name_plural = 'Categories'
+        ordering = ['listing_type', 'name']
+        unique_together = ('name', 'listing_type')
+
+    def __str__(self):
+        return f"{self.name} ({self.get_listing_type_display()})"
+
+
 class Company(models.Model):
     """
     Represents a rental or real-estate company that can manage multiple
@@ -186,6 +216,14 @@ class Property(models.Model):
     listing_type = models.CharField(
         max_length=20,
         choices=ListingType.choices
+    )
+    category = models.ForeignKey(
+        'Category',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='properties',
+        help_text='Specific category of the property/vehicle.'
     )
     price = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(

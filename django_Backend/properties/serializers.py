@@ -15,6 +15,7 @@ from .models import (
     CompanyVerificationDocument,
     Region,
     City,
+    Category,
 )
 
 
@@ -102,6 +103,31 @@ class CityAdminSerializer(serializers.ModelSerializer):
             if qs.exists():
                 raise serializers.ValidationError(
                     {'name': f'A city named "{name}" already exists in region "{region.name}".'}
+                )
+        return data
+
+
+class CategoryAdminSerializer(serializers.ModelSerializer):
+    property_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'listing_type', 'description', 'is_active', 'property_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_property_count(self, obj):
+        return getattr(obj, 'property_count', obj.properties.count())
+
+    def validate(self, data):
+        name = data.get('name', getattr(self.instance, 'name', '')).strip()
+        listing_type = data.get('listing_type', getattr(self.instance, 'listing_type', ''))
+        if name and listing_type:
+            qs = Category.objects.filter(name__iexact=name, listing_type=listing_type)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {'name': f'A category named "{name}" already exists for this listing type.'}
                 )
         return data
 
@@ -427,6 +453,11 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     house_detail = serializers.JSONField(write_only=True, required=False, allow_null=True)
     car_detail = serializers.JSONField(write_only=True, required=False, allow_null=True)
@@ -454,6 +485,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             'property_name',
             'description',
             'listing_type',
+            'category',
             'price',
             'rental_unit',
             'security_deposit',
@@ -547,6 +579,18 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {'house_detail': 'House detail should not be provided for a car listing.'}
                 )
+
+        # Validate that category matches the listing_type
+        category = data.get('category') or (self.instance.category if self.instance else None)
+        if category and listing_type and category.listing_type != listing_type:
+            raise serializers.ValidationError(
+                {'category': f'Category "{category.name}" is for {category.get_listing_type_display()} listings and cannot be used for a {listing_type} listing.'}
+            )
+        # Do not allow inactive categories when creating a new listing
+        if category and not category.is_active and not self.instance:
+            raise serializers.ValidationError(
+                {'category': f'Category "{category.name}" is inactive and cannot be used for new listings.'}
+            )
 
         return data
 

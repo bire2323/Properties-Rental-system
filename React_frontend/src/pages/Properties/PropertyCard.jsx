@@ -19,8 +19,8 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
             {/* Image Container */}
             <div
                 className={`relative overflow-hidden ${isGrid
-                        ? 'h-32 sm:h-48 w-full'
-                        : 'h-40 sm:h-auto w-full sm:w-64 lg:w-80 flex-shrink-0'
+                    ? 'h-32 sm:h-48 w-full'
+                    : 'h-40 sm:h-auto w-full sm:w-64 lg:w-80 flex-shrink-0'
                     }`}
             >
                 <img
@@ -33,8 +33,8 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
                 />
                 <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
                     <span className={`inline-flex rounded-full px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[9px] sm:text-xs font-semibold shadow-md ${property.is_available
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-500 text-white'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-500 text-white'
                         }`}>
                         {property.is_available ? 'Available' : 'Rented'}
                     </span>
@@ -57,8 +57,8 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
                         <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-slate-600 dark:text-slate-400" />
                     ) : (
                         <Heart className={`h-3 w-3 sm:h-4 sm:w-4 transition-colors ${isFav
-                                ? 'fill-red-500 text-red-500'
-                                : 'text-slate-600 dark:text-slate-400'
+                            ? 'fill-red-500 text-red-500'
+                            : 'text-slate-600 dark:text-slate-400'
                             }`} />
                     )}
                 </button>

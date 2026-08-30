@@ -62,7 +62,7 @@ function mapProperty(p) {
     maximumFractionDigits: 0,
   })
 
-  const location = [p.city, p.region, p.kebele].filter(Boolean).join(', ') || 'Location Unspecified'
+  const location = [p.city_name, p.region_name, p.kebele].filter(Boolean).join(', ') || 'Location Unspecified'
 
   const averageRating = p.rating_summary?.average_rating ?? null
 

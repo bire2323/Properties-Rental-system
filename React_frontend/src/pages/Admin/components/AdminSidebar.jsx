@@ -9,6 +9,7 @@ import {
     BarChart3,
     WalletCards,
     MapPinned,
+
     FolderTree,
     Bell,
     Settings,
@@ -30,6 +31,7 @@ const managementLinks = [
     { label: 'Reports & Complaints', path: '/admin-dashboard/reports', icon: BarChart3 },
     { label: 'Payments', path: '/admin-dashboard/payments', icon: WalletCards },
     { label: 'Locations', path: '/admin-dashboard/locations', icon: MapPinned },
+    { label: 'Category management', path: '/admin-dashboard/categories', icon: MapPinned },
 ]
 
 const settingsLinks = [

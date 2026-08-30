@@ -4,6 +4,7 @@ import { getImageUrl } from '../../../lib/utils'
 
 export default function PropertyCard({ property, onDelete, isDraftMode = false }) {
     const navigate = useNavigate()
+    console.log(property);
     const imageUrl = getImageUrl(property.main_image?.image || property.images?.[0]?.image) || ''
     const cardTitle = isDraftMode ? 'Draft property' : (property.property_name || 'Property')
     const badgeText = isDraftMode ? 'Draft' : property.status === 'active' ? 'Available' : 'Unavailable'
@@ -53,12 +54,12 @@ export default function PropertyCard({ property, onDelete, isDraftMode = false }
                 </div>
                 <div>
                     <h3 className="text-sm md:text-lg font-semibold text-slate-900 dark:text-white">{cardTitle}</h3>
-                    <p className="mt-1 md:mt-2 text-[10px] md:text-[12px] leading-6 text-slate-500 dark:text-slate-400">{[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}</p>
+                    <p className="mt-1 md:mt-2 text-[10px] md:text-[12px] leading-6 text-slate-500 dark:text-slate-400">{[property.city_name, property.region_name, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}</p>
                 </div>
                 <div className="grid gap-0.5 md:gap-2 sm:grid-cols-2">
                     <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
                         <MapPin className="h-2 w-2 md:h-3 md:w-3" />
-                        {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
+                        {[property.city_name, property.region_name, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                     </div>
                     <div className="flex items-center gap-1 text-[10px] text-slate-600 dark:text-slate-300">
                         <DollarSign className="h-2 w-2 md:h-3 md:w-3" />

@@ -51,6 +51,7 @@ import Settings from '../pages/Tenant/Settings'
 
 import BecomeOwnerPage from '../pages/RoleChange/BecomeOwnerPage'
 import PendingApproval from '@/pages/Owner/PendingApproval'
+import Categories from '@/pages/Admin/Categories'
 
 
 
@@ -234,6 +235,14 @@ function AppRoutes() {
                     element={
                         <AdminRoute>
                             <Locations />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/categories"
+                    element={
+                        <AdminRoute>
+                            <Categories />
                         </AdminRoute>
                     }
                 />

@@ -1312,11 +1312,12 @@ function validateStep(step, form) {
             errors.address = 'Address is required.'
         }
 
-        if (!form.city.trim()) {
+
+        if (!form.city) {
             errors.city = 'City is required.'
         }
 
-        if (!form.region.trim()) {
+        if (!form.region) {
             errors.region = 'Region is required.'
         }
 
@@ -1396,8 +1397,8 @@ function buildPayload(form) {
     // ownership is frontend-only — never sent
     if (form.company) fd.append('company', form.company)
     if (form.address.trim()) fd.append('address', form.address.trim())
-    fd.append('city', form.city.trim())
-    fd.append('region', form.region.trim())
+    fd.append('city', form.city)
+    fd.append('region', form.region)
     if (form.kebele.trim()) fd.append('kebele', form.kebele.trim())
     if (form.latitude) fd.append('latitude', form.latitude)
     if (form.longitude) fd.append('longitude', form.longitude)

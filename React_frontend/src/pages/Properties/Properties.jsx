@@ -47,7 +47,7 @@ function mapPropertyToCard(property) {
     ? property.listing_type.charAt(0).toUpperCase() + property.listing_type.slice(1)
     : 'Property'
 
-  const locationDisplay = [property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
+  const locationDisplay = [property.city_name, property.region_name, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
 
   return {
     id: property.id,
@@ -151,7 +151,7 @@ function Properties() {
   async function fetchProperties() {
     setLoading(true)
     setError(null)
-    
+
     // Prepare backend-compatible filters
     const apiFilters = { ...filters };
     if (apiFilters.type === 'all') delete apiFilters.type;
@@ -169,7 +169,7 @@ function Properties() {
       }
     }
     delete apiFilters.search; // Backend doesn't use `search`
-    
+
     try {
       const data = await getAllProperties(apiFilters)
       const results = Array.isArray(data) ? data : data.results || []
@@ -465,8 +465,8 @@ function Properties() {
                 />
                 {/* Apply Button */}
                 <div className="mt-6">
-                  <Button 
-                    className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950" 
+                  <Button
+                    className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"
                     onClick={() => setIsFilterOpen(false)}
                   >
                     Show Results ({sortedProperties.length})

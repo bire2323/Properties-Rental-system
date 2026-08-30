@@ -10,7 +10,7 @@ from collections import Counter
 from interactions.models import PropertyRating, Favorite
 from accounts.models import Notification
 from site_settings.models import SiteSettings
-from .models import Property, Feature, Company, CompanyVerificationDocument, ListingType, Region, City
+from .models import Property, Feature, Company, CompanyVerificationDocument, ListingType, Region, City, Category
 from .permissions import PropertyPermission, CompanyPermission, CompanyDocumentPermission, AdminRolePermission
 from .serializers import (
     PropertySerializer,
@@ -22,6 +22,7 @@ from .serializers import (
     RegionSerializer,
     RegionAdminSerializer,
     CityAdminSerializer,
+    CategoryAdminSerializer,
 )
 
 
@@ -185,6 +186,78 @@ class CityAdminViewSet(viewsets.ModelViewSet):
             message = 'This city cannot be deleted because it is still in use.'
             if summary:
                 message = f'This city cannot be deleted because it is still used by {summary}.'
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CategoryListAPIView(ListAPIView):
+    """
+    Public read-only endpoint. Returns active categories for a given listing_type.
+    Used by owner listing creation/edit forms so they can populate the category dropdown.
+    Query params: ?listing_type=house  or  ?listing_type=car
+    """
+    serializer_class = CategoryAdminSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = Category.objects.filter(is_active=True)
+        listing_type = self.request.query_params.get('listing_type')
+        if listing_type:
+            qs = qs.filter(listing_type=listing_type)
+        return qs.order_by('name')
+
+
+class CategoryAdminViewSet(viewsets.ModelViewSet):
+    """Admin-only CRUD for managed categories."""
+
+    serializer_class = CategoryAdminSerializer
+    permission_classes = [AdminRolePermission]
+    lookup_field = 'id'
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = (
+            Category.objects
+            .annotate(property_count=Count('properties', distinct=True))
+            .order_by('listing_type', 'name')
+        )
+        listing_type = self.request.query_params.get('listing_type')
+        if listing_type:
+            qs = qs.filter(listing_type=listing_type)
+
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == 'true')
+
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        return qs
+
+    def destroy(self, request, *args, **kwargs):
+        category = self.get_object()
+        prop_count = category.properties.count()
+        if prop_count > 0:
+            return Response(
+                {
+                    'detail': (
+                        f'This category cannot be deleted because it is currently used by '
+                        f'{prop_count} listing{"s" if prop_count != 1 else ""}. '
+                        f'You can deactivate it instead.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            category.delete()
+        except ProtectedError as exc:
+            summary = _protected_objects_summary(exc.protected_objects)
+            message = 'This category cannot be deleted because it is still in use.'
+            if summary:
+                message = f'This category cannot be deleted because it is still used by {summary}.'
             return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
