@@ -39,7 +39,7 @@ function mapPropertyToCard(property) {
     ? property.listing_type.charAt(0).toUpperCase() + property.listing_type.slice(1)
     : 'Property'
 
-  const locationDisplay = [property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
+  const locationDisplay = [property.city_name, property.region_name, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
 
   return {
     id: property.id,
@@ -350,11 +350,11 @@ function PropertyDetails() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row">
             {/* ─── Main Image ────────────────────────────────────────────── */}
-            <div className="relative flex-1 cursor-pointer overflow-hidden rounded-[28px] border border-slate-200/70 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 lg:flex-[2]">
+            <div className="relative flex-1 cursor-pointer overflow-hidden rounded-l-[28px] border border-slate-200/70 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 lg:flex-[2]">
               <img
                 src={property.images[selectedImage] || property.mainImage}
                 alt={property.title}
-                className="h-96 w-full object-cover md:h-[500px] lg:h-[600px]"
+                className="h-96 w-full object-cover md:h-[400px] lg:h-[400px]"
                 onClick={() => setLightboxOpen(true)}
               />
               {/* Gradient overlay */}
@@ -384,20 +384,20 @@ function PropertyDetails() {
 
             {/* ─── Thumbnail Grid ────────────────────────────────────────── */}
             {property.images.length > 1 && (
-              <div className="grid flex-1 grid-cols-2 gap-2 lg:flex-[1]">
+              <div className="grid flex-1 grid-cols-2 lg:flex-[1] rounded-r-xl border">
                 {property.images.slice(0, 4).map((img, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`relative overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index
-                        ? 'border-[#c99b43] shadow-lg shadow-[#c99b43]/20'
-                        : 'border-transparent hover:border-slate-300'
+                    className={`relative overflow-hidden  border-2 transition-all ${selectedImage === index
+                      ? 'border-[#c99b43] shadow-lg shadow-[#c99b43]/20'
+                      : 'border-transparent hover:border-slate-300'
                       }`}
                   >
                     <img
                       src={img}
                       alt={`View ${index + 1}`}
-                      className="h-28 w-full object-cover md:h-36 lg:h-40"
+                      className="h-28 w-full object-cover md:h-full lg:h-40"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image';
@@ -708,7 +708,13 @@ function PropertyDetails() {
                   </p>
                   <Button
                     disabled={property.status !== 'For Rent'}
-                    onClick={() => navigate(`/properties/${property.id}/book`)}
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/login', { state: { from: `/properties/${property.id}/book` } })
+                        return
+                      }
+                      navigate(`/properties/${property.id}/book`)
+                    }}
                     className="mt-5 w-full bg-[#c99b43] text-white hover:bg-[#b88a35]"
                   >
                     {property.status === 'For Rent' ? 'Book Now' : 'Currently Unavailable'}

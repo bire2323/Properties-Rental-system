@@ -1,7 +1,12 @@
 import AppRoutes from './routes/AppRoutes'
+import { BookingProvider } from './context/BookingContext'
 
 function App() {
-  return <AppRoutes />
+  return (
+    <BookingProvider>
+      <AppRoutes />
+    </BookingProvider>
+  )
 }
 
 export default App

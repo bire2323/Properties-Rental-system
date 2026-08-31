@@ -37,6 +37,9 @@ import Login from '../pages/Auth/Login'
 import Register from '../pages/Auth/Register'
 import Properties from '../pages/Properties/Properties'
 import PropertyDetails from '../pages/Properties/PropertyDetails'
+import BookingCheckout from '../pages/Booking/BookingCheckout'
+import Payment from '../pages/Booking/Payment'
+import BookingConfirmation from '../pages/Booking/BookingConfirmation'
 import Vehicles from '../pages/Vehicles/Vehicles'
 import VehicleDetails from '../pages/Vehicles/VehicleDetails'
 import ScrollToTop from '../components/common/ScrollToTop'
@@ -68,6 +71,9 @@ function AppRoutes() {
 
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id" element={<PropertyDetails />} />
+                <Route path="/properties/:id/book" element={<BookingCheckout />} />
+                <Route path="/properties/:id/book/payment" element={<Payment />} />
+                <Route path="/properties/:id/book/confirmation" element={<BookingConfirmation />} />
 
                 <Route path="/vehicles" element={<Vehicles />} />
                 <Route path="/vehicles/:id" element={<VehicleDetails />} />

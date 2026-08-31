@@ -4,7 +4,7 @@ import { getImageUrl } from '../../../lib/utils'
 
 export default function PropertyCard({ property, onDelete, isDraftMode = false }) {
     const navigate = useNavigate()
-    console.log(property);
+    // console.log(property);
     const imageUrl = getImageUrl(property.main_image?.image || property.images?.[0]?.image) || ''
     const cardTitle = isDraftMode ? 'Draft property' : (property.property_name || 'Property')
     const badgeText = isDraftMode ? 'Draft' : property.status === 'active' ? 'Available' : 'Unavailable'
