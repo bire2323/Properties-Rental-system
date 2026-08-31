@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from .permissions import CookieJWTAuthentication, IsAuthenticatedCookie
 from .serializers import (
@@ -223,7 +223,7 @@ class ProfileAPIView(APIView):
 
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticatedCookie]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get(self, request, *args, **kwargs):
         """Return the current user with nested profile data."""

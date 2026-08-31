@@ -60,8 +60,6 @@ const settingsContent = {
             { key: 'last_name', label: 'Admin Last Name', value: '', type: 'text', icon: UserRound },
             { key: 'email', label: 'Admin Email', value: '', type: 'email', icon: Mail },
             { key: 'phone_number', label: 'Admin Phone Number', value: '', type: 'tel', icon: Phone },
-            { key: 'new_password', label: 'New Password', value: '', type: 'password', icon: Lock },
-            { key: 'confirm_password', label: 'Confirm New Password', value: '', type: 'password', icon: Lock },
             { key: 'session_timeout_minutes', label: 'Session Timeout (minutes)', value: 30, type: 'number' },
             { key: 'login_attempts_limit', label: 'Login Attempts Limit', value: 5, type: 'number' },
         ],
@@ -113,6 +111,10 @@ function AdminSetting() {
     const [notice, setNotice] = useState(null)
     const [paymentMethods, setPaymentMethods] = useState([])
     const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+    const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
+    const [passwordErrors, setPasswordErrors] = useState({})
+    const [passwordSaving, setPasswordSaving] = useState(false)
     const [editingPaymentId, setEditingPaymentId] = useState(null)
     const [paymentForm, setPaymentForm] = useState(emptyPaymentMethod)
     const [paymentSettings, setPaymentSettings] = useState({ expirationHours: '', commission: '' })
@@ -187,6 +189,42 @@ function AdminSetting() {
             setPaymentMethods((current) => current.map((item) => item.id === updated.id ? updated : item))
         } catch (error) {
             setNotice({ type: 'error', message: error.message || 'Unable to update payment method status.' })
+        }
+    }
+
+    const changeAdminPassword = async (event) => {
+        event.preventDefault()
+        const { current_password, new_password, confirm_password } = passwordForm
+        const errors = {}
+        if (!current_password || !new_password || !confirm_password) {
+            if (!current_password) errors.current_password = 'Enter your current password.'
+            if (!new_password) errors.new_password = 'Enter a new password.'
+            if (!confirm_password) errors.confirm_password = 'Confirm your new password.'
+            setPasswordErrors(errors)
+            return
+        }
+        setPasswordSaving(true)
+        setPasswordErrors({})
+        setNotice(null)
+        try {
+            const data = new FormData()
+            Object.entries(passwordForm).forEach(([key, value]) => data.append(key, value))
+            const updated = await updateProfile(data)
+            const updatedUser = updated.user || updated
+            setAdminProfile(updatedUser)
+            updateUser(updatedUser)
+            setPasswordForm({ current_password: '', new_password: '', confirm_password: '' })
+            setPasswordErrors({})
+            setPasswordModalOpen(false)
+            setNotice({ type: 'success', message: 'Password changed successfully.' })
+        } catch (error) {
+            const message = error.message || 'Unable to change password.'
+            const field = message.toLowerCase().includes('current password') ? 'current_password'
+                : message.toLowerCase().includes('confirmation') || message.toLowerCase().includes('match') ? 'confirm_password'
+                    : 'new_password'
+            setPasswordErrors({ [field]: message })
+        } finally {
+            setPasswordSaving(false)
         }
     }
 
@@ -336,6 +374,16 @@ function AdminSetting() {
                                             )}
                                         </div>
 
+                                        {activeTab === 'Security Settings' && (
+                                            <div className={`mb-6 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+                                                <div>
+                                                    <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Password</h3>
+                                                    <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Change your administrator password securely.</p>
+                                                </div>
+                                                <button type="button" onClick={() => { setNotice(null); setPasswordErrors({}); setPasswordModalOpen(true) }} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#255070] px-3 py-2 text-xs font-semibold text-white hover:bg-[#1d405d]"><Lock className="h-4 w-4" /> Change Password</button>
+                                            </div>
+                                        )}
+
                                         {activeTab === 'General Settings' && (
                                             <div className={`mb-6 rounded-xl border p-4 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
                                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -429,7 +477,7 @@ function AdminSetting() {
                                                                 <div className="flex items-center gap-3 pt-1">
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => activeTab === 'Notification Settings' && setSiteSettings((current) => ({ ...current, [field.key]: !Boolean(current?.[field.key]) }))}
+                                                                        onClick={() => activeTab === 'Notification Settings' && setSiteSettings((current) => ({ ...current, [field.key]: !current?.[field.key] }))}
                                                                         className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${fieldValue ? 'bg-green-500' : isDark ? 'bg-slate-700' : 'bg-slate-300'}`}
                                                                     >
                                                                         <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${fieldValue ? 'translate-x-6' : 'translate-x-0.5'}`} />
@@ -520,6 +568,18 @@ function AdminSetting() {
                                     <label className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs font-medium ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>Status<span className="flex items-center gap-2"><span>{paymentForm.enabled ? 'Enabled' : 'Disabled'}</span><button type="button" onClick={() => setPaymentForm((current) => ({ ...current, enabled: !current.enabled }))} className={`relative inline-flex h-6 w-10 items-center rounded-full ${paymentForm.enabled ? 'bg-[#255070]' : 'bg-slate-300'}`} aria-label="Toggle payment method status"><span className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${paymentForm.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></button></span></label>
                                 </div>
                                 <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setPaymentModalOpen(false)} className={`rounded-lg border px-4 py-2.5 text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button><button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-[#255070] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1d405d]"><Save className="h-4 w-4" /> Save Payment Method</button></div>
+                            </form>
+                        </div>
+                    )}
+
+                    {passwordModalOpen && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
+                            <form onSubmit={changeAdminPassword} className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+                                <div className="mb-5 flex items-start justify-between gap-4"><div><h2 id="password-modal-title" className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Change Password</h2><p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Use at least 8 characters with uppercase, lowercase, number, and special character.</p></div><button type="button" onClick={() => setPasswordModalOpen(false)} className={`rounded-lg p-2 ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'}`} aria-label="Close password dialog"><X className="h-5 w-5" /></button></div>
+                                <div className="space-y-4">
+                                    {[['current_password', 'Current Password'], ['new_password', 'New Password'], ['confirm_password', 'Confirm New Password']].map(([key, label]) => <label key={key} className={`block text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{label}<input required type="password" value={passwordForm[key]} onChange={(event) => { setPasswordForm((current) => ({ ...current, [key]: event.target.value })); setPasswordErrors((current) => ({ ...current, [key]: '' })) }} className={`mt-1.5 w-full rounded-lg border px-3 py-2.5 text-sm outline-none ${passwordErrors[key] ? 'border-red-500' : isDark ? 'border-slate-700' : 'border-slate-200'} ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-700'}`} aria-invalid={Boolean(passwordErrors[key])} />{passwordErrors[key] && <span className="mt-1 block text-xs text-red-600" role="alert">{passwordErrors[key]}</span>}</label>)}
+                                </div>
+                                <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setPasswordModalOpen(false)} className={`rounded-lg border px-4 py-2.5 text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button><button type="submit" disabled={passwordSaving} className="inline-flex items-center gap-2 rounded-lg bg-[#255070] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1d405d]"><Save className="h-4 w-4" /> {passwordSaving ? 'Changing...' : 'Change Password'}</button></div>
                             </form>
                         </div>
                     )}
