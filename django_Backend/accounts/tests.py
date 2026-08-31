@@ -153,3 +153,74 @@ class AdminAllUsersTests(TestCase):
         self.assertEqual(owner.role, User.Role.TENANT)
         self.assertEqual(owner_profile.verification_status, OwnerProfile.VerificationStatus.REJECTED)
         self.assertEqual(owner_profile.rejection_reason, 'Document not valid')
+
+
+class ProfileSecurityTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='security-admin@example.com',
+            password='CurrentPass123!',
+            first_name='Security',
+            last_name='Admin',
+            role=User.Role.ADMIN,
+            is_staff=True,
+        )
+        Profile.objects.create(user=self.user, phone_number='+251911111111')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_profile_json_save_updates_admin_details(self):
+        response = self.client.patch(
+            '/api/accounts/profile/',
+            {'first_name': 'Updated', 'phone_number': '+251922222222'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'Updated')
+        self.assertEqual(self.user.profile.phone_number, '+251922222222')
+
+    def test_password_change_requires_correct_current_password(self):
+        response = self.client.patch(
+            '/api/accounts/profile/',
+            {
+                'current_password': 'WrongPass123!',
+                'new_password': 'NewStrong123!',
+                'confirm_password': 'NewStrong123!',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('current_password', response.data)
+        self.assertEqual(response.data['current_password'][0], 'Current password does not match.')
+
+    def test_password_change_requires_strong_password(self):
+        response = self.client.patch(
+            '/api/accounts/profile/',
+            {
+                'current_password': 'CurrentPass123!',
+                'new_password': 'weakpassword',
+                'confirm_password': 'weakpassword',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('new_password', response.data)
+
+    def test_password_change_accepts_valid_password(self):
+        response = self.client.patch(
+            '/api/accounts/profile/',
+            {
+                'current_password': 'CurrentPass123!',
+                'new_password': 'Aa1!aaaa',
+                'confirm_password': 'Aa1!aaaa',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('Aa1!aaaa'))

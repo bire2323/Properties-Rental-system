@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
+import re
 from rest_framework import serializers
 from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification
 from site_settings.models import SiteSettings
@@ -387,8 +388,9 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name", required=False)
     last_name = serializers.CharField(source="user.last_name", required=False)
     email = serializers.EmailField(source="user.email", required=False)
-    new_password = serializers.CharField(write_only=True, required=False, min_length=8)
-    confirm_password = serializers.CharField(write_only=True, required=False, min_length=8)
+    current_password = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, required=False)
+    confirm_password = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Profile
@@ -396,6 +398,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "current_password",
             "new_password",
             "confirm_password",
             "phone_number",
@@ -413,17 +416,33 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        current_password = attrs.get("current_password")
         new_password = attrs.get("new_password")
         confirm_password = attrs.get("confirm_password")
         if new_password or confirm_password:
+            if not current_password:
+                raise serializers.ValidationError({"current_password": "Enter your current password."})
+            if not self.context["request"].user.check_password(current_password):
+                raise serializers.ValidationError({"current_password": "Current password does not match."})
             if not new_password or not confirm_password:
                 raise serializers.ValidationError({"confirm_password": "Enter and confirm the new password."})
             if new_password != confirm_password:
                 raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+            if len(new_password) < 8:
+                raise serializers.ValidationError({"new_password": "Password must be at least 8 characters."})
+            if not re.search(r"[A-Z]", new_password):
+                raise serializers.ValidationError({"new_password": "Password must include an uppercase letter."})
+            if not re.search(r"[a-z]", new_password):
+                raise serializers.ValidationError({"new_password": "Password must include a lowercase letter."})
+            if not re.search(r"[^A-Za-z0-9]", new_password):
+                raise serializers.ValidationError({"new_password": "Password must include a special character."})
+            if not re.search(r"\d", new_password):
+                raise serializers.ValidationError({"new_password": "Password must include a number."})
         return attrs
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})
+        validated_data.pop("current_password", None)
         new_password = validated_data.pop("new_password", None)
         validated_data.pop("confirm_password", None)
         for field, value in user_data.items():

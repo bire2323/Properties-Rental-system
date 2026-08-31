@@ -9,6 +9,10 @@ function getErrorMessage(payload, fallback = 'Request failed.') {
             .flatMap(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`)
             .join(' ')
     }
+    const fieldErrors = Object.entries(payload || {})
+        .flatMap(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`)
+        .filter(Boolean)
+    if (fieldErrors.length) return fieldErrors.join(' ')
     return fallback
 }
 
@@ -43,12 +47,15 @@ async function request(endpoint, options = {}, canRefresh = endpoint !== '/api/a
     }
 
     const responseText = await response.text()
-    let payload = {}
-    try {
-        payload = responseText ? JSON.parse(responseText) : {}
-    } catch {
-        payload = { detail: response.statusText || 'Request failed.' }
-    }
+    const payload = responseText
+        ? (() => {
+            try {
+                return JSON.parse(responseText)
+            } catch {
+                return { detail: response.statusText || 'Request failed.' }
+            }
+        })()
+        : {}
 
     if (!response.ok) {
         throw new Error(getErrorMessage(payload, response.statusText || 'Request failed.'))
