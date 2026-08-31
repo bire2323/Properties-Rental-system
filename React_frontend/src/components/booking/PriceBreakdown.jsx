@@ -32,13 +32,6 @@ export default function PriceBreakdown({
         </span>
       </div>
 
-      <div className={rowClass}>
-        <span className="text-slate-600 dark:text-slate-400">Service fee</span>
-        <span className="font-medium text-slate-900 dark:text-white">
-          {formatCurrency(pricing.serviceFee, property.currency)}
-        </span>
-      </div>
-
       {pricing.securityDeposit > 0 && (
         <div className={rowClass}>
           <span className="text-slate-600 dark:text-slate-400">Security deposit</span>

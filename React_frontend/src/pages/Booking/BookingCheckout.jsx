@@ -25,6 +25,7 @@ export default function BookingCheckout() {
     pricing,
     loadProperty,
     updateForm,
+    finalizeMockBooking,
   } = useBooking()
 
   const [loading, setLoading] = useState(true)
@@ -83,7 +84,34 @@ export default function BookingCheckout() {
   }, [id, loadProperty])
 
   const handleContinue = () => {
-    const validationErrors = validateBookingDetails(form)
+    const validationErrors = {
+      ...validateBookingDetails(form),
+      ...(!form.contactName.trim() ? { contactName: 'Full name is required.' } : {}),
+      ...(!form.contactPhone.trim() ? { contactPhone: 'Phone number is required.' } : {}),
+      ...(!form.contactEmail.trim() ? { contactEmail: 'Email is required.' } : {}),
+      ...(!form.dateOfBirth ? { dateOfBirth: 'Date of birth is required.' } : {}),
+      ...(!form.gender ? { gender: 'Select a gender.' } : {}),
+      ...(!form.idType ? { idType: 'Select an ID type.' } : {}),
+      ...(!form.idNumber.trim() ? { idNumber: 'ID number is required.' } : {}),
+      ...(form.idDocuments.length < 2 ? { idDocuments: 'Please upload at least 2 ID images.' } : {}),
+      ...(!form.emergencyName.trim() ? { emergencyName: 'Emergency contact name is required.' } : {}),
+      ...(!form.emergencyPhone.trim() ? { emergencyPhone: 'Emergency contact phone is required.' } : {}),
+      ...(!form.emergencyRelationship.trim() ? { emergencyRelationship: 'Relationship is required.' } : {}),
+      ...(!form.informationConfirmed || !form.termsAccepted ? { terms: 'Confirm your information and accept the rental terms.' } : {}),
+    }
+    if (property.listingType === 'car') {
+      Object.assign(validationErrors, {
+        ...(!form.pickupTime ? { pickupTime: 'Pickup time is required.' } : {}),
+        ...(!form.returnTime ? { returnTime: 'Return time is required.' } : {}),
+        ...(!form.pickupPurpose ? { pickupPurpose: 'Select a rental purpose.' } : {}),
+      })
+    } else {
+      Object.assign(validationErrors, {
+        ...(!form.rentalDuration || Number(form.rentalDuration) < 1 ? { rentalDuration: 'Enter a valid rental duration.' } : {}),
+        ...(!form.numberOfTenants || Number(form.numberOfTenants) < 1 ? { numberOfTenants: 'Enter the number of tenants.' } : {}),
+        ...(!form.moveInDate ? { moveInDate: 'Move-in date is required.' } : {}),
+      })
+    }
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
@@ -93,6 +121,7 @@ export default function BookingCheckout() {
       return
     }
     setErrors({})
+    finalizeMockBooking()
     navigate(`/properties/${id}/book/payment`)
   }
 
@@ -103,7 +132,7 @@ export default function BookingCheckout() {
       disabled={!pricing || pricing.nights <= 0}
       className="h-12 w-full rounded-2xl bg-[#c99b43] text-base font-semibold text-white hover:bg-[#b88a35]"
     >
-      Continue to Payment
+      Confirm Booking
     </Button>
   )
 
@@ -160,10 +189,10 @@ export default function BookingCheckout() {
         <div className="mb-8 space-y-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-              Complete Your Booking
+              {property.listingType === 'car' ? 'Book Your Vehicle' : 'Book Your New Home'}
             </h1>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              Review your stay details before proceeding to payment.
+              Review the selected {property.listingType === 'car' ? 'vehicle rental' : 'home rental'} details before confirming.
             </p>
           </div>
           <BookingProgress currentStep={1} />
@@ -177,6 +206,7 @@ export default function BookingCheckout() {
               errors={errors}
               onChange={updateForm}
               user={user}
+              property={property}
             />
           </Card>
 

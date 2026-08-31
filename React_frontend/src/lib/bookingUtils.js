@@ -10,6 +10,8 @@ export const SERVICE_FEE_RATE = 0.05
 export function mapPropertyForBooking(property) {
   const images = property.images || []
   const mainImage = images[0]?.image || images[0]?.image_url || ''
+  const listingType = property.listing_type || property.property_type || 'house'
+  const detail = listingType === 'car' ? (property.car_detail || {}) : (property.house_detail || {})
   const location = [property.city, property.region, property.kebele]
     .filter(Boolean)
     .join(', ') || property.address || 'Location unspecified'
@@ -22,7 +24,17 @@ export function mapPropertyForBooking(property) {
     priceRaw: parseFloat(property.price) || 0,
     rentalUnit: property.rental_unit || 'monthly',
     securityDeposit: parseFloat(property.security_deposit) || 0,
-    listingType: property.listing_type || property.property_type || 'house',
+    listingType,
+    propertyType: property.property_type || (listingType === 'car' ? 'Vehicle' : 'House'),
+    detail,
+    ownerName: property.company?.name || property.owner_email || 'Listing owner',
+    brand: property.car_detail?.brand || '',
+    model: property.car_detail?.model || '',
+    year: property.car_detail?.year || '',
+    plateNumber: property.car_detail?.plate_number || property.car_detail?.plateNumber || '',
+    vehicleType: [property.car_detail?.brand, property.car_detail?.model].filter(Boolean).join(' '),
+    fuelType: property.car_detail?.fuel_type || '',
+    seatingCapacity: property.car_detail?.seating_capacity || '',
     currency: property.currency || 'ETB',
   }
 }
@@ -55,7 +67,7 @@ export function calculateNights(checkIn, checkOut) {
 /**
  * Frontend-only pricing logic — structured for easy backend replacement.
  */
-export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOut, securityDeposit = 0 }) {
+export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOut, securityDeposit = 0, listingType = 'house', rentalDuration = 1, durationUnit = 'month' }) {
   const nights = calculateNights(checkIn, checkOut)
   if (nights <= 0) {
     return {
@@ -69,8 +81,30 @@ export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOu
     }
   }
 
-  let units = nights
-  let unitLabel = 'night'
+  let units
+  let unitLabel
+
+  if (listingType === 'house') {
+    units = Math.max(1, Number(rentalDuration) || 1)
+    unitLabel = durationUnit
+  } else {
+    units = nights
+    unitLabel = 'day'
+  }
+
+  if (listingType === 'house') {
+    const rentalSubtotal = priceRaw * units
+    const total = rentalSubtotal + securityDeposit
+    return {
+      nights,
+      units,
+      unitLabel,
+      rentalSubtotal,
+      serviceFee: 0,
+      securityDeposit,
+      total,
+    }
+  }
 
   switch (rentalUnit) {
     case 'weekly':
@@ -89,15 +123,14 @@ export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOu
   }
 
   const rentalSubtotal = priceRaw * units
-  const serviceFee = Math.round(rentalSubtotal * SERVICE_FEE_RATE)
-  const total = rentalSubtotal + serviceFee + securityDeposit
+  const total = rentalSubtotal + securityDeposit
 
   return {
     nights,
     units,
     unitLabel,
     rentalSubtotal,
-    serviceFee,
+    serviceFee: 0,
     securityDeposit,
     total,
   }

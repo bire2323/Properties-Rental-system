@@ -10,11 +10,29 @@ const BookingContext = createContext(null)
 const INITIAL_FORM = {
   checkIn: '',
   checkOut: '',
+  pickupTime: '',
+  returnTime: '',
   guests: 1,
   notes: '',
   contactName: '',
   contactEmail: '',
   contactPhone: '',
+  dateOfBirth: '',
+  gender: '',
+  idType: 'national_id',
+  idNumber: '',
+  idDocuments: [],
+  emergencyName: '',
+  emergencyPhone: '',
+  emergencyRelationship: '',
+  rentalDuration: 1,
+  durationUnit: 'month',
+  numberOfTenants: 1,
+  rentalPurpose: 'residential',
+  moveInDate: '',
+  pickupPurpose: 'personal',
+  termsAccepted: false,
+  informationConfirmed: false,
 }
 
 const INITIAL_PAYMENT = {
@@ -54,8 +72,11 @@ export function BookingProvider({ children }) {
       checkIn: form.checkIn,
       checkOut: form.checkOut,
       securityDeposit: property.securityDeposit,
+      listingType: property.listingType,
+      rentalDuration: form.rentalDuration,
+      durationUnit: form.durationUnit,
     })
-  }, [property, form.checkIn, form.checkOut])
+  }, [property, form.checkIn, form.checkOut, form.rentalDuration, form.durationUnit])
 
   const finalizeMockBooking = useCallback(() => {
     const reference = generateBookingReference()
