@@ -72,7 +72,7 @@ export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOu
     const durationValue = Math.max(1, Number(rentalDuration) || 3)
     const unitLabel = (durationUnit || 'year').toLowerCase()
     const multiplier = 3
-    const rentalSubtotal = (priceRaw * durationValue) * multiplier
+    const rentalSubtotal = priceRaw * multiplier
     const total = rentalSubtotal + securityDeposit
 
     return {
