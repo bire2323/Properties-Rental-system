@@ -46,13 +46,13 @@ export default function OwnerSidebar({ isOpen, onClose }) {
     const navigate = useNavigate()
     const { logout } = useAuth()
 
+    const [siteSettings, setSiteSettings] = useState(null)
+    const [siteSettingsStatus, setSiteSettingsStatus] = useState('loading')
     const [brandLogoFailed, setBrandLogoFailed] = useState(false)
 
     const siteName = siteSettings?.site_name?.trim() || ''
     const siteLogoUrl = resolveSiteMediaUrl(siteSettings?.logo)
 
-    const [siteSettings, setSiteSettings] = useState(null)
-    const [siteSettingsStatus, setSiteSettingsStatus] = useState('loading')
 
     useEffect(() => {
         const handleEsc = (e) => {
