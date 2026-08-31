@@ -27,13 +27,21 @@ def create_booking_notification(sender, instance, created, **kwargs):
         property_obj=property_obj,
         property_title=property_obj.property_name,
         property_owner=owner_name,
-        property_address=", ".join(filter(None, [property_obj.address, property_obj.city, property_obj.region])),
+        property_address=", ".join(filter(None, [
+            property_obj.address,
+            property_obj.city.name if property_obj.city else None,
+            property_obj.region.name if property_obj.region else None,
+        ])),
         property_status=property_obj.get_status_display(),
         property_added_date=property_obj.created_at.strftime("%b %d, %Y"),
         tenant_name=renter_name,
         tenant_phone=getattr(getattr(instance.renter, "profile", None), "phone_number", "") or "",
         check_in_date=instance.start_date.strftime("%b %d, %Y"),
-        check_out_date=instance.end_date.strftime("%b %d, %Y"),
+        check_out_date=(
+            instance.end_date.strftime("%b %d, %Y")
+            if instance.end_date
+            else "Open-ended (month-to-month)"
+        ),
         total_amount=f"{instance.currency} {instance.total_amount}",
         payment_status=instance.get_status_display(),
     )
