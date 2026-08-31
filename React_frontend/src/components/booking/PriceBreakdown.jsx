@@ -17,6 +17,10 @@ export default function PriceBreakdown({
     ? `${pricing.units} ${pricing.unitLabel}${pricing.units > 1 ? 's' : ''}`
     : '—'
 
+  const priceLabel = property.listingType === 'house'
+    ? `${formatCurrency(property.priceRaw, property.currency)} × ${pricing.units || 3}`
+    : `${formatCurrency(property.priceRaw, property.currency)} × ${unitText}`
+
   const rowClass = compact
     ? 'flex items-center justify-between gap-3 text-sm'
     : 'flex items-center justify-between gap-4 text-sm sm:text-base'
@@ -25,7 +29,7 @@ export default function PriceBreakdown({
     <div className="space-y-3">
       <div className={rowClass}>
         <span className="text-slate-600 dark:text-slate-400">
-          {formatCurrency(property.priceRaw, property.currency)} × {unitText}
+          {priceLabel}
         </span>
         <span className="font-medium text-slate-900 dark:text-white">
           {formatCurrency(pricing.rentalSubtotal, property.currency)}

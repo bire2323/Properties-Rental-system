@@ -14,6 +14,7 @@ function UserDetail() {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [selectedDocumentImages, setSelectedDocumentImages] = useState({})
 
     useEffect(() => {
         const loadUser = async () => {
@@ -105,31 +106,53 @@ function UserDetail() {
                                 <section className={`rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                                     <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold"><FileText className="h-5 w-5" /> Verification Documents</h2>
                                     <div className="grid gap-5 md:grid-cols-2">
-                                        {documents.map((document) => (
-                                            <article key={document.id} className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
-                                                <div className="flex h-56 items-center justify-center bg-slate-200 p-3 dark:bg-slate-700">
-                                                    {document.image ? (
-                                                        <img src={document.image} alt={document.type} className="h-full w-full rounded-lg object-contain" />
-                                                    ) : (
-                                                        <FileText className="h-10 w-10 text-slate-400" />
-                                                    )}
-                                                </div>
-                                                <div className="space-y-3 p-4">
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <div>
-                                                            <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{document.type}</h3>
-                                                            <p className="mt-1 text-xs text-slate-500">Document #{document.document_number || 'Not provided'}</p>
-                                                        </div>
-                                                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${document.is_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                            {document.is_verified ? 'Verified' : 'Pending'}
-                                                        </span>
+                                        {documents.map((document) => {
+                                            const gallery = document.previewImages?.length ? document.previewImages : (document.image ? [document.image] : [])
+                                            const activeIndex = selectedDocumentImages[document.id] ?? 0
+                                            const activeImage = gallery[activeIndex] || gallery[0]
+
+                                            return (
+                                                <article key={document.id} className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+                                                    <div className="flex h-64 items-center justify-center bg-slate-200 p-3 dark:bg-slate-700">
+                                                        {activeImage ? (
+                                                            <img src={activeImage} alt={document.type} className="h-full w-full rounded-lg object-contain" />
+                                                        ) : (
+                                                            <FileText className="h-10 w-10 text-slate-400" />
+                                                        )}
                                                     </div>
-                                                    <p className="text-xs text-slate-500">
-                                                        Uploaded {document.created_at ? new Date(document.created_at).toLocaleDateString() : 'Date unavailable'}
-                                                    </p>
-                                                </div>
-                                            </article>
-                                        ))}
+
+                                                    {gallery.length > 1 && (
+                                                        <div className="flex gap-2 overflow-x-auto border-t border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                                                            {gallery.map((image, index) => (
+                                                                <button
+                                                                    key={`${document.id}-${index}`}
+                                                                    type="button"
+                                                                    onClick={() => setSelectedDocumentImages((prev) => ({ ...prev, [document.id]: index }))}
+                                                                    className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${activeIndex === index ? 'border-[#c99b43]' : 'border-slate-200 dark:border-slate-700'}`}
+                                                                >
+                                                                    <img src={image} alt={`${document.type} view ${index + 1}`} className="h-full w-full object-cover" />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="space-y-3 p-4">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div>
+                                                                <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{document.type}</h3>
+                                                                <p className="mt-1 text-xs text-slate-500">Document #{document.document_number || 'Not provided'}</p>
+                                                            </div>
+                                                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${document.is_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                                {document.is_verified ? 'Verified' : 'Pending'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-500">
+                                                            Uploaded {document.created_at ? new Date(document.created_at).toLocaleDateString() : 'Date unavailable'}
+                                                        </p>
+                                                    </div>
+                                                </article>
+                                            )
+                                        })}
                                     </div>
                                 </section>
                             )}

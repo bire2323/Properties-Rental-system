@@ -37,6 +37,7 @@ function VerificationDetail() {
     const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
     const [rejectionReason, setRejectionReason] = useState('')
     const [saving, setSaving] = useState(false)
+    const [selectedImageByDocument, setSelectedImageByDocument] = useState({})
     const navigate = useNavigate()
     const { id } = useParams()
     const { isDark } = useTheme()
@@ -61,18 +62,17 @@ function VerificationDetail() {
         }
     }, [id])
 
-    const document = useMemo(() => {
-        if (!ownerData?.verification_documents?.length) return null
-        return ownerData.verification_documents[0]
-    }, [ownerData])
+    const documents = useMemo(() => ownerData?.verification_documents || [], [ownerData])
+    const document = useMemo(() => documents[0] || null, [documents])
 
     const statusValue = ownerData?.owner_profile?.verification_status || 'pending'
     const profile = ownerData?.profile || {}
     const fullName = `${ownerData?.first_name || ''} ${ownerData?.last_name || ''}`.trim() || ownerData?.email || 'Owner'
     const profileImage = ownerData?.profile_image || ownerData?.profile?.profile_image || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80'
-    const documentImage = document?.document_image || null
-    const documentFrontImage = document?.document_front_image || null
-    const documentBackImage = document?.document_back_image || null
+    const selectedDocument = document || null
+    const selectedDocumentImages = selectedDocument?.previewImages?.length ? selectedDocument.previewImages : [selectedDocument?.document_image, selectedDocument?.document_front_image, selectedDocument?.document_back_image].filter(Boolean)
+    const selectedImageIndex = selectedDocument ? (selectedImageByDocument[selectedDocument.id] ?? 0) : 0
+    const currentDocumentImage = selectedDocumentImages[selectedImageIndex] || selectedDocumentImages[0] || null
 
     const handleDecision = async (status, reason = '') => {
         setSaving(true)
@@ -273,7 +273,7 @@ function VerificationDetail() {
                                             Document Type
                                         </label>
                                         <p className={`mt-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                            {document?.document_type_display || document?.document_type || 'N/A'}
+                                            {selectedDocument?.document_type_display || selectedDocument?.document_type || 'N/A'}
                                         </p>
                                     </div>
                                     <div>
@@ -281,59 +281,47 @@ function VerificationDetail() {
                                             Document Number
                                         </label>
                                         <p className={`mt-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                            {document?.document_number || 'N/A'}
+                                            {selectedDocument?.document_number || 'N/A'}
                                         </p>
                                     </div>
                                 </div>
-                                {documentImage && (
+
+                                {currentDocumentImage && (
                                     <div className="mt-6">
-                                        <label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            Document Image
-                                        </label>
-                                        <div className="mt-3">
+                                        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-3 dark:border-slate-700 dark:bg-slate-800">
                                             <img
-                                                src={documentImage}
-                                                alt="Document"
-                                                className="max-h-96 rounded-lg object-cover"
+                                                src={currentDocumentImage}
+                                                alt="Document preview"
+                                                className="h-80 w-full rounded-lg object-contain"
                                             />
                                         </div>
+
+                                        {selectedDocumentImages.length > 1 && (
+                                            <div className="mt-4 flex flex-wrap gap-3">
+                                                {selectedDocumentImages.map((image, index) => (
+                                                    <button
+                                                        key={`${selectedDocument.id || 'doc'}-${index}`}
+                                                        type="button"
+                                                        onClick={() => setSelectedImageByDocument((prev) => ({ ...prev, [selectedDocument.id]: index }))}
+                                                        className={`h-20 w-20 overflow-hidden rounded-lg border-2 bg-slate-100 p-1 transition ${selectedImageIndex === index ? 'border-[#c99b43]' : 'border-slate-200 dark:border-slate-700'}`}
+                                                    >
+                                                        <img src={image} alt={`Document thumb ${index + 1}`} className="h-full w-full rounded-md object-cover" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+
                                         <a
-                                            href={documentImage}
+                                            href={currentDocumentImage}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className={`mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${isDark ? 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                            className={`mt-4 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${isDark ? 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                         >
                                             <Download className="h-4 w-4" />
-                                            Download Document
+                                            View Full Image
                                         </a>
                                     </div>
                                 )}
-                                {documentFrontImage && (
-                                    <div className="mt-6">
-                                        <label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            Document Image front
-                                        </label>
-                                        <div className="mt-3">
-                                            <img
-                                                src={documentFrontImage}
-                                                alt="Document"
-                                                className="max-h-96 rounded-lg object-cover"
-                                            />
-                                        </div>
-                                        <a
-                                            href={documentFrontImage}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className={`mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${isDark ? 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                                        >
-                                            <Download className="h-4 w-4" />
-                                            Download Document
-                                        </a>
-                                    </div>
-                                )}
-
-
-
                             </div>
 
                             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

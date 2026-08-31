@@ -334,36 +334,32 @@ export default function BecomeOwnerPage() {
         payload.append('date_of_birth', formData.date_of_birth)
       }
       payload.append('phone_number', formData.phone_number)
+
+      if (formData.profile_image) {
+        payload.append('profile_image', formData.profile_image)
+      }
+
       if (formData.document_type === 'national_id') {
         if (formData.document_front_image) {
-          payload.append(
-            'document_front_image',
-            formData.document_front_image
-          )
+          payload.append('document_front_image', formData.document_front_image)
         }
 
         if (formData.document_back_image) {
-          payload.append(
-            'document_back_image',
-            formData.document_back_image
-          )
+          payload.append('document_back_image', formData.document_back_image)
         }
-      } else {
+
         if (formData.document_image) {
-          payload.append(
-            'document_image',
-            formData.document_image
-          )
+          payload.append('document_image', formData.document_image)
         }
+      } else if (formData.document_image) {
+        payload.append('document_image', formData.document_image)
       }
-      payload.append('agree_to_terms', formData.agree_to_terms)
-      payload.append('agree_to_verification', formData.agree_to_verification)
+
+      payload.append('agree_to_terms', String(formData.agree_to_terms))
+      payload.append('agree_to_verification', String(formData.agree_to_verification))
       payload.append('document_type', formData.document_type)
       if (formData.document_number.trim()) {
         payload.append('document_number', formData.document_number.trim())
-      }
-      if (formData.document_image) {
-        payload.append('document_image', formData.document_image)
       }
 
       const response = await becomeOwner(payload)

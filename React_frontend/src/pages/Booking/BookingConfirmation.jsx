@@ -75,10 +75,10 @@ export default function BookingConfirmation() {
           </motion.div>
 
           <h1 className="mt-6 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-            Booking Request Submitted!
+            Booking Under Review
           </h1>
           <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600 dark:text-slate-400">
-            Your booking request has been submitted successfully. You will be notified when the booking status is updated by the property owner.
+            Your booking request has been sent to the owner for approval. Payment will not be processed until the owner approves your request.
           </p>
 
           <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
@@ -123,11 +123,11 @@ export default function BookingConfirmation() {
               </li>
               <li className="flex gap-2">
                 <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-[#c99b43]" />
-                Payment status: <span className="font-medium text-slate-900 dark:text-white">{paymentLabel}</span>
+                Payment is locked until the owner approves the request.
               </li>
               <li className="flex gap-2">
                 <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-[#c99b43]" />
-                You can track updates from My Bookings once backend integration is available.
+                This is a UI-only preview and does not connect to a live payment provider or database.
               </li>
             </ul>
           </Card>

@@ -59,6 +59,20 @@ function formatRelativeTime(isoDate) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function normalizeDocumentGallery(document = {}) {
+    const images = [
+        document.document_front_image,
+        document.document_back_image,
+        document.document_image,
+    ]
+        .filter(Boolean)
+        .map((image) => resolveMediaUrl(image))
+        .filter((image, index, list) => image && list.indexOf(image) === index)
+        .slice(0, 2)
+
+    return images.length ? images : []
+}
+
 export async function getUserStatistics() {
     return request('/api/accounts/admin/user-statistics/', { method: 'GET' })
 }
@@ -259,16 +273,23 @@ export async function getAllUsers(filters = {}) {
 
 export async function getAdminUserDetail(userId) {
     const response = await request(`/api/accounts/users/${userId}/`, { method: 'GET' })
+    const verificationDocuments = (response.verification_documents || []).map((document) => {
+        const gallery = normalizeDocumentGallery(document)
+
+        return {
+            ...document,
+            image: gallery[0] || null,
+            previewImages: gallery,
+            type: document.document_type_display || document.document_type || 'Verification Document',
+        }
+    })
+
     return {
         ...response,
         name: [response.first_name, response.last_name].filter(Boolean).join(' ') || response.email,
         phone: response.phone_number || response.profile?.phone_number || 'N/A',
         profileImage: resolveMediaUrl(response.profile_image || response.profile?.profile_image),
-        verificationDocuments: (response.verification_documents || []).map((document) => ({
-            ...document,
-            image: resolveMediaUrl(document.document_image),
-            type: document.document_type_display || document.document_type || 'Verification Document',
-        })),
+        verificationDocuments,
     }
 }
 
@@ -313,23 +334,19 @@ export async function getOwnerVerificationDetail(userId) {
         }
 
         if (Array.isArray(data?.verification_documents)) {
-            data.verification_documents = data.verification_documents.map((document) => ({
-                ...document,
-                document_image: resolveMediaUrl(document.document_image),
-            }))
+            data.verification_documents = data.verification_documents.map((document) => {
+                const gallery = normalizeDocumentGallery(document)
+
+                return {
+                    ...document,
+                    document_image: gallery[0] || null,
+                    document_front_image: gallery[0] || null,
+                    document_back_image: gallery[1] || null,
+                    previewImages: gallery,
+                }
+            })
         }
- if (Array.isArray(data?.verification_documents?.document_front_image)) {
-            data.verification_documents = data.verification_documents.map((document) => ({
-                ...document,
-                document_front_image: resolveMediaUrl(document.document_front_image),
-            }))
-        }
-         if (Array.isArray(data?.verification_documents?.document_back_image)) {
-            data.verification_documents = data.verification_documents.map((document) => ({
-                ...document,
-                document_back_image: resolveMediaUrl(document.document_back_image),
-            }))
-        }
+
         return data
     } catch (error) {
         console.error('Error fetching owner verification detail:', error)

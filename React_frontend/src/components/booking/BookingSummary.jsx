@@ -54,14 +54,23 @@ export default function BookingSummary({
           </div>
 
           <div className="grid gap-2 rounded-2xl bg-slate-50 p-3 text-sm dark:bg-slate-950/50">
-            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-              <CalendarDays className="h-4 w-4 text-[#c99b43]" />
-              <span>{formatDisplayDate(form.checkIn)} → {formatDisplayDate(form.checkOut)}</span>
-            </div>
-            {pricing?.nights > 0 && (
-              <p className="pl-6 text-slate-500 dark:text-slate-400">
-                {isCar ? `${pricing.nights} day${pricing.nights > 1 ? 's' : ''}` : `${pricing.nights} night${pricing.nights > 1 ? 's' : ''}`}
-              </p>
+            {isCar ? (
+              <>
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <CalendarDays className="h-4 w-4 text-[#c99b43]" />
+                  <span>{formatDisplayDate(form.checkIn)} → {formatDisplayDate(form.checkOut)}</span>
+                </div>
+                {pricing?.nights > 0 && (
+                  <p className="pl-6 text-slate-500 dark:text-slate-400">
+                    {`${pricing.nights} day${pricing.nights > 1 ? 's' : ''}`}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                <CalendarDays className="h-4 w-4 text-[#c99b43]" />
+                <span>{form.rentalDuration || 3} {form.durationUnit || 'year'}{(form.rentalDuration || 3) > 1 ? 's' : ''}</span>
+              </div>
             )}
             {isCar ? <div className="space-y-2 border-t border-slate-200 pt-2 dark:border-slate-800"><div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Car className="h-4 w-4 text-[#c99b43]" />{property.vehicleType || `${property.brand} ${property.model}` || 'Vehicle'}</div>{property.year && <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Gauge className="h-4 w-4 text-[#c99b43]" />{property.year}{property.plateNumber ? ` · ${property.plateNumber}` : ''}</div>}{property.fuelType && <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Fuel className="h-4 w-4 text-[#c99b43]" />{property.fuelType}</div>}</div> : <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Users className="h-4 w-4 text-[#c99b43]" /><span>{form.numberOfTenants || form.guests} tenant{(form.numberOfTenants || form.guests) > 1 ? 's' : ''}</span></div>}
           </div>

@@ -117,7 +117,7 @@ function AdminSetting() {
     const [passwordSaving, setPasswordSaving] = useState(false)
     const [editingPaymentId, setEditingPaymentId] = useState(null)
     const [paymentForm, setPaymentForm] = useState(emptyPaymentMethod)
-    const [paymentSettings, setPaymentSettings] = useState({ expirationHours: '', commission: '' })
+    const [paymentSettings, setPaymentSettings] = useState({ expirationHours: '', houseCommission: '', carVehicleCommission: '' })
     const { updateUser } = useAuth()
     const currentSettings = settingsContent[activeTab]
 
@@ -127,7 +127,7 @@ function AdminSetting() {
                 setSiteSettings(siteData)
                 setAdminProfile(profileData.user || profileData)
                 setPaymentMethods(methods)
-                setPaymentSettings({ expirationHours: siteData.booking_expiration_hours ?? '', commission: siteData.owner_commission_percent ?? '' })
+                setPaymentSettings({ expirationHours: siteData.booking_expiration_hours ?? '', houseCommission: siteData.house_commission_percent ?? '', carVehicleCommission: siteData.car_vehicle_commission_percent ?? '' })
                 setLogoPreview(resolveSiteMediaUrl(siteData.logo))
             })
             .catch((error) => setNotice({ type: 'error', message: error.message || 'Unable to load settings.' }))
@@ -294,7 +294,8 @@ function AdminSetting() {
             } else if (activeTab === 'Payment Settings') {
                 const updated = await updateSiteSettings({
                     booking_expiration_hours: Number(paymentSettings.expirationHours),
-                    owner_commission_percent: Number(paymentSettings.commission),
+                    house_commission_percent: Number(paymentSettings.houseCommission),
+                    car_vehicle_commission_percent: Number(paymentSettings.carVehicleCommission),
                 })
                 setSiteSettings(updated)
                 setNotice({ type: 'success', message: 'Payment settings saved successfully.' })
@@ -428,9 +429,11 @@ function AdminSetting() {
                                                     </div>
                                                 </section>
 
+                                                <section className={`rounded-lg border p-3 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}><div className="mb-3 flex items-center gap-2"><Clock3 className="h-4 w-4 text-[#255070]" /><h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Booking Expiration</h3></div><label className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Expire unpaid bookings after<div className="mt-2 flex items-center gap-2"><input type="number" min="1" value={paymentSettings.expirationHours} onChange={(event) => setPaymentSettings((current) => ({ ...current, expirationHours: event.target.value }))} className={`w-20 rounded-lg border px-2.5 py-1.5 text-sm ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`} /><span className="text-sm text-slate-500">hours</span></div></label><p className="mt-2 text-[11px] text-slate-500">Past this limit: <span className="font-semibold text-amber-600">Expired</span>.</p></section>
+
                                                 <div className="grid gap-3 sm:grid-cols-2">
-                                                    <section className={`rounded-lg border p-3 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}><div className="mb-3 flex items-center gap-2"><Clock3 className="h-4 w-4 text-[#255070]" /><h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Booking Expiration</h3></div><label className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Expire unpaid bookings after<div className="mt-2 flex items-center gap-2"><input type="number" min="1" value={paymentSettings.expirationHours} onChange={(event) => setPaymentSettings((current) => ({ ...current, expirationHours: event.target.value }))} className={`w-20 rounded-lg border px-2.5 py-1.5 text-sm ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`} /><span className="text-sm text-slate-500">hours</span></div></label><p className="mt-2 text-[11px] text-slate-500">Past this limit: <span className="font-semibold text-amber-600">Expired</span>.</p></section>
-                                                    <section className={`rounded-lg border p-3 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}><div className="mb-3 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#255070]" /><h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Owner Commission</h3></div><label className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Commission percentage<div className="relative mt-2"><input type="number" min="0" max="100" value={paymentSettings.commission} onChange={(event) => setPaymentSettings((current) => ({ ...current, commission: event.target.value }))} className={`w-full rounded-lg border px-2.5 py-1.5 pr-8 text-sm ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`} /><span className="absolute right-3 top-1.5 text-sm text-slate-400">%</span></div></label><p className="mt-2 text-[11px] text-slate-500">Deducted from each owner booking payment.</p></section>
+                                                    <section className={`rounded-lg border p-3 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}><div className="mb-3 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#255070]" /><h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>House Commission</h3></div><label className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Commission percentage<div className="relative mt-2"><input type="number" min="0" max="100" value={paymentSettings.houseCommission} onChange={(event) => setPaymentSettings((current) => ({ ...current, houseCommission: event.target.value }))} className={`w-full rounded-lg border px-2.5 py-1.5 pr-8 text-sm ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`} /><span className="absolute right-3 top-1.5 text-sm text-slate-400">%</span></div></label><p className="mt-2 text-[11px] text-slate-500">Deducted from each house booking payment.</p></section>
+                                                    <section className={`rounded-lg border p-3 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}><div className="mb-3 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#255070]" /><h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Car Vehicle Commission</h3></div><label className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Commission percentage<div className="relative mt-2"><input type="number" min="0" max="100" value={paymentSettings.carVehicleCommission} onChange={(event) => setPaymentSettings((current) => ({ ...current, carVehicleCommission: event.target.value }))} className={`w-full rounded-lg border px-2.5 py-1.5 pr-8 text-sm ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`} /><span className="absolute right-3 top-1.5 text-sm text-slate-400">%</span></div></label><p className="mt-2 text-[11px] text-slate-500">Deducted from each car vehicle booking payment.</p></section>
                                                 </div>
                                             </div>
                                         ) : (

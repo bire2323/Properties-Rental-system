@@ -67,7 +67,25 @@ export function calculateNights(checkIn, checkOut) {
 /**
  * Frontend-only pricing logic — structured for easy backend replacement.
  */
-export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOut, securityDeposit = 0, listingType = 'house', rentalDuration = 1, durationUnit = 'month' }) {
+export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOut, securityDeposit = 0, listingType = 'house', rentalDuration = 3, durationUnit = 'year' }) {
+  if (listingType === 'house') {
+    const durationValue = Math.max(1, Number(rentalDuration) || 3)
+    const unitLabel = (durationUnit || 'year').toLowerCase()
+    const multiplier = 3
+    const rentalSubtotal = (priceRaw * durationValue) * multiplier
+    const total = rentalSubtotal + securityDeposit
+
+    return {
+      nights: 0,
+      units: durationValue,
+      unitLabel,
+      rentalSubtotal,
+      serviceFee: 0,
+      securityDeposit,
+      total,
+    }
+  }
+
   const nights = calculateNights(checkIn, checkOut)
   if (nights <= 0) {
     return {
@@ -84,27 +102,8 @@ export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOu
   let units
   let unitLabel
 
-  if (listingType === 'house') {
-    units = Math.max(1, Number(rentalDuration) || 1)
-    unitLabel = durationUnit
-  } else {
-    units = nights
-    unitLabel = 'day'
-  }
-
-  if (listingType === 'house') {
-    const rentalSubtotal = priceRaw * units
-    const total = rentalSubtotal + securityDeposit
-    return {
-      nights,
-      units,
-      unitLabel,
-      rentalSubtotal,
-      serviceFee: 0,
-      securityDeposit,
-      total,
-    }
-  }
+  units = nights
+  unitLabel = 'day'
 
   switch (rentalUnit) {
     case 'weekly':
@@ -153,6 +152,38 @@ export function getMinCheckInDate() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return today.toISOString().slice(0, 10)
+}
+
+export function getMaxDateOfBirth() {
+  const maxDate = new Date()
+  maxDate.setFullYear(maxDate.getFullYear() - 18)
+  maxDate.setHours(0, 0, 0, 0)
+  return maxDate.toISOString().slice(0, 10)
+}
+
+export function isValidEthiopianPhone(phone = '') {
+  const normalized = phone.trim()
+  if (!normalized) return false
+
+  const localPattern = /^(09\d{8}|07\d{8})$/
+  const intlPattern = /^\+251\s?(9\d{8}|7\d{8})$/
+
+  return localPattern.test(normalized) || intlPattern.test(normalized)
+}
+
+export function isAdultDateOfBirth(dateValue) {
+  if (!dateValue) return false
+
+  const birthDate = parseDateValue(dateValue)
+  if (!birthDate) return false
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const minimumAgeDate = new Date(today)
+  minimumAgeDate.setFullYear(today.getFullYear() - 18)
+
+  return birthDate <= minimumAgeDate
 }
 
 export function validateBookingDetails({ checkIn, checkOut, guests }) {
