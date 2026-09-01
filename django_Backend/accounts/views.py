@@ -344,8 +344,7 @@ class BecomeOwnerAPIView(APIView):
         document_front_image = request.FILES.get("document_front_image")
         document_back_image = request.FILES.get("document_back_image")
 
-        if document_type and document_image:
-            # Validate document_type against allowed choices
+        if document_type and (document_image or document_front_image or document_back_image):
             allowed_types = ['national_id', 'passport', 'driving_license', 'other']
             if document_type not in allowed_types:
                 return Response(
@@ -353,8 +352,8 @@ class BecomeOwnerAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Validate that document_image is an image file
-            if not document_image.content_type.startswith('image/'):
+            primary_image = document_image or document_front_image or document_back_image
+            if not primary_image.content_type.startswith('image/'):
                 return Response(
                     {"error": "Document image must be a valid image file (JPEG, PNG, etc.)."},
                     status=status.HTTP_400_BAD_REQUEST
@@ -363,8 +362,8 @@ class BecomeOwnerAPIView(APIView):
             OwnerVerificationDocument.objects.create(
                 owner_profile=owner_profile,
                 document_type=document_type,
-                document_number=document_number or '',  # optional – save empty if not provided
-                document_image=document_image,
+                document_number=document_number or '',
+                document_image=document_image or document_front_image or document_back_image,
                 document_front_image=document_front_image,
                 document_back_image=document_back_image,
             )

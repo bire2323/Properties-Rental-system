@@ -12,7 +12,13 @@ import { Card } from '../../components/ui/card'
 import { getPropertyById } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 import { useBooking } from '../../context/BookingContext'
-import { formatCurrency, validateBookingDetails } from '../../lib/bookingUtils'
+import {
+  formatCurrency,
+  getMaxDateOfBirth,
+  isAdultDateOfBirth,
+  isValidEthiopianPhone,
+  validateBookingDetails,
+} from '../../lib/bookingUtils'
 
 export default function BookingCheckout() {
   const { id } = useParams()
@@ -83,19 +89,67 @@ export default function BookingCheckout() {
     }
   }, [id, loadProperty])
 
+  const getFieldValidationErrors = (nextForm = form) => {
+    const fieldErrors = {}
+    const namePattern = /^[A-Za-z][A-Za-z\s.'-]*$/
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (nextForm.contactName && !namePattern.test(nextForm.contactName.trim())) {
+      fieldErrors.contactName = 'Numbers are not allowed in name.'
+    }
+    if (nextForm.contactPhone && !isValidEthiopianPhone(nextForm.contactPhone)) {
+      fieldErrors.contactPhone = 'Use a valid Ethiopian mobile number starting with +251, 09 or 07.'
+    }
+    if (nextForm.contactEmail && !emailPattern.test(nextForm.contactEmail.trim())) {
+      fieldErrors.contactEmail = 'Please enter a valid email address.'
+    }
+    if (nextForm.dateOfBirth && !isAdultDateOfBirth(nextForm.dateOfBirth)) {
+      fieldErrors.dateOfBirth = 'You must be at least 18 years old.'
+    }
+    if (nextForm.emergencyName && !namePattern.test(nextForm.emergencyName.trim())) {
+      fieldErrors.emergencyName = 'Numbers are not allowed in emergency contact name.'
+    }
+    if (nextForm.emergencyPhone && !isValidEthiopianPhone(nextForm.emergencyPhone)) {
+      fieldErrors.emergencyPhone = 'Use a valid Ethiopian mobile number starting with +251, 09 or 07.'
+    }
+
+    return fieldErrors
+  }
+
+  const handleFormChange = (updates) => {
+    const nextForm = { ...form, ...updates }
+    updateForm(updates)
+
+    setErrors((prev) => {
+      const nextErrors = { ...prev }
+      Object.keys(updates).forEach((key) => {
+        if (key in nextErrors) delete nextErrors[key]
+      })
+
+      const fieldErrors = getFieldValidationErrors(nextForm)
+      return { ...nextErrors, ...fieldErrors }
+    })
+  }
+
   const handleContinue = () => {
     const validationErrors = {
-      ...validateBookingDetails(form),
+      ...(property.listingType === 'car' ? validateBookingDetails(form) : {}),
       ...(!form.contactName.trim() ? { contactName: 'Full name is required.' } : {}),
+      ...(!/^[A-Za-z][A-Za-z\s.'-]*$/.test(form.contactName.trim()) ? { contactName: 'Numbers are not allowed in name.' } : {}),
       ...(!form.contactPhone.trim() ? { contactPhone: 'Phone number is required.' } : {}),
+      ...(!isValidEthiopianPhone(form.contactPhone) ? { contactPhone: 'Use a valid Ethiopian mobile number starting with +251, 09 or 07.' } : {}),
       ...(!form.contactEmail.trim() ? { contactEmail: 'Email is required.' } : {}),
+      ...(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail.trim()) ? { contactEmail: 'Please enter a valid email address.' } : {}),
       ...(!form.dateOfBirth ? { dateOfBirth: 'Date of birth is required.' } : {}),
+      ...(!isAdultDateOfBirth(form.dateOfBirth) ? { dateOfBirth: 'You must be at least 18 years old.' } : {}),
       ...(!form.gender ? { gender: 'Select a gender.' } : {}),
       ...(!form.idType ? { idType: 'Select an ID type.' } : {}),
       ...(!form.idNumber.trim() ? { idNumber: 'ID number is required.' } : {}),
       ...(form.idDocuments.length < 2 ? { idDocuments: 'Please upload at least 2 ID images.' } : {}),
       ...(!form.emergencyName.trim() ? { emergencyName: 'Emergency contact name is required.' } : {}),
+      ...(!/^[A-Za-z][A-Za-z\s.'-]*$/.test(form.emergencyName.trim()) ? { emergencyName: 'Numbers are not allowed in emergency contact name.' } : {}),
       ...(!form.emergencyPhone.trim() ? { emergencyPhone: 'Emergency contact phone is required.' } : {}),
+      ...(!isValidEthiopianPhone(form.emergencyPhone) ? { emergencyPhone: 'Use a valid Ethiopian mobile number starting with +251, 09 or 07.' } : {}),
       ...(!form.emergencyRelationship.trim() ? { emergencyRelationship: 'Relationship is required.' } : {}),
       ...(!form.informationConfirmed || !form.termsAccepted ? { terms: 'Confirm your information and accept the rental terms.' } : {}),
     }
@@ -109,28 +163,45 @@ export default function BookingCheckout() {
       Object.assign(validationErrors, {
         ...(!form.rentalDuration || Number(form.rentalDuration) < 1 ? { rentalDuration: 'Enter a valid rental duration.' } : {}),
         ...(!form.numberOfTenants || Number(form.numberOfTenants) < 1 ? { numberOfTenants: 'Enter the number of tenants.' } : {}),
-        ...(!form.moveInDate ? { moveInDate: 'Move-in date is required.' } : {}),
       })
     }
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
     }
-    if (!pricing || pricing.nights <= 0) {
-      setErrors({ general: 'Please select valid check-in and check-out dates.' })
+    if (!pricing || (property.listingType === 'car' ? pricing.nights <= 0 : pricing.total <= 0)) {
+      setErrors({ general: property.listingType === 'car' ? 'Please select valid check-in and check-out dates.' : 'Please enter a valid house rental duration.' })
       return
     }
     setErrors({})
     finalizeMockBooking()
-    navigate(`/properties/${id}/book/payment`)
+    navigate(`/properties/${id}/book/confirmation`)
+  }
+
+  const isBookingFormReady = () => {
+    if (!form.contactName.trim() || !form.contactPhone.trim() || !form.contactEmail.trim()) return false
+    if (!form.dateOfBirth || !form.gender || !form.idType || !form.idNumber.trim()) return false
+    if (form.idDocuments.length < 2) return false
+    if (!form.emergencyName.trim() || !form.emergencyPhone.trim() || !form.emergencyRelationship.trim()) return false
+    if (!form.informationConfirmed || !form.termsAccepted) return false
+
+    if (property?.listingType === 'car') {
+      return !!(form.checkIn && form.checkOut && form.pickupTime && form.returnTime && form.pickupPurpose)
+    }
+
+    return !!(
+      Number(form.rentalDuration) > 0 &&
+      form.durationUnit &&
+      Number(form.numberOfTenants) > 0
+    )
   }
 
   const continueButton = (
     <Button
       type="button"
       onClick={handleContinue}
-      disabled={!pricing || pricing.nights <= 0}
-      className="h-12 w-full rounded-2xl bg-[#c99b43] text-base font-semibold text-white hover:bg-[#b88a35]"
+      disabled={!pricing || !isBookingFormReady()}
+      className="h-12 w-full rounded-2xl bg-[#c99b43] text-base font-semibold text-white hover:bg-[#b88a35] disabled:cursor-not-allowed disabled:bg-slate-300"
     >
       Confirm Booking
     </Button>
@@ -204,7 +275,7 @@ export default function BookingCheckout() {
             <BookingForm
               form={form}
               errors={errors}
-              onChange={updateForm}
+              onChange={handleFormChange}
               user={user}
               property={property}
             />

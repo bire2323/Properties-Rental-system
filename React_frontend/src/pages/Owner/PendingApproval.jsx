@@ -14,10 +14,12 @@ export default function PendingApproval() {
 
     // ✅ Redirect to dashboard if user is approved
     useEffect(() => {
-        if (user && user.owner_profile?.can_post_property === true) {
+        if (!user) return;
+
+        if (user.owner_profile?.can_post_property === true) {
             navigate('/owner/dashboard', { replace: true });
-        } else if (user.owner_profile.verification_status === "rejected") {
-            navigate('/');
+        } else if (user.owner_profile?.verification_status === 'rejected') {
+            navigate('/', { replace: true });
         }
     }, [user, navigate]);
 

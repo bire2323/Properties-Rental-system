@@ -42,6 +42,20 @@ function BrandSkeleton() {
         </>
     )
 }
+
+function BrandFallback({ label = 'Home' }) {
+    return (
+        <>
+            <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]">
+                <Building2 size={26} />
+            </span>
+            <span className="max-w-[11rem] truncate text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d] sm:max-w-[14rem]">
+                {label}
+            </span>
+        </>
+    )
+}
+
 export default function OwnerSidebar({ isOpen, onClose }) {
     const navigate = useNavigate()
     const { logout } = useAuth()
@@ -49,6 +63,7 @@ export default function OwnerSidebar({ isOpen, onClose }) {
     const [siteSettings, setSiteSettings] = useState(null)
     const [siteSettingsStatus, setSiteSettingsStatus] = useState('loading')
     const [brandLogoFailed, setBrandLogoFailed] = useState(false)
+
 
     const siteName = siteSettings?.site_name?.trim() || ''
     const siteLogoUrl = resolveSiteMediaUrl(siteSettings?.logo)
@@ -140,7 +155,7 @@ export default function OwnerSidebar({ isOpen, onClose }) {
                                 </span>
                             </>
                         ) : (
-                            <BrandFallback isDark={isDark} />
+                            <BrandFallback label={siteName || 'Home'} />
                         )}
                     </button>
                     <button

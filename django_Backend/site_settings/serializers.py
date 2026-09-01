@@ -15,8 +15,8 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
 		model = SiteSettings
 		fields = (
 			"id", "site_name", "site_tagline", "description", "session_timeout_minutes",
-			"login_attempts_limit", "booking_expiration_hours", "owner_commission_percent",
-			"new_user_registration", "property_listing_alerts",
+			"login_attempts_limit", "booking_expiration_hours", "house_commission_percent",
+			"car_vehicle_commission_percent", "new_user_registration", "property_listing_alerts",
 			"payment_notifications", "user_report_alerts", "contact_phone",
 			"email", "address", "copyright_text", "logo", "updated_at", "payment_methods",
 		)

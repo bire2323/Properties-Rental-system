@@ -10,7 +10,13 @@ class SiteSettings(models.Model):
     session_timeout_minutes = models.PositiveIntegerField(default=30, validators=[MinValueValidator(1)])
     login_attempts_limit = models.PositiveIntegerField(default=5, validators=[MinValueValidator(1)])
     booking_expiration_hours = models.PositiveIntegerField(default=24, validators=[MinValueValidator(1)])
-    owner_commission_percent = models.DecimalField(
+    house_commission_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=5,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    car_vehicle_commission_percent = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=5,

@@ -17,23 +17,24 @@ export default function ProtectedRoute({ children }) {
     const isOwner = user?.role === 'owner';
     const isOnBecomeOwnerPage = location.pathname === '/become-owner';
     const isOnPendingPage = location.pathname === '/owner/pending';
+    const hasOwnerProfile = Boolean(user?.owner_profile);
 
     // ─── 1. New owner without OwnerProfile → redirect to /become-owner ───
-    const isNewOwner = isOwner && !user?.owner_profile;
+    const isNewOwner = isOwner && !hasOwnerProfile;
 
     if (isNewOwner && !isOnBecomeOwnerPage) {
         return <Navigate to="/become-owner" replace />;
     }
 
     // ─── 2. Owner has OwnerProfile but not approved → redirect to /owner/pending ───
-    const isPendingOwner = isOwner && user?.owner_profile?.can_post_property === false;
+    const isPendingOwner = isOwner && hasOwnerProfile && user.owner_profile?.can_post_property === false;
 
     if (isPendingOwner && !isOnPendingPage) {
         return <Navigate to="/owner/pending" replace />;
     }
 
     // ─── 3. Approved owner on pending page → redirect to dashboard ───
-    const isApprovedOwner = isOwner && user?.owner_profile?.can_post_property === true;
+    const isApprovedOwner = isOwner && hasOwnerProfile && user.owner_profile?.can_post_property === true;
 
     if (isApprovedOwner && isOnPendingPage) {
         return <Navigate to="/owner/dashboard" replace />;
