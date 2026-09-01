@@ -11,6 +11,8 @@ from site_settings.models import SiteSettings
 
 from .models import Booking
 from .serializers import BookingCreateSerializer
+from .services import confirm_booking_from_payment
+from payments.models import PaymentTransaction
 
 
 class BookingBusinessRulesTests(TestCase):
@@ -102,3 +104,22 @@ class BookingBusinessRulesTests(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
         booking = serializer.save()
         self.assertEqual(booking.total_amount, Decimal("110.00"))
+
+    def test_only_successful_matching_payment_confirms_booking(self):
+        start = date.today() + timedelta(days=1)
+        booking = self.create(self.car, start, start + timedelta(days=1))
+        payment = PaymentTransaction.objects.create(
+            booking=booking,
+            payer=self.renter,
+            payment_method=PaymentTransaction.PaymentMethod.CASH,
+            amount=booking.total_amount,
+            currency=booking.currency,
+            status=PaymentTransaction.PaymentStatus.PENDING,
+        )
+        with self.assertRaises(ValueError):
+            confirm_booking_from_payment(payment)
+        payment.status = PaymentTransaction.PaymentStatus.SUCCESSFUL
+        payment.save(update_fields=["status", "updated_at"])
+        confirm_booking_from_payment(payment)
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, Booking.BookingStatus.CONFIRMED)

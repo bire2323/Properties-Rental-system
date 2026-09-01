@@ -86,4 +86,9 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking.status = Booking.BookingStatus.CANCELLED
             booking.save(update_fields=["status", "updated_at"])
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return super().destroy(request, *args, **kwargs)
+        if request.user.role == User.Role.ADMIN:
+            return Response(
+                {"detail": "Booking history cannot be deleted; change its status instead."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED,
+            )
+        return Response({"detail": "Only the renter can cancel this booking."}, status=status.HTTP_403_FORBIDDEN)

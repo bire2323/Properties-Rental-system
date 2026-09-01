@@ -120,12 +120,15 @@ class BookingStatusUpdateSerializer(serializers.ModelSerializer):
         fields = ["status"]
 
     def validate_status(self, value):
-        allowed = {
-            Booking.BookingStatus.REJECTED,
-            Booking.BookingStatus.CANCELLED,
-        }
-        if value not in allowed:
-            raise serializers.ValidationError(
-                "Only rejection or cancellation is available through this endpoint."
-            )
+        booking = self.instance
+        if value == Booking.BookingStatus.CONFIRMED:
+            raise serializers.ValidationError("Bookings are confirmed only by successful payment verification.")
+        if value == Booking.BookingStatus.REJECTED:
+            if booking.status != Booking.BookingStatus.PENDING:
+                raise serializers.ValidationError("Only pending bookings can be rejected.")
+        elif value == Booking.BookingStatus.CANCELLED:
+            if booking.status not in {Booking.BookingStatus.PENDING, Booking.BookingStatus.CONFIRMED}:
+                raise serializers.ValidationError("Only pending or confirmed bookings can be cancelled.")
+        else:
+            raise serializers.ValidationError("Only rejection or cancellation is available through this endpoint.")
         return value

@@ -224,6 +224,28 @@ def validate_no_overlap(property_id, start_date, end_date, exclude_booking_id=No
     return {}
 
 
+def confirm_booking_from_payment(payment_transaction):
+    """Confirm a pending booking only after a successful verified payment."""
+    from payments.models import PaymentTransaction
+
+    if payment_transaction.status != PaymentTransaction.PaymentStatus.SUCCESSFUL:
+        raise ValueError("Only successful payments can confirm a booking.")
+
+    booking = payment_transaction.booking
+    if payment_transaction.payer_id != booking.renter_id:
+        raise ValueError("Payment payer does not match the booking renter.")
+    if payment_transaction.currency != booking.currency:
+        raise ValueError("Payment currency does not match the booking currency.")
+    if payment_transaction.amount != booking.total_amount:
+        raise ValueError("Payment amount does not match the booking total.")
+    if booking.status != Booking.BookingStatus.PENDING:
+        raise ValueError("Only pending bookings can be confirmed.")
+
+    booking.status = Booking.BookingStatus.CONFIRMED
+    booking.save(update_fields=["status", "updated_at"])
+    return booking
+
+
 def create_booking(*, renter, property_id, rental_type, start_date, end_date):
     """Create a booking while serializing availability against concurrent requests."""
     with transaction.atomic():
