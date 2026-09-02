@@ -12,7 +12,7 @@ export function mapPropertyForBooking(property) {
   const mainImage = images[0]?.image || images[0]?.image_url || ''
   const listingType = property.listing_type || property.property_type || 'house'
   const detail = listingType === 'car' ? (property.car_detail || {}) : (property.house_detail || {})
-  const location = [property.city, property.region, property.kebele]
+  const location = [property.city_name, property.region_name, property.kebele]
     .filter(Boolean)
     .join(', ') || property.address || 'Location unspecified'
 
@@ -36,6 +36,67 @@ export function mapPropertyForBooking(property) {
     fuelType: property.car_detail?.fuel_type || '',
     seatingCapacity: property.car_detail?.seating_capacity || '',
     currency: property.currency || 'ETB',
+  }
+}
+
+export const RENTAL_TYPES = Object.freeze({
+  FIXED_TERM: 'fixed_term',
+  MONTH_TO_MONTH: 'month_to_month',
+})
+
+export function calculateHouseEndDate(startDate, rentalDuration, durationUnit = 'month') {
+  if (!startDate) return null
+
+  const start = parseDateValue(startDate)
+  if (!start) return null
+
+  const duration = Number(rentalDuration) || 0
+  if (duration <= 0) return null
+
+  const dateCopy = new Date(start)
+  const unit = String(durationUnit || 'month').toLowerCase()
+
+  if (unit === 'year') {
+    dateCopy.setFullYear(dateCopy.getFullYear() + duration)
+  } else if (unit === 'month') {
+    dateCopy.setMonth(dateCopy.getMonth() + duration)
+  } else if (unit === 'week') {
+    dateCopy.setDate(dateCopy.getDate() + duration * 7)
+  } else {
+    dateCopy.setDate(dateCopy.getDate() + duration)
+  }
+
+  return dateCopy.toISOString().slice(0, 10)
+}
+
+export function buildBookingPayload({ property, form }) {
+  if (!property) return null
+
+  const listingType = property.listingType || property.propertyType || 'house'
+
+  if (listingType === 'car') {
+    return {
+      property: Number(property.id),
+      rental_type: RENTAL_TYPES.FIXED_TERM,
+      start_date: form.checkIn || '',
+      end_date: form.checkOut || null,
+    }
+  }
+
+  const startDate = form.moveInDate || ''
+  const rentalType = form.rentalType === RENTAL_TYPES.MONTH_TO_MONTH
+    ? RENTAL_TYPES.MONTH_TO_MONTH
+    : RENTAL_TYPES.FIXED_TERM
+
+  const endDate = rentalType === RENTAL_TYPES.FIXED_TERM
+    ? calculateHouseEndDate(startDate, form.rentalDuration, form.durationUnit)
+    : null
+
+  return {
+    property: Number(property.id),
+    rental_type: rentalType,
+    start_date: startDate,
+    end_date: rentalType === RENTAL_TYPES.MONTH_TO_MONTH ? null : endDate,
   }
 }
 
@@ -67,12 +128,11 @@ export function calculateNights(checkIn, checkOut) {
 /**
  * Frontend-only pricing logic — structured for easy backend replacement.
  */
-export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOut, securityDeposit = 0, listingType = 'house', rentalDuration = 3, durationUnit = 'year' }) {
+export function calculateBookingPricing({ priceRaw, rentalUnit, checkIn, checkOut, securityDeposit = 0, listingType = 'house', rentalDuration = 1, durationUnit = 'month' }) {
   if (listingType === 'house') {
-    const durationValue = Math.max(1, Number(rentalDuration) || 3)
-    const unitLabel = (durationUnit || 'year').toLowerCase()
-    const multiplier = 3
-    const rentalSubtotal = priceRaw * multiplier
+    const durationValue = Math.max(1, Number(rentalDuration) || 1)
+    const unitLabel = (durationUnit || 'month').toLowerCase()
+    const rentalSubtotal = priceRaw * durationValue
     const total = rentalSubtotal + securityDeposit
 
     return {

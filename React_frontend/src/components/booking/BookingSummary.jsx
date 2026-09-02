@@ -67,10 +67,17 @@ export default function BookingSummary({
                 )}
               </>
             ) : (
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <CalendarDays className="h-4 w-4 text-[#c99b43]" />
-                <span>{form.rentalDuration || 3} {form.durationUnit || 'year'}{(form.rentalDuration || 3) > 1 ? 's' : ''}</span>
-              </div>
+              <>
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <CalendarDays className="h-4 w-4 text-[#c99b43]" />
+                  <span>{form.moveInDate ? formatDisplayDate(form.moveInDate) : 'Move-in date pending'}</span>
+                </div>
+                {form.rentalType === 'month_to_month' ? (
+                  <p className="pl-6 text-slate-500 dark:text-slate-400">Month to Month · No fixed end date</p>
+                ) : (
+                  <p className="pl-6 text-slate-500 dark:text-slate-400">{form.rentalDuration || 1} {form.durationUnit || 'month'}{(form.rentalDuration || 1) > 1 ? 's' : ''} fixed term</p>
+                )}
+              </>
             )}
             {isCar ? <div className="space-y-2 border-t border-slate-200 pt-2 dark:border-slate-800"><div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Car className="h-4 w-4 text-[#c99b43]" />{property.vehicleType || `${property.brand} ${property.model}` || 'Vehicle'}</div>{property.year && <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Gauge className="h-4 w-4 text-[#c99b43]" />{property.year}{property.plateNumber ? ` · ${property.plateNumber}` : ''}</div>}{property.fuelType && <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Fuel className="h-4 w-4 text-[#c99b43]" />{property.fuelType}</div>}</div> : <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Users className="h-4 w-4 text-[#c99b43]" /><span>{form.numberOfTenants || form.guests} tenant{(form.numberOfTenants || form.guests) > 1 ? 's' : ''}</span></div>}
           </div>

@@ -39,8 +39,8 @@ export default function Payment() {
     form,
     payment,
     pricing,
+    bookingStatus,
     updatePayment,
-    finalizeMockBooking,
   } = useBooking()
 
   const [processing, setProcessing] = useState(false)
@@ -64,6 +64,11 @@ export default function Payment() {
   }, [authLoading, isAuthenticated, property, form, navigate, id])
 
   const handlePay = async () => {
+    if (bookingStatus !== 'confirmed') {
+      setSubmitError('Payment is not available until the owner approves this booking request.')
+      return
+    }
+
     const paymentErrors = validatePayment(payment.method, payment)
     if (Object.keys(paymentErrors).length > 0) {
       setErrors(paymentErrors)
@@ -74,16 +79,9 @@ export default function Payment() {
     setSubmitError(null)
     setProcessing(true)
 
-    // Mock processing delay — replace with real payment API later
     await new Promise((resolve) => setTimeout(resolve, reduceMotion ? 600 : 1800))
-
-    try {
-      finalizeMockBooking()
-      navigate(`/properties/${id}/book/confirmation`)
-    } catch (err) {
-      setSubmitError(err.message || 'Payment failed. Please try again.')
-      setProcessing(false)
-    }
+    setProcessing(false)
+    setSubmitError('Real payment integration is not active yet. The backend will handle payment verification after approval.')
   }
 
   if (authLoading || !property) {
@@ -102,10 +100,12 @@ export default function Payment() {
     <Button
       type="button"
       onClick={handlePay}
-      disabled={processing}
+      disabled={processing || bookingStatus !== 'confirmed'}
       className="h-12 w-full rounded-2xl bg-[#c99b43] text-base font-semibold text-white hover:bg-[#b88a35] disabled:opacity-70"
     >
-      {processing ? 'Processing...' : `Pay ${formatCurrency(pricing?.total || 0, property.currency)}`}
+      {bookingStatus !== 'confirmed'
+        ? 'Awaiting owner approval'
+        : processing ? 'Processing...' : `Pay ${formatCurrency(pricing?.total || 0, property.currency)}`}
     </Button>
   )
 

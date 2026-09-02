@@ -17,9 +17,8 @@ export default function PriceBreakdown({
     ? `${pricing.units} ${pricing.unitLabel}${pricing.units > 1 ? 's' : ''}`
     : '—'
 
-  const houseRentalMultiplier = 3
   const priceLabel = property.listingType === 'house'
-    ? `${formatCurrency(property.priceRaw, property.currency)} × ${houseRentalMultiplier}`
+    ? (pricing.unitLabel ? `Base rental (${unitText})` : 'Rental amount')
     : `${formatCurrency(property.priceRaw, property.currency)} × ${unitText}`
 
   const rowClass = compact

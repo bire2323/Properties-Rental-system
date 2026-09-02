@@ -13,10 +13,12 @@ import { getPropertyById } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 import { useBooking } from '../../context/BookingContext'
 import {
+  buildBookingPayload,
   formatCurrency,
   getMaxDateOfBirth,
   isAdultDateOfBirth,
   isValidEthiopianPhone,
+  RENTAL_TYPES,
   validateBookingDetails,
 } from '../../lib/bookingUtils'
 
@@ -31,12 +33,14 @@ export default function BookingCheckout() {
     pricing,
     loadProperty,
     updateForm,
-    finalizeMockBooking,
+    submitBooking,
+    isLoading: isSubmittingBooking,
   } = useBooking()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [errors, setErrors] = useState({})
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (authLoading) return
@@ -131,7 +135,7 @@ export default function BookingCheckout() {
     })
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const validationErrors = {
       ...(property.listingType === 'car' ? validateBookingDetails(form) : {}),
       ...(!form.contactName.trim() ? { contactName: 'Full name is required.' } : {}),
@@ -153,59 +157,162 @@ export default function BookingCheckout() {
       ...(!form.emergencyRelationship.trim() ? { emergencyRelationship: 'Relationship is required.' } : {}),
       ...(!form.informationConfirmed || !form.termsAccepted ? { terms: 'Confirm your information and accept the rental terms.' } : {}),
     }
+
     if (property.listingType === 'car') {
       Object.assign(validationErrors, {
+        ...(!form.checkIn ? { checkIn: 'Pickup date is required.' } : {}),
+        ...(!form.checkOut ? { checkOut: 'Return date is required.' } : {}),
         ...(!form.pickupTime ? { pickupTime: 'Pickup time is required.' } : {}),
         ...(!form.returnTime ? { returnTime: 'Return time is required.' } : {}),
         ...(!form.pickupPurpose ? { pickupPurpose: 'Select a rental purpose.' } : {}),
       })
+      if (form.checkIn && form.checkOut && new Date(form.checkOut) <= new Date(form.checkIn)) {
+        validationErrors.checkOut = 'Return date must be after pickup date.'
+      }
     } else {
       Object.assign(validationErrors, {
+        ...(!form.moveInDate ? { moveInDate: 'Move-in date is required.' } : {}),
         ...(!form.rentalDuration || Number(form.rentalDuration) < 1 ? { rentalDuration: 'Enter a valid rental duration.' } : {}),
         ...(!form.numberOfTenants || Number(form.numberOfTenants) < 1 ? { numberOfTenants: 'Enter the number of tenants.' } : {}),
       })
     }
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
     }
+
+    const payload = buildBookingPayload({ property, form })
+    if (!payload || !payload.start_date || !payload.property) {
+      setErrors({ general: 'Please complete the required booking details before submitting.' })
+      return
+    }
+
     if (!pricing || (property.listingType === 'car' ? pricing.nights <= 0 : pricing.total <= 0)) {
       setErrors({ general: property.listingType === 'car' ? 'Please select valid check-in and check-out dates.' : 'Please enter a valid house rental duration.' })
       return
     }
-    setErrors({})
-    finalizeMockBooking()
-    navigate(`/properties/${id}/book/confirmation`)
+
+    try {
+      setSubmitting(true)
+      setErrors({})
+
+      const booking = await submitBooking(
+        payload.property,
+        payload.rental_type,
+        payload.start_date,
+        payload.end_date,
+      )
+
+      navigate(`/properties/${id}/book/confirmation`, { state: { booking } })
+    } catch (err) {
+      // Handle backend validation errors (e.g., { start_date: "...", property: "..." })
+      // or a simple error message
+      let backendErrors = {}
+
+      if (typeof err.response === 'object' && err.response) {
+        // If error has structured response with field errors
+        Object.entries(err.response).forEach(([key, value]) => {
+          // value might be an array of messages or a single string
+          backendErrors[key] = Array.isArray(value) ? value[0] : value
+        })
+      } else if (err?.message) {
+        // Fallback to generic error message
+        backendErrors.general = err.message
+      } else {
+        backendErrors.general = 'Unable to create booking. Please try again.'
+      }
+
+      setErrors(backendErrors)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const getFormReadinessErrors = () => {
+    const issues = []
+
+    // Contact info
+    if (!form.contactName?.trim()) issues.push('Full name')
+    if (!form.contactPhone?.trim()) issues.push('Phone number')
+    if (!form.contactEmail?.trim()) issues.push('Email')
+
+    // ID
+    if (!form.dateOfBirth) issues.push('Date of birth')
+    if (!form.gender) issues.push('Gender')
+    if (!form.idType) issues.push('ID type')
+    if (!form.idNumber?.trim()) issues.push('ID number')
+    if (form.idDocuments.length < 2) issues.push(`ID documents (${form.idDocuments.length}/2)`)
+
+    // Emergency
+    if (!form.emergencyName?.trim()) issues.push('Emergency contact name')
+    if (!form.emergencyPhone?.trim()) issues.push('Emergency contact phone')
+    if (!form.emergencyRelationship?.trim()) issues.push('Emergency relationship')
+
+    // Confirmation
+    if (!form.informationConfirmed) issues.push('Information confirmation checkbox')
+    if (!form.termsAccepted) issues.push('Terms acceptance checkbox')
+
+    // Property-specific
+    if (property?.listingType === 'car') {
+      if (!form.checkIn) issues.push('Pickup date')
+      if (!form.checkOut) issues.push('Return date')
+      if (!form.pickupTime) issues.push('Pickup time')
+      if (!form.returnTime) issues.push('Return time')
+      if (!form.pickupPurpose) issues.push('Rental purpose')
+      if (form.checkIn && form.checkOut && new Date(form.checkOut) <= new Date(form.checkIn)) {
+        issues.push('Return date must be after pickup date')
+      }
+    } else {
+      if (!form.moveInDate) issues.push('Move-in date')
+      if (!form.rentalDuration || Number(form.rentalDuration) < 1) issues.push('Rental duration')
+      if (!form.durationUnit) issues.push('Duration unit')
+      if (!form.numberOfTenants || Number(form.numberOfTenants) < 1) issues.push('Number of tenants')
+      if (!form.rentalType) issues.push('Rental type')
+    }
+
+    return issues
   }
 
   const isBookingFormReady = () => {
-    if (!form.contactName.trim() || !form.contactPhone.trim() || !form.contactEmail.trim()) return false
-    if (!form.dateOfBirth || !form.gender || !form.idType || !form.idNumber.trim()) return false
-    if (form.idDocuments.length < 2) return false
-    if (!form.emergencyName.trim() || !form.emergencyPhone.trim() || !form.emergencyRelationship.trim()) return false
-    if (!form.informationConfirmed || !form.termsAccepted) return false
-
-    if (property?.listingType === 'car') {
-      return !!(form.checkIn && form.checkOut && form.pickupTime && form.returnTime && form.pickupPurpose)
-    }
-
-    return !!(
-      Number(form.rentalDuration) > 0 &&
-      form.durationUnit &&
-      Number(form.numberOfTenants) > 0
-    )
+    return getFormReadinessErrors().length === 0
   }
 
-  const continueButton = (
-    <Button
-      type="button"
-      onClick={handleContinue}
-      disabled={!pricing || !isBookingFormReady()}
-      className="h-12 w-full rounded-2xl bg-[#c99b43] text-base font-semibold text-white hover:bg-[#b88a35] disabled:cursor-not-allowed disabled:bg-slate-300"
-    >
-      Confirm Booking
-    </Button>
-  )
+  const continueButton = (() => {
+    const readinessErrors = getFormReadinessErrors()
+    const isPricingValid = pricing && pricing.total > 0
+    const isReady = readinessErrors.length === 0 && isPricingValid
+
+    let buttonText = 'Confirm Booking'
+    let buttonTooltip = null
+
+    if (isSubmittingBooking || submitting) {
+      buttonText = 'Creating booking...'
+    } else if (!isPricingValid) {
+      buttonText = '⚠️ Complete rental details'
+      buttonTooltip = 'Fill in all rental dates and duration'
+    } else if (readinessErrors.length > 0) {
+      buttonText = `⚠️ Complete ${readinessErrors.length} field${readinessErrors.length > 1 ? 's' : ''}`
+      buttonTooltip = readinessErrors.slice(0, 3).join(', ') + (readinessErrors.length > 3 ? '...' : '')
+    }
+
+    return (
+      <div className="space-y-2">
+        <Button
+          type="button"
+          onClick={handleContinue}
+          disabled={!isReady || isSubmittingBooking || submitting}
+          title={buttonTooltip}
+          className="h-12 w-full rounded-2xl bg-[#c99b43] text-base font-semibold text-white hover:bg-[#b88a35] disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {buttonText}
+        </Button>
+        {buttonTooltip && (
+          <p className="text-xs text-red-400 dark:text-red-300">{buttonTooltip}</p>
+        )}
+      </div>
+    )
+  })()
 
   if (authLoading || loading) {
     return (
@@ -267,6 +374,29 @@ export default function BookingCheckout() {
             </p>
           </div>
           <BookingProgress currentStep={1} />
+
+          {/* Debug: Show missing fields */}
+          {getFormReadinessErrors().length > 0 && (
+            <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900/40 dark:bg-yellow-950/40">
+              <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-300">
+                Complete these fields to enable booking:
+              </p>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-yellow-800 dark:text-yellow-200">
+                {getFormReadinessErrors().map((field, idx) => (
+                  <li key={idx}>{field}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Pricing validation */}
+          {pricing && pricing.total <= 0 && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/40">
+              <p className="text-sm font-semibold text-red-900 dark:text-red-300">
+                ⚠️ Pricing not calculated. Ensure all rental details are filled in.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
@@ -306,7 +436,7 @@ export default function BookingCheckout() {
       </div>
 
       <div className="h-24 lg:hidden" />
-      <Footer />
+      {/* <Footer /> */}
     </div>
   )
 }
