@@ -358,7 +358,7 @@ function Properties() {
             {/* Content Area */}
             <main className="flex-1 min-w-0">
               {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-4" : "flex flex-col gap-4"}>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <PropertyCardSkeleton key={i} />
                   ))}
@@ -387,7 +387,7 @@ function Properties() {
               )}
 
               {!loading && !error && sortedProperties.length > 0 && (
-                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-4'}>
+                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 xl:grid-cols-4' : 'flex flex-col gap-4'}>
                   {sortedProperties.map((property) => (
                     <PropertyCard
                       key={property.id}

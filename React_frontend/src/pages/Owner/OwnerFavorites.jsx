@@ -77,7 +77,7 @@ export default function OwnerFavorites() {
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">My Favorites</h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-3 lg:grid-cols-5">
                 {favorites.map((fav) => {
                     const property = fav.property
                     const mainImage = property.images?.length > 0
@@ -106,24 +106,24 @@ export default function OwnerFavorites() {
                                     </Button>
                                 </div>
                             </div>
-                            <div className="p-5">
+                            <div className="p-2">
                                 <div className="flex items-start justify-between">
                                     <div>
                                         <h3 className="font-semibold text-slate-900 dark:text-white">{property.property_name}</h3>
-                                        <p className="mt-1 flex items-center text-sm text-slate-600 dark:text-slate-400">
+                                        <p className="mt-1 flex items-center text-[10px] text-slate-600 dark:text-slate-400">
                                             <MapPin className="mr-1 h-3 w-3" />
-                                            {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
+                                            {[property.city_name, property.region_name, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1 rounded bg-[#c99b43]/10 px-2 py-1">
                                         <Star className="h-3 w-3 fill-[#c99b43] text-[#c99b43]" />
-                                        <span className="text-xs font-semibold text-[#c99b43]">
+                                        <span className="text-[10px] font-semibold text-[#c99b43]">
                                             {property.rating_summary?.average_rating || 'New'}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
-                                    <span className="text-lg font-bold text-[#c99b43]">
+                                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                                    <span className="text-sm font-bold text-[#c99b43]">
                                         ETB {parseFloat(property.price).toLocaleString()}
                                     </span>
                                     <span className="text-xs text-slate-500">{property.listing_type}</span>

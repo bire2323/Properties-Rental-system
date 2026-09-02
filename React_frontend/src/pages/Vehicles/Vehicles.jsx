@@ -33,7 +33,7 @@ function mapVehicleToCard(property) {
     maximumFractionDigits: 0,
   })
 
-  const locationDisplay = [property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
+  const locationDisplay = [property.city_name, property.region_name, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'
   const ratingSum = property.rating_summary || {}
   const rating = parseFloat(ratingSum.average) || 0
 
@@ -126,18 +126,18 @@ function Vehicles() {
   async function fetchVehicles() {
     setLoading(true)
     setError(null)
-    
+
     const apiFilters = { ...filters, type: 'car' }; // Enforce car listing_type
-    
+
     if (apiFilters.seating_capacity === 'any') delete apiFilters.seating_capacity;
-    
+
     if (apiFilters.search) {
       if (!apiFilters.location) {
         apiFilters.location = apiFilters.search;
       }
     }
     delete apiFilters.search;
-    
+
     try {
       const data = await getAllProperties(apiFilters)
       const results = Array.isArray(data) ? data : data.results || []
@@ -352,9 +352,8 @@ function Vehicles() {
                   {sortedVehicles.map((vehicle) => (
                     <Card
                       key={vehicle.id}
-                      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900 ${
-                        viewMode === 'list' ? 'flex flex-row h-32 sm:h-48' : ''
-                      }`}
+                      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900 ${viewMode === 'list' ? 'flex flex-row h-32 sm:h-48' : ''
+                        }`}
                     >
                       {/* Image Container */}
                       <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-2/5 sm:w-1/3 shrink-0 h-full' : 'h-32 sm:h-48 lg:h-44'}`}>
@@ -374,8 +373,8 @@ function Vehicles() {
                         {/* Favorite Button */}
                         <button
                           onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(vehicle.id);
+                            e.stopPropagation();
+                            toggleFavorite(vehicle.id);
                           }}
                           className="absolute right-2 top-2 sm:right-3 sm:top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/95 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-white dark:bg-slate-900/95 dark:hover:bg-slate-900 sm:h-8 sm:w-8"
                           aria-label="Add to favorites"
@@ -385,8 +384,8 @@ function Vehicles() {
                           ) : (
                             <Heart
                               className={`h-3 w-3 transition-colors sm:h-4.5 sm:w-4.5 ${favorites.includes(vehicle.id)
-                                  ? 'fill-red-500 text-red-500'
-                                  : 'text-slate-600 dark:text-slate-400'
+                                ? 'fill-red-500 text-red-500'
+                                : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             />
                           )}
@@ -449,8 +448,8 @@ function Vehicles() {
                             size="sm"
                             className="rounded-lg bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-7 px-2 text-[10px] font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:opacity-90 sm:h-8 sm:px-3 sm:py-1.5 sm:text-xs lg:px-2.5 lg:py-1"
                             onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/vehicles/${vehicle.id}`);
+                              e.stopPropagation();
+                              navigate(`/vehicles/${vehicle.id}`);
                             }}
                           >
                             View
@@ -522,8 +521,8 @@ function Vehicles() {
                 />
                 {/* Apply Button */}
                 <div className="mt-6">
-                  <Button 
-                    className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950" 
+                  <Button
+                    className="w-full bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"
                     onClick={() => setIsFilterOpen(false)}
                   >
                     Show Results ({sortedVehicles.length})

@@ -598,6 +598,11 @@ function Navbar() {
               ) : (
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]"><Building2 size={20} /></span>
               )}
+              <span className="max-w-[11rem] truncate text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d] sm:max-w-[14rem]">
+                <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
+                  {siteName || 'Home'}
+                </span>
+              </span>
             </button>
           </div>
 
@@ -668,6 +673,11 @@ function Navbar() {
                           <Building2 size={20} />
                         </span>
                       )}
+                      <span className="max-w-[11rem] truncate text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d] sm:max-w-[14rem]">
+                        <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
+                          {siteName || 'Home'}
+                        </span>
+                      </span>
                     </>
                   )}
                 </button>
