@@ -9,8 +9,10 @@ import {
     MessageSquare,
     Heart,
     BarChart3,
+    Car,
     Settings,
     Home,
+    Info,
     LogOut,
     X,
 } from 'lucide-react'
@@ -30,6 +32,13 @@ const links = [
     { label: 'Favorites', path: '/owner/favorites', icon: Heart },
     { label: 'Reports', path: '/owner/reports', icon: BarChart3 },
     { label: 'Settings', path: '/owner/settings', icon: Settings },
+]
+
+const publicLinks = [
+    { label: 'Home', path: '/', icon: Home },
+    { label: 'Properties', path: '/properties', icon: Building2 },
+    { label: 'Vehicles', path: '/vehicles', icon: Car },
+    { label: 'About Us', path: '/about', icon: Info },
 ]
 function BrandSkeleton() {
     return (
@@ -190,6 +199,28 @@ export default function OwnerSidebar({ isOpen, onClose }) {
                                 </NavLink>
                             )
                         })}
+                    </div>
+
+                    <div className="mt-8 border-t border-slate-200 pt-5 dark:border-slate-800 lg:hidden">
+                        <p className="mb-2 px-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b27a23]">
+                            Explore
+                        </p>
+                        <div className="space-y-1">
+                            {publicLinks.map((item) => {
+                                const Icon = item.icon
+                                return (
+                                    <NavLink
+                                        key={item.path}
+                                        to={item.path}
+                                        onClick={onClose}
+                                        className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white"
+                                    >
+                                        <Icon className="h-5 w-5" />
+                                        {item.label}
+                                    </NavLink>
+                                )
+                            })}
+                        </div>
                     </div>
                 </nav>
 

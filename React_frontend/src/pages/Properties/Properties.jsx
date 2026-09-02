@@ -442,11 +442,11 @@ function Properties() {
               className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm lg:hidden"
             />
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-[min(88vw,20rem)] max-w-full flex-col rounded-r-3xl bg-white shadow-2xl dark:bg-slate-900 lg:hidden"
             >
               <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Filters</h2>
