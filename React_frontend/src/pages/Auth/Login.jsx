@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
@@ -15,7 +15,35 @@ import { getDashboardRoute } from '../../services/authService'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
+import { getSiteSettings, resolveSiteMediaUrl } from '../../api/siteSettingsApi'
 
+
+
+
+function BrandSkeleton() {
+  return (
+    <>
+      <div className="h-14 w-14 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+      <div className="space-y-2">
+        <div className="h-5 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="h-3 w-20 animate-pulse rounded bg-slate-200/80 dark:bg-slate-800/80" />
+      </div>
+    </>
+  )
+}
+
+function BrandFallback({ label = 'Home' }) {
+  return (
+    <>
+      <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]">
+        <Building2 size={26} />
+      </span>
+      <span className="max-w-[11rem] truncate text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d] sm:max-w-[14rem]">
+        {label}
+      </span>
+    </>
+  )
+}
 function Login() {
   const googleLoginEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true'
   const navigate = useNavigate()
@@ -28,6 +56,33 @@ function Login() {
     password: '',
     remember: false,
   })
+
+  const [siteSettings, setSiteSettings] = useState(null)
+  const [siteSettingsStatus, setSiteSettingsStatus] = useState('loading')
+  const [brandLogoFailed, setBrandLogoFailed] = useState(false)
+
+  const siteName = siteSettings?.site_name?.trim() || ''
+  const siteLogoUrl = resolveSiteMediaUrl(siteSettings?.logo)
+
+  useEffect(() => {
+    let isActive = true
+
+    setSiteSettingsStatus('loading')
+    getSiteSettings()
+      .then((data) => {
+        if (!isActive) return
+        setSiteSettings(data)
+        setSiteSettingsStatus('success')
+      })
+      .catch(() => {
+        if (!isActive) return
+        setSiteSettingsStatus('error')
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   const [errors, setErrors] = useState({
     email: '',
@@ -148,7 +203,7 @@ function Login() {
 
             <CardHeader className="space-y-5 border-b border-slate-200/80 px-8 py-8 dark:border-slate-800">
               <div className="flex items-center justify-center gap-3">
-                <img
+                {/* <img
                   src={logo}
                   alt="NexaSpace logo"
                   className="h-14 w-auto rounded-2xl object-contain"
@@ -157,15 +212,42 @@ function Login() {
                   <span className="bg-[linear-gradient(135deg,_#0b2141,_#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,_#f7db96,_#c99b43)]">
                     NexaSpace
                   </span>
-                </span>
+                </span> */}
+
+                {siteSettingsStatus === 'loading' ? (
+                  <BrandSkeleton />
+                ) : siteSettingsStatus === 'success' ? (
+                  <>
+                    {siteLogoUrl && !brandLogoFailed ? (
+                      <img
+                        src={siteLogoUrl}
+                        alt={`${siteName || 'Website'} logo`}
+                        className="h-14 w-auto rounded-2xl object-contain"
+                        onError={() => setBrandLogoFailed(true)}
+                      />
+                    ) : (
+                      <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]">
+                        <Building2 size={26} />
+                      </span>
+                    )}
+                    <span className="text-3xl font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d]">
+                      <span className="bg-[linear-gradient(135deg,_#0b2141,_#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,_#f7db96,_#c99b43)]">
+                        {siteName || 'Home'}
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  <BrandFallback label={siteName || 'Home'} />
+                )}
+
               </div>
               <div className="space-y-2 text-center">
-                <CardTitle className="text-3xl font-semibold text-slate-950 dark:text-white">
+                <CardTitle className="text-xl font-semibold text-slate-700 dark:text-white">
                   Sign in to your account
                 </CardTitle>
-                <CardDescription className="text-base leading-7 text-slate-500 dark:text-slate-400">
+                {/* <CardDescription className="text-base leading-7 text-slate-500 dark:text-slate-400">
                   Enter your email and password to continue.
-                </CardDescription>
+                </CardDescription> */}
               </div>
             </CardHeader>
 
@@ -233,8 +315,8 @@ function Login() {
                       onKeyDown={handleKeyDown}
                       aria-invalid={!!errors.password}
                       className={`h-13 rounded-2xl bg-slate-50/90 pl-11 pr-12 shadow-sm dark:bg-slate-900/80 ${errors.password
-                          ? 'border-rose-500 focus-visible:border-rose-500 focus-visible:ring-rose-500/20'
-                          : 'border-slate-200 focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/20 dark:border-slate-800'
+                        ? 'border-rose-500 focus-visible:border-rose-500 focus-visible:ring-rose-500/20'
+                        : 'border-slate-200 focus-visible:border-[#d4a756] focus-visible:ring-[#d4a756]/20 dark:border-slate-800'
                         }`}
                     />
 

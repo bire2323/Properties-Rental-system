@@ -20,7 +20,7 @@ class BookingBusinessRulesTests(TestCase):
         self.owner = User.objects.create_user("owner@example.com", password="x", role=User.Role.OWNER, first_name="Owner", last_name="One")
         self.renter = User.objects.create_user("renter@example.com", password="x", first_name="Renter", last_name="One")
         self.other_renter = User.objects.create_user("other@example.com", password="x", first_name="Other", last_name="One")
-        SiteSettings.objects.create(site_name="Test", owner_commission_percent=Decimal("10.00"))
+        SiteSettings.objects.create(site_name="Test", house_commission_percent=Decimal("10.00"))
         self.car = self.make_property("Car", ListingType.CAR, RentalUnit.DAILY, Decimal("100.00"))
         self.house = self.make_property("House", ListingType.HOUSE, RentalUnit.MONTHLY, Decimal("12000.00"))
         self.request = SimpleNamespace(user=self.renter)

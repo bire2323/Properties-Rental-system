@@ -30,10 +30,14 @@ def _quantize(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def get_platform_commission_rate() -> Decimal:
+def get_platform_commission_rate(listing_type: str) -> Decimal:
     settings = SiteSettings.objects.order_by("pk").first()
-    if settings and settings.owner_commission_percent is not None:
-        return Decimal(settings.owner_commission_percent)
+    if listing_type == ListingType.HOUSE:
+      if settings and settings.house_commission_percent is not None:
+        return Decimal(settings.house_commission_percent)
+    elif listing_type == ListingType.CAR:
+        if settings and settings.car_vehicle_commission_percent is not None:
+            return Decimal(settings.car_vehicle_commission_percent)
     return Decimal("5.00")
 
 
@@ -87,10 +91,10 @@ def calculate_financial_snapshot(property_obj, start_date, end_date, rental_type
     """
     base_price = calculate_base_price(property_obj, start_date, end_date, rental_type)
     security_deposit = Decimal(property_obj.security_deposit or 0)
-    commission_rate = get_platform_commission_rate()
+    commission_rate = get_platform_commission_rate(property_obj.listing_type)
     platform_fee_amount = _quantize(base_price * commission_rate / Decimal("100"))
     owner_payout_amount = _quantize(base_price - platform_fee_amount)
-    total_amount = _quantize(base_price + security_deposit + platform_fee_amount)
+    total_amount = _quantize(base_price + security_deposit)
 
     return {
         "base_price": base_price,

@@ -1,5 +1,5 @@
 // src/pages/Auth/Register.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
@@ -12,6 +12,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import logo from '../../assets/logo.jpg'
+import { getSiteSettings, resolveSiteMediaUrl } from '../../api/siteSettingsApi'
 import Navbar from '../../components/common/Navbar'
 import GoogleLoginButton from '../../components/auth/GoogleLoginButton'
 import { useAuth } from '../../hooks/useAuth'
@@ -45,6 +46,30 @@ const initialFormData = {
   email: '',
   password: '',
   confirmPassword: '',
+}
+function BrandSkeleton() {
+  return (
+    <>
+      <div className="h-14 w-14 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+      <div className="space-y-2">
+        <div className="h-5 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="h-3 w-20 animate-pulse rounded bg-slate-200/80 dark:bg-slate-800/80" />
+      </div>
+    </>
+  )
+}
+
+function BrandFallback({ label = 'Home' }) {
+  return (
+    <>
+      <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]">
+        <Building2 size={26} />
+      </span>
+      <span className="max-w-[11rem] truncate text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d] sm:max-w-[14rem]">
+        {label}
+      </span>
+    </>
+  )
 }
 
 function validateForm(formData) {
@@ -88,8 +113,34 @@ function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
+
+  const [siteSettings, setSiteSettings] = useState(null)
+  const [siteSettingsStatus, setSiteSettingsStatus] = useState('loading')
+  const [brandLogoFailed, setBrandLogoFailed] = useState(false)
+  const siteName = siteSettings?.site_name?.trim() || ''
+  const siteLogoUrl = resolveSiteMediaUrl(siteSettings?.logo)
+
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  useEffect(() => {
+    let isActive = true
+
+    setSiteSettingsStatus('loading')
+    getSiteSettings()
+      .then((data) => {
+        if (!isActive) return
+        setSiteSettings(data)
+        setSiteSettingsStatus('success')
+      })
+      .catch(() => {
+        if (!isActive) return
+        setSiteSettingsStatus('error')
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
   // ─── Enter key navigation ──────────────────────────────────────
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -277,11 +328,37 @@ function Register() {
           <Card className="w-full max-h-[85vh] overflow-y-auto scrollbar-hide rounded-[2rem] border border-white/60 bg-white/78 p-0 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-slate-800/70 dark:bg-slate-950/72" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <div className="border-b border-slate-200/80 px-6 py-4 sm:px-8 dark:border-slate-800/80">
               <div className="flex items-center gap-3">
-                <img src={logo} alt="NexaSpace logo" className="h-10 w-10 rounded-xl object-cover shadow-lg" />
+                {/* <img src={logo} alt="NexaSpace logo" className="h-10 w-10 rounded-xl object-cover shadow-lg" />
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b27a23]">Create account</p>
                   <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Premium access starts here</h2>
-                </div>
+                </div> */}
+                <button type="button" onClick={() => navigate('/')} className="flex shrink-0 items-center gap-3">
+                  {siteSettingsStatus === 'loading' ? (
+                    <BrandSkeleton />
+                  ) : siteSettingsStatus === 'success' ? (
+                    <>
+                      {siteLogoUrl && !brandLogoFailed ? (
+                        <img
+                          src={siteLogoUrl}
+                          alt={`${siteName || 'Website'} logo`}
+                          className="h-14 w-auto max-w-[3.5rem] object-contain"
+                          onError={() => setBrandLogoFailed(true)}
+                        />
+                      ) : (
+                        <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]">
+                          <Building2 size={26} />
+                        </span>
+                      )}
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b27a23]">Create account</p>
+                        <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Premium access starts here</h2>
+                      </div>
+                    </>
+                  ) : (
+                    <BrandFallback label={siteName || 'Home'} />
+                  )}
+                </button>
               </div>
             </div>
 
