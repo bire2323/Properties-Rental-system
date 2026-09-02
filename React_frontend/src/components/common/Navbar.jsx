@@ -273,7 +273,7 @@ function Navbar() {
     <>
       <header className="sticky top-0 z-50 border-b border-[#c99b43]/25 bg-white/90 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-[#c99b43]/35 dark:bg-[linear-gradient(90deg,#03172f_0%,#04254a_55%,#03172f_100%)] dark:text-white dark:shadow-[0_18px_50px_rgba(3,12,26,0.35)]">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <button type="button" onClick={() => navigateTo('/')} className="flex shrink-0 items-center gap-3">
+          <button type="button" onClick={() => navigateTo('/')} className="order-2 hidden shrink-0 items-center gap-3 lg:order-none lg:flex">
             {siteSettingsStatus === 'loading' ? (
               <BrandSkeleton />
             ) : siteSettingsStatus === 'success' ? (
@@ -578,7 +578,30 @@ function Navbar() {
             )}
           </div>
 
-          <div className="flex items-center gap-3 lg:hidden">
+          <div className="order-1 flex items-center gap-1 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 transition hover:bg-[#c99b43]/10 dark:text-slate-100 dark:hover:bg-white/10"
+              aria-label="Open navigation menu"
+              aria-haspopup="dialog"
+              aria-controls="mobile-nav-drawer"
+              aria-expanded={mobileMenuOpen}
+            >
+              <Menu size={20} />
+            </button>
+            <button type="button" onClick={() => navigateTo('/')} className="flex min-w-0 items-center gap-2 lg:hidden">
+              {siteSettingsStatus === 'loading' ? (
+                <div className="h-10 w-10 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+              ) : siteLogoUrl && !brandLogoFailed ? (
+                <img src={siteLogoUrl} alt={`${siteName || 'Website'} logo`} className="h-10 w-auto max-w-[2.75rem] object-contain" onError={() => setBrandLogoFailed(true)} />
+              ) : (
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]"><Building2 size={20} /></span>
+              )}
+            </button>
+          </div>
+
+          <div className="order-3 flex items-center gap-1 lg:hidden">
             <button
               type="button"
               onClick={toggleTheme}
@@ -586,17 +609,6 @@ function Navbar() {
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {isDark ? <SunMedium size={18} /> : <Moon size={18} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] transition hover:bg-[#c99b43]/12 dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d] dark:hover:bg-white/10"
-              aria-label="Open navigation menu"
-              aria-haspopup="dialog"
-              aria-controls="mobile-nav-drawer"
-              aria-expanded={mobileMenuOpen}
-            >
-              <Menu size={18} />
             </button>
           </div>
         </div>
@@ -621,10 +633,10 @@ function Navbar() {
               id="mobile-nav-drawer"
               role="dialog"
               aria-modal="true"
-              className="fixed inset-y-0 right-0 z-[60] flex w-[min(92vw,380px)] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 lg:hidden"
-              initial={{ x: '100%' }}
+              className="fixed inset-y-0 left-0 z-[60] flex w-[min(82vw,320px)] flex-col border-r border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 lg:hidden"
+              initial={{ x: '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              exit={{ x: '-100%' }}
               transition={
                 prefersReducedMotion
                   ? { duration: 0.01 }
@@ -656,9 +668,6 @@ function Navbar() {
                           <Building2 size={20} />
                         </span>
                       )}
-                      <span className="max-w-[14rem] truncate text-base font-semibold text-slate-900 dark:text-white">
-                        {siteName || 'Home'}
-                      </span>
                     </>
                   )}
                 </button>
@@ -674,6 +683,40 @@ function Navbar() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-3 py-4">
+                <div className="mb-5 space-y-3">
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white text-[#c99b43] dark:border-slate-700 dark:bg-slate-950">
+                      {user && profileImageUrl ? <img src={profileImageUrl} alt={userLabel} className="h-full w-full object-cover" /> : <User className="h-5 w-5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user ? `Welcome, ${userLabel}` : 'Welcome!'}</p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user ? (user.email || 'Your account') : 'Sign in to your account'}</p>
+                    </div>
+                  </div>
+                  {!loading && !user && <div className="flex flex-col items-start gap-2 px-1"><button type="button" onClick={() => navigateTo('/login')} className="text-sm font-semibold text-slate-700 transition hover:text-[#c99b43] dark:text-slate-200 dark:hover:text-[#f3c96d]">Sign In</button><button type="button" onClick={() => navigateTo('/register')} className="text-sm font-semibold text-slate-700 transition hover:text-[#c99b43] dark:text-slate-200 dark:hover:text-[#f3c96d]">Create Account</button></div>}
+                  {user && <button type="button" onClick={() => navigateTo(getDashboardRoute(user.role))} className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">Open dashboard <ChevronRight className="h-4 w-4 text-slate-400" /></button>}
+                </div>
+
+                <div className="mb-5">
+                  <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b27a23]">Appearance</p>
+                  <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+                    <button type="button" onClick={() => isDark && toggleTheme()} className={`flex flex-1 items-center justify-center rounded-lg py-2 ${!isDark ? 'bg-[#c99b43] text-white shadow-sm' : 'text-slate-500'}`} aria-label="Light mode"><SunMedium className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => !isDark && toggleTheme()} className={`flex flex-1 items-center justify-center rounded-lg py-2 ${isDark ? 'bg-[#c99b43] text-white shadow-sm' : 'text-slate-500'}`} aria-label="Dark mode"><Moon className="h-4 w-4" /></button>
+                  </div>
+                </div>
+
+                {user && (
+                  <div className="mb-5 space-y-1">
+                    <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b27a23]">Account</p>
+                    <button type="button" onClick={() => navigateTo(getDashboardRoute(user.role))} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><User className="h-4 w-4 text-[#c99b43]" />Profile</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
+                    <button type="button" onClick={() => navigateTo(user.role === 'owner' ? '/owner/favorites' : '/tenant/favorites')} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><Heart className="h-4 w-4 text-[#c99b43]" />Favorite</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
+                    <button type="button" onClick={() => navigateTo(user.role === 'owner' ? '/owner/settings' : user.role === 'admin' ? '/admin-dashboard/settings' : '/tenant/settings')} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><Settings className="h-4 w-4 text-[#c99b43]" />Setting</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
+                    <button type="button" onClick={() => navigateTo(getDashboardRoute(user.role))} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><Building2 className="h-4 w-4 text-[#c99b43]" />Dashboard</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
+                    <button type="button" onClick={handleLogout} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><LogOut className="h-4 w-4 text-red-500" />Logout</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
+                  </div>
+                )}
+
+                <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b27a23]">Quick Access</p>
                 <div className="space-y-1">
                   <button
                     type="button"
@@ -683,6 +726,7 @@ function Navbar() {
                     Home
                     <ChevronRight className="h-4 w-4 text-slate-400" />
                   </button>
+                  <button type="button" onClick={() => navigateTo('/about')} className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-900">About Us <ChevronRight className="h-4 w-4 text-slate-400" /></button>
 
                   {/* Properties (collapsible) */}
                   <button
@@ -806,68 +850,11 @@ function Navbar() {
                     )}
                   </AnimatePresence>
 
-                  <button
-                    type="button"
-                    onClick={() => navigateTo('/about')}
-                    className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-900"
-                  >
-                    About Us
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  </button>
                 </div>
               </div>
 
               <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800">
-                {loading ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                    Checking session...
-                  </div>
-                ) : user ? (
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const dashboardRoute = getDashboardRoute(user?.role)
-                        navigateTo(dashboardRoute)
-                      }}
-                      className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900"
-                    >
-                      <span className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-[#c99b43]" />
-                        My dashboard
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <span className="flex items-center gap-2">
-                        <LogOut className="h-4 w-4 text-red-500" />
-                        Log out
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigateTo('/login')}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900"
-                    >
-                      Sign In
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigateTo('/register')}
-                      className="rounded-2xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-4 py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
-                    >
-                      Sign Up
-                    </button>
-                  </div>
-                )}
+                <p className="text-center text-[10px] text-slate-400">Browse the marketplace</p>
               </div>
             </motion.aside>
           </>
