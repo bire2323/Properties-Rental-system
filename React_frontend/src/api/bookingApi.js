@@ -289,6 +289,107 @@ export async function rejectBooking(id) {
     return updateBookingStatus(id, { status: 'rejected' })
 }
 
+// ─── ADMIN BOOKING OPERATIONS ─────────────────────────────────────────────
+
+/**
+ * GET /api/bookings/
+ * List all bookings (admin). Supports server-side filtering.
+ *
+ * @param {Object} filters
+ * @param {string} filters.status - booking status
+ * @param {string} filters.listing_type - 'house' | 'car'
+ * @param {string} filters.rental_type - 'fixed_term' | 'month_to_month'
+ * @param {number} filters.property - property ID
+ * @param {number} filters.renter - renter user ID
+ * @param {number} filters.owner - recipient owner user ID
+ * @param {string} filters.start_date_from - YYYY-MM-DD
+ * @param {string} filters.start_date_to - YYYY-MM-DD
+ * @param {string} filters.end_date_from - YYYY-MM-DD
+ * @param {string} filters.end_date_to - YYYY-MM-DD
+ * @param {string} filters.search - booking reference search (case-insensitive)
+ * @returns {Promise<Array|Object>} Bookings (array or paginated object)
+ */
+export async function getAdminBookings(filters = {}) {
+    return listBookings(filters)
+}
+
+/**
+ * GET /api/bookings/{id}/audit/
+ * Retrieve the chronological audit history for a booking (admin).
+ *
+ * @param {number} id - Booking ID
+ * @returns {Promise<Array>} Audit events
+ */
+export async function getBookingAudit(id) {
+    return request(`/api/bookings/${id}/audit/`, { method: 'GET' })
+}
+
+/**
+ * POST /api/bookings/{id}/admin/cancel/
+ * Admin-only cancellation. Requires a reason.
+ *
+ * @param {number} id - Booking ID
+ * @param {string} reason - Mandatory reason for the action
+ * @returns {Promise<Object>} { detail, status }
+ */
+export async function adminCancelBooking(id, reason) {
+    return request(`/api/bookings/${id}/admin/cancel/`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+    })
+}
+
+/**
+ * POST /api/bookings/{id}/admin/expire/
+ * Admin-only expiry. Requires a reason.
+ *
+ * @param {number} id - Booking ID
+ * @param {string} reason - Mandatory reason
+ * @returns {Promise<Object>} { detail, status }
+ */
+export async function adminExpireBooking(id, reason) {
+    return request(`/api/bookings/${id}/admin/expire/`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+    })
+}
+
+/**
+ * POST /api/bookings/{id}/admin/complete/
+ * Admin-only completion. Requires a reason.
+ *
+ * @param {number} id - Booking ID
+ * @param {string} reason - Mandatory reason
+ * @returns {Promise<Object>} { detail, status }
+ */
+export async function adminCompleteBooking(id, reason) {
+    return request(`/api/bookings/${id}/admin/complete/`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+    })
+}
+
+/**
+ * GET /api/bookings/admin/reports/
+ * Admin-only booking statistics (server-side aggregation).
+ *
+ * @param {Object} filters - Optional date/listing filters
+ * @returns {Promise<Object>} Report data
+ */
+export async function getAdminBookingReports(filters = {}) {
+    const params = new URLSearchParams()
+
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== '') {
+            params.append(key, value)
+        }
+    })
+
+    const query = params.toString()
+    const endpoint = query ? `/api/bookings/admin/reports/?${query}` : '/api/bookings/admin/reports/'
+    return request(endpoint, { method: 'GET' })
+}
+
 /**
  * Check if a property/vehicle has any blocking bookings for a date range.
  * 

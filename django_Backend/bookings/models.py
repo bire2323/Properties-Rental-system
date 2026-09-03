@@ -111,3 +111,62 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.booking_reference} - {self.property.property_name} ({self.status})"
+
+
+class BookingAuditEvent(models.Model):
+    """
+    Immutable audit trail for booking lifecycle events.
+
+    This is the backend source-of-truth log for:
+    - renter creation
+    - owner/admin approvals/rejections/cancellations
+    - system confirmations from verified payments
+    - admin exceptional actions (cancel/expire/complete)
+    - admin viewing a booking (optional but useful for investigations)
+    """
+
+    class Action(models.TextChoices):
+        CREATED = "created", "Created"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        CANCELLED = "cancelled", "Cancelled"
+        CONFIRMED_FROM_PAYMENT = "confirmed_from_payment", "Confirmed from payment"
+        EXPIRED = "expired", "Expired"
+        COMPLETED = "completed", "Completed"
+        ADMIN_VIEWED = "admin_viewed", "Admin viewed"
+
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="audit_events",
+    )
+    booking_reference = models.CharField(max_length=20, db_index=True)
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="booking_audit_events",
+        help_text="NULL indicates a system event.",
+    )
+    actor_role = models.CharField(max_length=20, blank=True, default="", help_text="Snapshot of actor role at time of event.")
+
+    action = models.CharField(max_length=50, choices=Action.choices)
+    previous_status = models.CharField(max_length=20, blank=True, default="")
+    new_status = models.CharField(max_length=20, blank=True, default="")
+    reason = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [
+            models.Index(fields=["booking", "created_at"]),
+            models.Index(fields=["booking_reference", "created_at"]),
+            models.Index(fields=["action", "created_at"]),
+            models.Index(fields=["actor", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.booking_reference} {self.action} ({self.previous_status}->{self.new_status})"

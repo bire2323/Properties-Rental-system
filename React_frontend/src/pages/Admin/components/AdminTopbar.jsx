@@ -10,12 +10,14 @@ const routeTitles = {
     users: 'Users',
     properties: 'Properties',
     rentals: 'Rentals',
+    bookings: 'Bookings',
     verification: 'Verification',
     reports: 'Reports & Complaints',
     payments: 'Payments',
     locations: 'Locations',
     categories: 'Categories',
     notifications: 'Notifications',
+    'audit-log': 'Audit Log',
     settings: 'Settings',
 }
 

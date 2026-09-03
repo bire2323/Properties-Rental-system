@@ -30,15 +30,15 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast: cn(
-            'group toast w-full rounded-2xl border bg-popover text-popover-foreground shadow-lg backdrop-blur-md',
-            'data-[type=error]:border-red-400/40 data-[type=success]:border-emerald-400/40',
-            'max-sm:w-full max-sm:rounded-2xl'
+            'group !w-full rounded-2xl border shadow-lg backdrop-blur-md',
+            'data-[type=error]:border-red-500/40 data-[type=success]:border-emerald-500/40',
+            'max-sm:!w-full max-sm:rounded-2xl'
           ),
           title: 'font-semibold text-sm',
-          description: 'text-sm text-muted-foreground',
+          description: 'text-sm whitespace-pre-line opacity-90',
           closeButton: cn(
-            'border-border bg-background text-muted-foreground',
-            'group-data-[type=error]:border-red-400/40 group-data-[type=success]:border-emerald-400/40'
+            'border-black/10 bg-black/5 text-current',
+            'group-data-[type=error]:border-red-500/40 group-data-[type=success]:border-emerald-500/40'
           ),
         },
       }}

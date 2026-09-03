@@ -8,6 +8,7 @@ import UserDetail from '../pages/Admin/UserDetail'
 import AdminProperties from '../pages/Admin/Properties'
 import AdminPropertyDetail from '../pages/Admin/AdminPropertyDetail'
 import Rentals from '../pages/Admin/Rentals'
+import AdminBookings from '../pages/Admin/AdminBookings'
 import Verification from '../pages/Admin/Verification'
 import VerificationDetail from '../pages/Admin/VerificationDetail'
 import Reports from '../pages/Admin/Reports'
@@ -15,6 +16,7 @@ import Payments from '../pages/Admin/Payments'
 import AdminSetting from '../pages/Admin/AdminSetting'
 import AdminProfile from '../pages/Admin/AdminProfile'
 import Notification from '../pages/Admin/Notification'
+import AuditLog from '../pages/Admin/AuditLog'
 import NotificationDetail from '../pages/Admin/NotificationDetail'
 import Locations from '../pages/Admin/Locations'
 import OwnerDashboard from '../pages/Owner/OwnerDashboard'
@@ -172,6 +174,14 @@ function AppRoutes() {
                     }
                 />
                 <Route
+                    path="/admin-dashboard/bookings"
+                    element={
+                        <AdminRoute>
+                            <AdminBookings />
+                        </AdminRoute>
+                    }
+                />
+                <Route
                     path="/admin-dashboard/verification"
                     element={
                         <AdminRoute>
@@ -249,6 +259,14 @@ function AppRoutes() {
                     element={
                         <AdminRoute>
                             <Categories />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/audit-log"
+                    element={
+                        <AdminRoute>
+                            <AuditLog />
                         </AdminRoute>
                     }
                 />

@@ -10,6 +10,8 @@ from collections import Counter
 from interactions.models import PropertyRating, Favorite
 from accounts.models import Notification
 from site_settings.models import SiteSettings
+from audit.models import AuditLog
+from audit.services import audit_event
 from .models import Property, Feature, Company, CompanyVerificationDocument, ListingType, Region, City, Category
 from .permissions import PropertyPermission, CompanyPermission, CompanyDocumentPermission, AdminRolePermission
 from .serializers import (
@@ -146,7 +148,52 @@ class RegionAdminViewSet(viewsets.ModelViewSet):
                 message = f'This region cannot be deleted because it is still used by {summary}.'
             return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
 
+        audit_event(
+            actor=request.user,
+            action="ADMIN_REGION_DELETED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="region",
+            target_id="",
+            target_display=region.name,
+            description=f"Admin deleted region '{region.name}'.",
+            metadata={"region_name": region.name},
+            request=request,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        audit_event(
+            actor=self.request.user,
+            action="ADMIN_REGION_CREATED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="region",
+            target_id=instance.pk,
+            target_display=instance.name,
+            description=f"Admin created region '{instance.name}'.",
+            metadata={"region_name": instance.name},
+            request=self.request,
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        audit_event(
+            actor=self.request.user,
+            action="ADMIN_REGION_UPDATED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="region",
+            target_id=instance.pk,
+            target_display=instance.name,
+            description=f"Admin updated region '{instance.name}'.",
+            metadata={"region_name": instance.name},
+            request=self.request,
+        )
 
 
 class CityAdminViewSet(viewsets.ModelViewSet):
@@ -188,7 +235,52 @@ class CityAdminViewSet(viewsets.ModelViewSet):
                 message = f'This city cannot be deleted because it is still used by {summary}.'
             return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
 
+        audit_event(
+            actor=request.user,
+            action="ADMIN_CITY_DELETED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="city",
+            target_id="",
+            target_display=city.name,
+            description=f"Admin deleted city '{city.name}'.",
+            metadata={"city_name": city.name},
+            request=request,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        audit_event(
+            actor=self.request.user,
+            action="ADMIN_CITY_CREATED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="city",
+            target_id=instance.pk,
+            target_display=instance.name,
+            description=f"Admin created city '{instance.name}'.",
+            metadata={"city_name": instance.name, "region": getattr(instance.region, "name", "")},
+            request=self.request,
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        audit_event(
+            actor=self.request.user,
+            action="ADMIN_CITY_UPDATED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="city",
+            target_id=instance.pk,
+            target_display=instance.name,
+            description=f"Admin updated city '{instance.name}'.",
+            metadata={"city_name": instance.name, "region": getattr(instance.region, "name", "")},
+            request=self.request,
+        )
 
 
 class CategoryListAPIView(ListAPIView):
@@ -260,7 +352,52 @@ class CategoryAdminViewSet(viewsets.ModelViewSet):
                 message = f'This category cannot be deleted because it is still used by {summary}.'
             return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
 
+        audit_event(
+            actor=request.user,
+            action="ADMIN_CATEGORY_DELETED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="category",
+            target_id="",
+            target_display=category.name,
+            description=f"Admin deleted category '{category.name}'.",
+            metadata={"category_name": category.name},
+            request=request,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        audit_event(
+            actor=self.request.user,
+            action="ADMIN_CATEGORY_CREATED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="category",
+            target_id=instance.pk,
+            target_display=instance.name,
+            description=f"Admin created category '{instance.name}' ({instance.listing_type}).",
+            metadata={"category_name": instance.name, "listing_type": instance.listing_type},
+            request=self.request,
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        audit_event(
+            actor=self.request.user,
+            action="ADMIN_CATEGORY_UPDATED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="category",
+            target_id=instance.pk,
+            target_display=instance.name,
+            description=f"Admin updated category '{instance.name}'.",
+            metadata={"category_name": instance.name, "listing_type": instance.listing_type},
+            request=self.request,
+        )
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
@@ -406,6 +543,23 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         property_obj = serializer.save(owner=self.request.user)
         site_settings = SiteSettings.objects.filter(pk=1).first()
+
+        audit_event(
+            actor=self.request.user,
+            action="PROPERTY_CREATED",
+            category=AuditLog.Category.PROPERTY if property_obj.listing_type == ListingType.HOUSE else AuditLog.Category.VEHICLE,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="property",
+            target_id=property_obj.pk,
+            target_display=property_obj.property_name,
+            description=f"Owner {self.request.user.get_full_name().strip() or self.request.user.email} created {'house' if property_obj.listing_type == ListingType.HOUSE else 'vehicle'} listing '{property_obj.property_name}'.",
+            previous_state={},
+            new_state={"status": property_obj.status, "is_available": property_obj.is_available},
+            metadata={"property_name": property_obj.property_name, "listing_type": property_obj.listing_type, "price": str(property_obj.price)},
+            request=self.request,
+        )
+
         if site_settings is None or site_settings.property_listing_alerts:
             owner_name = self.request.user.get_full_name().strip() or self.request.user.email
             house = getattr(property_obj, 'house_detail', None)
@@ -436,7 +590,36 @@ class PropertyViewSet(viewsets.ModelViewSet):
             )
 
     def perform_update(self, serializer):
-        serializer.save()
+        instance = serializer.save()
+        audit_event(
+            actor=self.request.user,
+            action="PROPERTY_UPDATED",
+            category=AuditLog.Category.PROPERTY if instance.listing_type == ListingType.HOUSE else AuditLog.Category.VEHICLE,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="property",
+            target_id=instance.pk,
+            target_display=instance.property_name,
+            description=f"Owner {self.request.user.get_full_name().strip() or self.request.user.email} updated {'house' if instance.listing_type == ListingType.HOUSE else 'vehicle'} listing '{instance.property_name}'.",
+            metadata={"property_name": instance.property_name, "listing_type": instance.listing_type},
+            request=self.request,
+        )
+
+    def perform_destroy(self, instance):
+        audit_event(
+            actor=self.request.user,
+            action="PROPERTY_DELETED",
+            category=AuditLog.Category.PROPERTY if instance.listing_type == ListingType.HOUSE else AuditLog.Category.VEHICLE,
+            severity=AuditLog.Severity.WARNING,
+            result=AuditLog.Result.SUCCESS,
+            target_type="property",
+            target_id=instance.pk,
+            target_display=instance.property_name,
+            description=f"Owner {self.request.user.get_full_name().strip() or self.request.user.email} deleted {'house' if instance.listing_type == ListingType.HOUSE else 'vehicle'} listing '{instance.property_name}'.",
+            metadata={"property_name": instance.property_name, "listing_type": instance.listing_type},
+            request=self.request,
+        )
+        instance.delete()
 
 
 class CompanyViewSet(viewsets.ModelViewSet):

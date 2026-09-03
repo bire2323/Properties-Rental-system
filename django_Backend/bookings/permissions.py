@@ -27,6 +27,16 @@ class BookingPermission(permissions.BasePermission):
         if user.role == User.Role.ADMIN:
             return True
 
+        # Audit trail should be visible to anyone who can see the booking itself.
+        if view.action == "audit":
+            if obj.renter_id == user.pk:
+                return True
+            return _user_manages_property(user, obj.property)
+
+        # Admin-only exceptional actions.
+        if view.action in {"admin_cancel", "admin_expire", "admin_complete", "admin_reports"}:
+            return False
+
         if view.action in ("retrieve", "list"):
             if obj.renter_id == user.pk:
                 return True

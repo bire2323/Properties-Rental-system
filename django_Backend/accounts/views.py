@@ -29,6 +29,8 @@ from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notificati
 from bookings.models import Booking
 from properties.models import Property
 from site_settings.models import SiteSettings
+from audit.services import audit_event
+from audit.models import AuditLog
 
 User = get_user_model()
 
@@ -127,18 +129,22 @@ class RegisterAPIView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        site_settings = SiteSettings.objects.filter(pk=1).first()
-        if site_settings is None or site_settings.new_user_registration:
-            Notification.objects.create(
-                type=Notification.NotificationType.SYSTEM,
-                status=Notification.NotificationStatus.NEW,
-                title="New user registration",
-                details=f"{user.get_full_name().strip() or user.email} created a new account.",
-                info="User registration",
-                sender=user,
-                sender_name=user.get_full_name().strip() or user.email,
-                sender_email=user.email,
-            )
+        # Registration belongs in the Audit Log (not an admin notification).
+        # A normal registration is not an "important" notice requiring the
+        # admin's attention. It is recorded as audit history.
+        audit_event(
+            actor=user,
+            action="USER_REGISTERED",
+            category=AuditLog.Category.USER,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"User {user.get_full_name().strip() or user.email} registered a new account with role {user.get_role_display() if hasattr(user, 'get_role_display') else user.role}.",
+            metadata={"role": user.role, "auth_provider": user.auth_provider},
+            request=request,
+        )
 
         tokens = create_tokens(user)
         response = Response(
@@ -163,6 +169,20 @@ class LoginAPIView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
+        audit_event(
+            actor=user,
+            action="LOGIN_SUCCESS",
+            category=AuditLog.Category.AUTHENTICATION,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"User {user.get_full_name().strip() or user.email} logged in successfully.",
+            metadata={"auth_provider": user.auth_provider},
+            request=request,
+        )
+
         tokens = create_tokens(user)
         response = Response(
             {
@@ -184,6 +204,26 @@ class LogoutAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        # The user may be authenticated (via cookies) but logout is AllowAny.
+        # Try to identify the actor for the audit event if possible.
+        actor = getattr(request, "user", None)
+        if actor and not actor.is_authenticated:
+            actor = None
+
+        if actor is not None and actor.is_authenticated:
+            audit_event(
+                actor=actor,
+                action="LOGOUT",
+                category=AuditLog.Category.AUTHENTICATION,
+                severity=AuditLog.Severity.INFO,
+                result=AuditLog.Result.SUCCESS,
+                target_type="user",
+                target_id=actor.pk,
+                target_display=actor.email,
+                description=f"User {actor.get_full_name().strip() or actor.email} logged out.",
+                request=request,
+            )
+
         response = Response({"message": "Logout successful."}, status=status.HTTP_200_OK)
         clear_auth_cookies(response)
         return response
@@ -199,6 +239,20 @@ class GoogleAuthAPIView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
+
+        audit_event(
+            actor=user,
+            action="GOOGLE_LOGIN",
+            category=AuditLog.Category.AUTHENTICATION,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"User {user.get_full_name().strip() or user.email} authenticated via Google.",
+            metadata={"auth_provider": user.auth_provider},
+            request=request,
+        )
 
         tokens = create_tokens(user)
         response = Response(
@@ -249,7 +303,42 @@ class ProfileAPIView(APIView):
             context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
+
+        previous_name = f"{user.first_name} {user.last_name}".strip() or user.email
+        previous_email = user.email
+        had_password_change = bool(
+            request.data.get("new_password") or request.data.get("current_password")
+        )
+
         serializer.save()
+
+        changes = []
+        if request.data.get("first_name") and request.data["first_name"] != user.first_name:
+            changes.append("first_name")
+        if request.data.get("last_name") and request.data["last_name"] != user.last_name:
+            changes.append("last_name")
+        if had_password_change:
+            changes.append("password")
+        if request.data.get("email") and request.data["email"] != previous_email:
+            changes.append("email")
+        if request.data.get("phone_number") and request.data["phone_number"] != profile.phone_number:
+            changes.append("phone_number")
+
+        audit_event(
+            actor=user,
+            action="PROFILE_UPDATED",
+            category=AuditLog.Category.USER,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"User {previous_name} updated their profile.",
+            previous_state={"name": previous_name, "email": previous_email},
+            new_state={"name": f"{user.first_name} {user.last_name}".strip() or user.email, "email": user.email},
+            metadata={"changed_fields": changes},
+            request=request,
+        )
 
         # Return full user data with updated profile
         user_serializer = UserSerializer(user)
@@ -276,6 +365,20 @@ class ProfileAPIView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        audit_event(
+            actor=user,
+            action="PROFILE_UPDATED",
+            category=AuditLog.Category.USER,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"User {user.get_full_name().strip() or user.email} updated their profile.",
+            metadata={"updated_fields": list(request.data.keys())},
+            request=request,
+        )
 
         user_serializer = UserSerializer(user)
         return Response(
@@ -336,6 +439,22 @@ class BecomeOwnerAPIView(APIView):
         # ─── 6. Update user role ────────────────────────────────────
         user.role = User.Role.OWNER
         user.save(update_fields=["role"])
+
+        audit_event(
+            actor=user,
+            action="BECAME_OWNER",
+            category=AuditLog.Category.USER,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"User {user.get_full_name().strip() or user.email} applied to become an owner.",
+            previous_state={"role": User.Role.TENANT},
+            new_state={"role": User.Role.OWNER, "verification_status": OwnerProfile.VerificationStatus.PENDING},
+            metadata={"document_type": request.data.get('document_type', '')},
+            request=request,
+        )
 
         # ─── 7. Handle Verification Document ────────────────────────
         document_type = request.data.get('document_type')
@@ -458,6 +577,20 @@ class FullUserDetailAPIView(APIView):
                 {"detail": "Administrator accounts cannot be deleted here."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        audit_event(
+            actor=request.user,
+            action="USER_DELETED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.WARNING,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"Admin deleted user account {user.email}.",
+            metadata={"deleted_user_email": user.email, "deleted_user_role": user.role, "admin_user": request.user.email},
+            request=request,
+        )
 
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -619,6 +752,22 @@ class AdminUserLoginResetAPIView(APIView):
         user.failed_login_attempts = 0
         user.login_blocked = False
         user.save(update_fields=["failed_login_attempts", "login_blocked", "updated_at"])
+
+        audit_event(
+            actor=request.user,
+            action="ADMIN_USER_LOGIN_RESET",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"Admin reset login access for user {user.email}.",
+            previous_state={"failed_login_attempts": user.failed_login_attempts, "login_blocked": True},
+            new_state={"failed_login_attempts": 0, "login_blocked": False},
+            metadata={"admin_user": request.user.email},
+            request=request,
+        )
         return Response(
             {"id": user.id, "login_blocked": False, "message": "User login access has been reset."},
             status=status.HTTP_200_OK,
@@ -684,6 +833,9 @@ class AdminOwnerVerificationDecisionAPIView(APIView):
         if status_value not in OwnerProfile.VerificationStatus.values:
             return Response({"detail": "Invalid verification status."}, status=status.HTTP_400_BAD_REQUEST)
 
+        previous_status = owner_profile.verification_status
+        previous_role = user.role
+
         owner_profile.verification_status = status_value
         owner_profile.can_post_property = status_value == OwnerProfile.VerificationStatus.APPROVED
         owner_profile.rejection_reason = request.data.get('rejection_reason') if status_value == OwnerProfile.VerificationStatus.REJECTED else ''
@@ -698,6 +850,23 @@ class AdminOwnerVerificationDecisionAPIView(APIView):
 
         user.save(update_fields=['role'])
         owner_profile.save()
+
+        audit_event(
+            actor=request.user,
+            action="OWNER_VERIFICATION_CHANGED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"Admin set owner verification status for {user.email} to {status_value}.",
+            previous_state={"verification_status": previous_status, "role": previous_role},
+            new_state={"verification_status": status_value, "role": user.role, "can_post_property": owner_profile.can_post_property},
+            reason=request.data.get('rejection_reason') or "",
+            metadata={"admin_user": request.user.email},
+            request=request,
+        )
         return Response(serialize_owner_verification_user(user, request), status=status.HTTP_200_OK)
 
 
@@ -927,7 +1096,7 @@ class AdminNotificationDetailAPIView(AdminNotificationListAPIView):
 
 
 class AdminPaymentsAPIView(APIView):
-    """Return admin payments list (stub returning empty transactions)."""
+    """Return admin payment list from real PaymentTransaction records (ADMIN only)."""
 
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticatedCookie]
@@ -939,30 +1108,42 @@ class AdminPaymentsAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        try:
-            from payments.models import Transaction, Payment
+        from payments.models import PaymentTransaction
 
-            transactions_qs = Transaction.objects.select_related(
-                "booking", "booking__property", "booking__renter"
-            ).order_by("-created_at")[:100]
+        qs = (
+            PaymentTransaction.objects.select_related(
+                "booking",
+                "booking__property",
+                "booking__renter",
+                "payer",
+            )
+        )
 
-            transactions = []
-            for i, tx in enumerate(transactions_qs):
-                booking = getattr(tx, "booking", None)
-                property_obj = getattr(booking, "property", None)
-                renter = getattr(booking, "renter", None)
-                transactions.append({
-                    "id": getattr(tx, "id", f"tx-{i}"),
-                    "transaction_id": getattr(tx, "transaction_id", getattr(tx, "reference", "")),
-                    "amount": float(getattr(tx, "amount", 0)),
-                    "currency": getattr(tx, "currency", "ETB"),
-                    "status": getattr(tx, "status", "Pending"),
-                    "payment_method": getattr(tx, "payment_method", getattr(tx, "method", "Bank Transfer")),
-                    "property_name": property_obj.property_name if property_obj else (getattr(booking, "title", "") if booking else ""),
-                    "tenant_name": (f"{renter.first_name} {renter.last_name}".strip() if renter else (getattr(renter, "email", "") if renter else "Unknown")),
-                    "date": getattr(tx, "created_at", getattr(tx, "paid_at", None)),
-                })
-        except Exception:
-            transactions = []
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        qs = qs.order_by("-created_at")[:200]
+
+        transactions = [
+            {
+                "id": tx.pk,
+                "transaction_reference": tx.transaction_reference,
+                "payer": tx.payer.get_full_name() or tx.payer.email,
+                "payer_email": tx.payer.email,
+                "booking_reference": tx.booking.booking_reference,
+                "property_name": tx.booking.property.property_name,
+                "renter": tx.booking.renter.get_full_name() or tx.booking.renter.email,
+                "amount": float(tx.amount),
+                "currency": tx.currency,
+                "payment_method": tx.payment_method,
+                "payment_method_display": dict(PaymentTransaction.PaymentMethod.choices).get(tx.payment_method, tx.payment_method),
+                "status": tx.status,
+                "status_display": dict(PaymentTransaction.PaymentStatus.choices).get(tx.status, tx.status),
+                "provider_reference": tx.provider_reference,
+                "created_at": tx.created_at.isoformat() if tx.created_at else None,
+            }
+            for tx in qs
+        ]
 
         return Response({"transactions": transactions}, status=status.HTTP_200_OK)

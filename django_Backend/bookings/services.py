@@ -236,6 +236,8 @@ def confirm_booking_from_payment(payment_transaction):
     the owner/manager before payment can unlock CONFIRMED.
     """
     from payments.models import PaymentTransaction
+    from audit.models import AuditLog
+    from audit.services import audit_event
 
     if payment_transaction.status != PaymentTransaction.PaymentStatus.SUCCESSFUL:
         raise ValueError("Only successful payments can confirm a booking.")
@@ -252,6 +254,39 @@ def confirm_booking_from_payment(payment_transaction):
 
     booking.status = Booking.BookingStatus.CONFIRMED
     booking.save(update_fields=["status", "updated_at"])
+    record_audit_event(
+        booking=booking,
+        action="confirmed_from_payment",
+        actor=None,
+        previous_status=Booking.BookingStatus.APPROVED,
+        new_status=Booking.BookingStatus.CONFIRMED,
+        reason="",
+        metadata={
+            "payment_transaction_id": getattr(payment_transaction, "id", None),
+            "payment_transaction_reference": getattr(payment_transaction, "transaction_reference", ""),
+            "payment_method": getattr(payment_transaction, "payment_method", ""),
+        },
+    )
+    audit_event(
+        actor=None,
+        action="PAYMENT_VERIFIED",
+        category=AuditLog.Category.PAYMENT,
+        severity=AuditLog.Severity.INFO,
+        result=AuditLog.Result.SUCCESS,
+        target_type="payment",
+        target_id=payment_transaction.pk,
+        target_display=payment_transaction.transaction_reference,
+        description=f"Payment {payment_transaction.transaction_reference} verified for booking {booking.booking_reference}; booking confirmed.",
+        previous_state={"payment_status": payment_transaction.status},
+        new_state={"booking_status": Booking.BookingStatus.CONFIRMED},
+        metadata={
+            "transaction_reference": payment_transaction.transaction_reference,
+            "booking_reference": booking.booking_reference,
+            "payment_method": payment_transaction.payment_method,
+            "amount": str(payment_transaction.amount),
+            "currency": payment_transaction.currency,
+        },
+    )
     return booking
 
 
@@ -286,4 +321,59 @@ def create_booking(*, renter, property_id, rental_type, start_date, end_date):
         )
         booking.full_clean()
         booking.save()
+        record_audit_event(
+            booking=booking,
+            action="created",
+            actor=renter,
+            previous_status="",
+            new_status=booking.status,
+            reason="",
+            metadata={},
+        )
         return booking
+
+
+def record_audit_event(*, booking, action, actor, previous_status, new_status, reason="", metadata=None):
+    """
+    Append an immutable audit event row. Never raises to avoid breaking core booking flows.
+    Also records a platform-wide AuditLog entry so booking events appear in the
+    admin Audit Log view. Both records are written from this single authoritative
+    call site to avoid duplicate events.
+    """
+    from .models import BookingAuditEvent
+    from audit.models import AuditLog
+    from audit.services import audit_event
+
+    try:
+        BookingAuditEvent.objects.create(
+            booking=booking,
+            booking_reference=booking.booking_reference,
+            actor=actor,
+            actor_role=getattr(actor, "role", "") if actor else "system",
+            action=action,
+            previous_status=previous_status or "",
+            new_status=new_status or "",
+            reason=reason or "",
+            metadata=metadata or {},
+        )
+    except Exception:
+        # Audit logging must never break the booking lifecycle.
+        return
+
+    # Also record the platform-wide audit entry. This is the same event; do not
+    # double-record. Keep the audit log in sync with the booking audit trail.
+    audit_event(
+        actor=actor,
+        action=f"BOOKING_{action.upper()}",
+        category=AuditLog.Category.BOOKING,
+        severity=AuditLog.Severity.INFO,
+        result=AuditLog.Result.SUCCESS,
+        target_type="booking",
+        target_id=booking.pk,
+        target_display=booking.booking_reference,
+        description=f"Booking {booking.booking_reference} {action} (status: {previous_status or 'new'} -> {new_status}).",
+        previous_state={"status": previous_status or ""} if previous_status else {},
+        new_state={"status": new_status or ""} if new_status else {},
+        reason=reason or "",
+        metadata=metadata or {"booking_reference": booking.booking_reference},
+    )

@@ -9,9 +9,10 @@ import {
     BarChart3,
     WalletCards,
     MapPinned,
-
+    CalendarCheck2,
     FolderTree,
     Bell,
+    ScrollText,
     Settings,
     LogOut,
     X,
@@ -27,6 +28,7 @@ const managementLinks = [
     { label: 'Users', path: '/admin-dashboard/users', icon: Users },
     { label: 'Properties', path: '/admin-dashboard/properties', icon: Building2 },
     { label: 'Rentals', path: '/admin-dashboard/rentals', icon: KeyRound },
+    { label: 'Bookings', path: '/admin-dashboard/bookings', icon: CalendarCheck2 },
     { label: 'Verification', path: '/admin-dashboard/verification', icon: ShieldCheck },
     { label: 'Reports & Complaints', path: '/admin-dashboard/reports', icon: BarChart3 },
     { label: 'Payments', path: '/admin-dashboard/payments', icon: WalletCards },
@@ -36,6 +38,7 @@ const managementLinks = [
 
 const settingsLinks = [
     { label: 'Notifications', path: '/admin-dashboard/notifications', icon: Bell },
+    { label: 'Audit Log', path: '/admin-dashboard/audit-log', icon: ScrollText },
     { label: 'Settings', path: '/admin-dashboard/settings', icon: Settings },
 ]
 

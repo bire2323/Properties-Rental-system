@@ -5,6 +5,8 @@ from rest_framework import serializers
 from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification
 from site_settings.models import SiteSettings
 from .services import verify_google_token
+from audit.services import audit_event
+from audit.models import AuditLog
 
 User = get_user_model()
 
@@ -252,26 +254,77 @@ class LoginSerializer(serializers.Serializer):
 
         user = User.objects.filter(email=email).first()
         if user and user.login_blocked:
+            audit_event(
+                actor=user,
+                action="LOGIN_FAILED",
+                category=AuditLog.Category.SECURITY,
+                severity=AuditLog.Severity.WARNING,
+                result=AuditLog.Result.FAILED,
+                target_type="user",
+                target_id=user.pk,
+                target_display=email,
+                description="Login attempt blocked because the account is locked after too many failed attempts.",
+                metadata={"failure_reason": "account_blocked"},
+                request=self.context.get("request"),
+            )
             raise serializers.ValidationError({"detail": "This account is blocked after too many failed login attempts."})
 
         request = self.context.get("request")
         user = authenticate(request=request, email=email, password=password)
 
         if not user:
-            if user is None:
-                failed_user = User.objects.filter(email=email).first()
-                if failed_user:
-                    security = SiteSettings.objects.filter(pk=1).first()
-                    limit = security.login_attempts_limit if security else 5
-                    failed_user.failed_login_attempts += 1
-                    if failed_user.failed_login_attempts >= limit:
-                        failed_user.login_blocked = True
-                    failed_user.save(update_fields=["failed_login_attempts", "login_blocked"])
-                    if failed_user.login_blocked:
-                        raise serializers.ValidationError({"detail": "This account is blocked after too many failed login attempts."})
+            failed_user = User.objects.filter(email=email).first()
+            audit_event(
+                actor=failed_user,
+                action="LOGIN_FAILED",
+                category=AuditLog.Category.AUTHENTICATION,
+                severity=AuditLog.Severity.WARNING,
+                result=AuditLog.Result.FAILED,
+                target_type="user",
+                target_id=getattr(failed_user, "pk", None),
+                target_display=email,
+                description="Failed login attempt for user account.",
+                metadata={"failure_reason": "invalid_credentials"},
+                request=request,
+            )
+            if failed_user:
+                security = SiteSettings.objects.filter(pk=1).first()
+                limit = security.login_attempts_limit if security else 5
+                failed_user.failed_login_attempts += 1
+                if failed_user.failed_login_attempts >= limit:
+                    failed_user.login_blocked = True
+                failed_user.save(update_fields=["failed_login_attempts", "login_blocked"])
+                if failed_user.login_blocked:
+                    audit_event(
+                        actor=failed_user,
+                        action="ACCOUNT_LOCKED",
+                        category=AuditLog.Category.SECURITY,
+                        severity=AuditLog.Severity.WARNING,
+                        result=AuditLog.Result.FAILED,
+                        target_type="user",
+                        target_id=failed_user.pk,
+                        target_display=email,
+                        description="Account locked after repeated failed login attempts.",
+                        metadata={"failure_reason": "login_attempts_exceeded", "attempts": failed_user.failed_login_attempts},
+                        request=request,
+                    )
+                    raise serializers.ValidationError({"detail": "This account is blocked after too many failed login attempts."})
             raise serializers.ValidationError({"detail": "Invalid email or password."})
 
         if user.login_blocked:
+            audit_event(
+                actor=user,
+                action="LOGIN_FAILED",
+                category=AuditLog.Category.SECURITY,
+                severity=AuditLog.Severity.WARNING,
+                result=AuditLog.Result.FAILED,
+                target_type="user",
+                target_id=user.pk,
+                target_display=email,
+                description="Login attempt blocked because the account is locked.",
+                metadata={"failure_reason": "account_blocked"},
+                request=request,
+            )
             raise serializers.ValidationError({"detail": "This account is blocked after too many failed login attempts."})
 
         if user.failed_login_attempts:
