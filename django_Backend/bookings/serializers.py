@@ -2,8 +2,10 @@ from rest_framework import serializers
 from django.utils import timezone
 
 from properties.models import Property, ListingType
+from accounts.models import User
 from .models import Booking
 from . import services
+from .permissions import _user_manages_property
 
 
 class BookingCreateSerializer(serializers.Serializer):
@@ -119,16 +121,50 @@ class BookingStatusUpdateSerializer(serializers.ModelSerializer):
         model = Booking
         fields = ["status"]
 
+    def _requester_may_approve(self, booking):
+        """Owner/company manager or admin may approve a pending booking."""
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.role == User.Role.ADMIN:
+            return True
+        return _user_manages_property(request.user, booking.property)
+
     def validate_status(self, value):
         booking = self.instance
+        if value == Booking.BookingStatus.APPROVED:
+            # The owner/manager's approval step: PENDING -> APPROVED. Adjusting
+            # this endpoint to APPROVED (still awaiting payment) rather than
+            # CONFIRMED, so CONFIRMED is reserved for verified payment only.
+            if booking.status != Booking.BookingStatus.PENDING:
+                raise serializers.ValidationError("Only pending bookings can be approved.")
+            if not self._requester_may_approve(booking):
+                raise serializers.ValidationError(
+                    "Only the property owner, a company manager, or an admin can approve a booking."
+                )
+            return value
         if value == Booking.BookingStatus.CONFIRMED:
-            raise serializers.ValidationError("Bookings are confirmed only by successful payment verification.")
+            # CONFIRMED is never settable through this endpoint; it is produced
+            # exclusively by services.confirm_booking_from_payment after a
+            # verified payment on an APPROVED booking.
+            raise serializers.ValidationError(
+                "Bookings are confirmed only by successful payment verification on an approved booking."
+            )
         if value == Booking.BookingStatus.REJECTED:
             if booking.status != Booking.BookingStatus.PENDING:
                 raise serializers.ValidationError("Only pending bookings can be rejected.")
         elif value == Booking.BookingStatus.CANCELLED:
-            if booking.status not in {Booking.BookingStatus.PENDING, Booking.BookingStatus.CONFIRMED}:
-                raise serializers.ValidationError("Only pending or confirmed bookings can be cancelled.")
+            cancellable = {
+                Booking.BookingStatus.PENDING,
+                Booking.BookingStatus.APPROVED,
+                Booking.BookingStatus.CONFIRMED,
+            }
+            if booking.status not in cancellable:
+                raise serializers.ValidationError(
+                    "Only pending, approved or confirmed bookings can be cancelled."
+                )
         else:
-            raise serializers.ValidationError("Only rejection or cancellation is available through this endpoint.")
+            raise serializers.ValidationError(
+                "Only approval, rejection or cancellation is available through this endpoint."
+            )
         return value

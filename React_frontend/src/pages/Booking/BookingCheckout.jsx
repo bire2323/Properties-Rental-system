@@ -9,6 +9,7 @@ import BookingForm from '../../components/booking/BookingForm'
 import BookingSummary from '../../components/booking/BookingSummary'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { toast } from '../../components/ui/toaster'
 import { getPropertyById } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 import { useBooking } from '../../context/BookingContext'
@@ -21,6 +22,96 @@ import {
   RENTAL_TYPES,
   validateBookingDetails,
 } from '../../lib/bookingUtils'
+
+/**
+ * Convert a Django REST Framework booking error into form field keys the
+ * BookingForm understands, preserving the backend's exact messages verbatim.
+ *
+ * Backend field keys -> frontend BookingForm keys:
+ *   start_date  -> checkIn (car) / moveInDate (house)
+ *   end_date    -> checkOut (car) / general alert (house has no end-date field)
+ *   rental_type -> rentalType (house) / general alert (cars are always fixed-term)
+ *   property, non_field_errors, detail, unknown -> general alert
+ *
+ * Every backend-provided message is surfaced; a generic fallback is used only
+ * when the backend supplied no useful validation message at all.
+ */
+function mapBackendErrorsToFields(err, listingType) {
+  const isCar = listingType === 'car'
+  const result = {}
+
+  const fieldKeyFor = (backendKey) => {
+    if (backendKey === 'start_date') return isCar ? 'checkIn' : 'moveInDate'
+    if (backendKey === 'end_date') return isCar ? 'checkOut' : null
+    if (backendKey === 'rental_type') return isCar ? null : 'rentalType'
+    return null
+  }
+
+  const firstMessage = (value) => {
+    if (value == null) return null
+    if (Array.isArray(value)) {
+      const first = value.find((v) => typeof v === 'string' && v.length > 0)
+      return first || null
+    }
+    return typeof value === 'string' ? value : null
+  }
+
+  const fieldErrors = (err && err.fieldErrors) || {}
+  for (const [backendKey, messages] of Object.entries(fieldErrors)) {
+    const message = firstMessage(messages)
+    if (!message) continue
+    const mappedKey = fieldKeyFor(backendKey)
+    if (mappedKey) {
+      result[mappedKey] = message
+    } else {
+      result.general = result.general || message
+    }
+  }
+
+  const nonFieldMessage = (err && err.nonFieldErrors && err.nonFieldErrors[0]) || null
+  if (nonFieldMessage) result.general = result.general || nonFieldMessage
+
+  const responseDetail =
+    err && err.response && typeof err.response === 'object'
+      ? firstMessage(err.response.detail)
+      : null
+  if (responseDetail) result.general = result.general || responseDetail
+
+  // When the backend gave us nothing structured, fall back to its message or a
+  // generic copy only as a last resort.
+  if (Object.keys(result).length === 0 && err && err.message) {
+    result.general = err.message
+  }
+
+  return result
+}
+
+/**
+ * Show a responsive error toast with the backend's exact message(s).
+ *
+ * The primary (most relevant) message is the toast title. If the submission
+ * produced more than one distinct issue, the rest are listed in the toast
+ * description so nothing is hidden. Uses the shared app Toaster (sonner).
+ */
+function notifyBookingError(backendErrors) {
+  const messages = []
+
+  if (backendErrors.general) messages.push(backendErrors.general)
+  for (const [key, value] of Object.entries(backendErrors)) {
+    if (key === 'general') continue
+    if (typeof value === 'string' && value) messages.push(value)
+  }
+
+  const unique = [...new Set(messages)]
+  const primary = unique[0] || 'Unable to create booking. Please try again.'
+  const remaining = unique.slice(1)
+
+  toast.error(primary, {
+    description:
+      remaining.length > 0 ? remaining.join('\n') : undefined,
+    duration: 6000,
+  })
+}
 
 export default function BookingCheckout() {
   const { id } = useParams()
@@ -206,24 +297,21 @@ export default function BookingCheckout() {
 
       navigate(`/properties/${id}/book/confirmation`, { state: { booking } })
     } catch (err) {
-      // Handle backend validation errors (e.g., { start_date: "...", property: "..." })
-      // or a simple error message
-      let backendErrors = {}
+      // Surface the backend's exact validation messages. Field-level errors
+      // map to the nearest BookingForm field; everything else (non-field,
+      // detail, property-level, unknown) is shown in the top-level alert so
+      // no backend message is ever lost or replaced with a generic fallback.
+      const backendErrors = mapBackendErrorsToFields(err, property.listingType)
 
-      if (typeof err.response === 'object' && err.response) {
-        // If error has structured response with field errors
-        Object.entries(err.response).forEach(([key, value]) => {
-          // value might be an array of messages or a single string
-          backendErrors[key] = Array.isArray(value) ? value[0] : value
-        })
-      } else if (err?.message) {
-        // Fallback to generic error message
-        backendErrors.general = err.message
-      } else {
+      if (Object.keys(backendErrors).length === 0) {
         backendErrors.general = 'Unable to create booking. Please try again.'
       }
 
       setErrors(backendErrors)
+
+      // Also surface the exact message in a responsive toast so the user sees
+      // the backend's wording even if they've scrolled away from the form.
+      notifyBookingError(backendErrors)
     } finally {
       setSubmitting(false)
     }

@@ -78,9 +78,13 @@ class BookingViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         booking = self.get_object()
         if booking.renter_id == request.user.pk:
-            if booking.status != Booking.BookingStatus.PENDING:
+            cancellable = {
+                Booking.BookingStatus.PENDING,
+                Booking.BookingStatus.APPROVED,
+            }
+            if booking.status not in cancellable:
                 return Response(
-                    {"detail": "Only pending bookings can be cancelled by the renter."},
+                    {"detail": "Only pending or approved bookings awaiting payment can be cancelled by the renter."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             booking.status = Booking.BookingStatus.CANCELLED

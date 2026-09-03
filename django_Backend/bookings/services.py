@@ -229,7 +229,12 @@ def validate_no_overlap(property_id, start_date, end_date, exclude_booking_id=No
 
 
 def confirm_booking_from_payment(payment_transaction):
-    """Confirm a pending booking only after a successful verified payment."""
+    """Confirm an approved booking after a successful verified payment.
+
+    Only APPROVED bookings (owner approved, awaiting payment) can be moved to
+    CONFIRMED by a verified payment. PENDING bookings must first be approved by
+    the owner/manager before payment can unlock CONFIRMED.
+    """
     from payments.models import PaymentTransaction
 
     if payment_transaction.status != PaymentTransaction.PaymentStatus.SUCCESSFUL:
@@ -242,8 +247,8 @@ def confirm_booking_from_payment(payment_transaction):
         raise ValueError("Payment currency does not match the booking currency.")
     if payment_transaction.amount != booking.total_amount:
         raise ValueError("Payment amount does not match the booking total.")
-    if booking.status != Booking.BookingStatus.PENDING:
-        raise ValueError("Only pending bookings can be confirmed.")
+    if booking.status != Booking.BookingStatus.APPROVED:
+        raise ValueError("Only approved bookings awaiting payment can be confirmed.")
 
     booking.status = Booking.BookingStatus.CONFIRMED
     booking.save(update_fields=["status", "updated_at"])

@@ -10,10 +10,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 /**
  * Generic request helper — mirrors the pattern in authApi.js and propertyApi.js.
  * Includes credentials (cookies) for authenticated endpoints.
- * 
+ *
+ * The response body is parsed EXACTLY ONCE (via response.text()) and then, on
+ * error, the parsed payload is preserved on the thrown Error so no backend
+ * message is ever lost.
+ *
  * On error, throws an Error with:
- * - message: user-friendly error message
- * - response: full error response object (for field-level errors)
+ * - message: the single most relevant backend message
+ * - status: HTTP status code
+ * - response: the full parsed backend response object
+ * - fieldErrors: { fieldName: string[] } for every field-level validation error
+ * - nonFieldErrors: string[] for non-field (form-wide) backend errors
  */
 async function request(endpoint, options = {}) {
     const headers = {
@@ -30,23 +37,89 @@ async function request(endpoint, options = {}) {
         ...options,
     })
 
+    // Parse the body once. Never call response.json() again after this.
     const responseText = await response.text()
-    const payload = responseText ? JSON.parse(responseText) : {}
+    let payload = {}
+    try {
+        payload = responseText ? JSON.parse(responseText) : {}
+    } catch {
+        payload = { detail: responseText || 'Request failed.' }
+    }
 
     if (!response.ok) {
-        const message =
-            payload?.detail ||
-            payload?.non_field_errors?.[0] ||
-            payload?.message ||
-            payload?.error ||
-            'Request failed.'
-
-        const error = new Error(message)
-        error.response = payload
+        const error = buildHttpError(response, payload)
         throw error
     }
 
     return payload
+}
+
+/**
+ * Normalize a Django REST Framework error response into a structured Error.
+ *
+ * Handles the standard DRF shapes returned by BookingCreateSerializer:
+ *   { "start_date": ["A start date is required."] }                       field errors
+ *   { "non_field_errors": ["This property is already booked for..."] }    form-wide errors
+ *   { "property": ["This listing is currently unavailable."] }            related-field errors
+ *   { "detail": "..." }                                                   view-level errors (403/404/405/409/500)
+ * plus unknown keys and non-JSON fallbacks.
+ */
+function buildHttpError(response, payload) {
+    const fieldErrors = {}
+    const nonFieldErrors = []
+    let detailMessage = null
+
+    if (payload && typeof payload === 'object') {
+        for (const [key, value] of Object.entries(payload)) {
+            if (key === 'detail') {
+                detailMessage = Array.isArray(value) ? value[0] : normalizeScalar(value)
+            } else if (key === 'non_field_errors') {
+                nonFieldErrors.push(...(Array.isArray(value) ? value : [value]).map(normalizeScalar).filter(Boolean))
+            } else if (Array.isArray(value) || typeof value === 'string' || typeof value === 'number') {
+                fieldErrors[key] = (Array.isArray(value) ? value : [value]).map(normalizeScalar).filter(Boolean)
+            }
+        }
+    }
+
+    let message =
+        detailMessage ||
+        nonFieldErrors[0] ||
+        Object.values(fieldErrors)
+            .flat()
+            .find(Boolean) ||
+        (typeof payload === 'string' ? payload : null)
+
+    if (!message) {
+        if (response.status === 401) message = 'Your session has expired. Please sign in again.'
+        else if (response.status === 403) message = 'You do not have permission to perform this action.'
+        else if (response.status === 404) message = 'The requested resource could not be found.'
+        else if (response.status === 409) message = 'The request conflicts with the current state.'
+        else if (response.status >= 500) message = 'A server error occurred. Please try again later.'
+        else message = 'Request failed.'
+    }
+
+    const error = new Error(message)
+    error.name = response.status === 401 ? 'UnauthorizedError' : 'BookingApiError'
+    error.status = response.status
+    error.response = payload
+    error.fieldErrors = fieldErrors
+    error.nonFieldErrors = nonFieldErrors
+    return error
+}
+
+/**
+ * Keep primitives as text; JSON-safe stringify nested objects/arrays that DRF
+ * occasionally embeds so the raw value is never silently dropped.
+ */
+function normalizeScalar(value) {
+    if (value == null) return ''
+    if (typeof value === 'string') return value
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+    try {
+        return JSON.stringify(value)
+    } catch {
+        return ''
+    }
 }
 
 // ─── BOOKING OPERATIONS ────────────────────────────────────────────────────
@@ -187,37 +260,33 @@ export async function getOwnerConfirmedBookings(filters = {}) {
 
 /**
  * Approve a booking (owner action).
- * 
- * This is a helper that wraps updateBookingStatus for clarity.
- * In the current backend, approval is implicit (owner just waits for payment).
- * This function can be used when an explicit approval endpoint is added.
- * 
+ *
+ * Owner/company manager (or admin) approves a PENDING booking, transitioning it
+ * to APPROVED (awaiting payment). Payment is NOT available until approved.
+ * Only a successful verified payment (services.confirm_booking_from_payment)
+ * later moves the booking from APPROVED to CONFIRMED — never React or this
+ * endpoint. The backend enforces authorization and that only PENDING bookings
+ * can be approved.
+ *
  * @param {number} id - Booking ID
- * @returns {Promise<Object>} Updated booking
+ * @returns {Promise<Object>} Updated booking (status = approved)
  */
 export async function approveBooking(id) {
-    // If backend supports explicit approval:
-    // return updateBookingStatus(id, { status: 'approved' })
-
-    // For now, this is a no-op; approval happens when owner is ready
-    // and renter proceeds to payment
-    return getBooking(id)
+    return updateBookingStatus(id, { status: 'approved' })
 }
 
 /**
  * Reject a booking (owner action).
- * 
+ *
  * Only PENDING bookings can be rejected.
- * 
+ * The backend serializer accepts only the `status` field, so no extra
+ * fields (e.g. reason) are sent.
+ *
  * @param {number} id - Booking ID
- * @param {string} reason - Optional rejection reason
  * @returns {Promise<Object>} Updated booking
  */
-export async function rejectBooking(id, reason = '') {
-    return updateBookingStatus(id, {
-        status: 'rejected',
-        ...(reason && { reason }),
-    })
+export async function rejectBooking(id) {
+    return updateBookingStatus(id, { status: 'rejected' })
 }
 
 /**

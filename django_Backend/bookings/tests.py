@@ -105,7 +105,7 @@ class BookingBusinessRulesTests(TestCase):
         booking = serializer.save()
         self.assertEqual(booking.total_amount, Decimal("110.00"))
 
-    def test_only_successful_matching_payment_confirms_booking(self):
+    def test_only_approved_successful_matching_payment_confirms_booking(self):
         start = date.today() + timedelta(days=1)
         booking = self.create(self.car, start, start + timedelta(days=1))
         payment = PaymentTransaction.objects.create(
@@ -116,10 +116,96 @@ class BookingBusinessRulesTests(TestCase):
             currency=booking.currency,
             status=PaymentTransaction.PaymentStatus.PENDING,
         )
-        with self.assertRaises(ValueError):
-            confirm_booking_from_payment(payment)
+        # A PENDING booking is not yet approved, so payment cannot confirm it.
         payment.status = PaymentTransaction.PaymentStatus.SUCCESSFUL
         payment.save(update_fields=["status", "updated_at"])
+        with self.assertRaises(ValueError):
+            confirm_booking_from_payment(payment)
+        # Owner approval moves the booking to APPROVED (awaiting payment).
+        booking.status = Booking.BookingStatus.APPROVED
+        booking.save(update_fields=["status", "updated_at"])
         confirm_booking_from_payment(payment)
         booking.refresh_from_db()
         self.assertEqual(booking.status, Booking.BookingStatus.CONFIRMED)
+
+class BookingApiErrorFormatTests(TestCase):
+    """Guarantee the EXACT error dicts the booking API returns to the frontend.
+
+    These are the shapes the React frontend must parse and display verbatim.
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user("owner@example.com", password="x", role=User.Role.OWNER, first_name="Owner", last_name="One")
+        self.renter = User.objects.create_user("renter@example.com", password="x", first_name="Renter", last_name="One")
+        SiteSettings.objects.create(site_name="Test", house_commission_percent=Decimal("10.00"))
+        self.car = self.make_property("Car", ListingType.CAR, RentalUnit.DAILY, Decimal("100.00"))
+        self.house = self.make_property("House", ListingType.HOUSE, RentalUnit.MONTHLY, Decimal("12000.00"))
+        self.request = SimpleNamespace(user=self.renter)
+
+    def make_property(self, name, listing_type, rental_unit, price):
+        return Property.objects.create(
+            owner=self.owner,
+            property_name=name,
+            description=name,
+            listing_type=listing_type,
+            price=price,
+            rental_unit=rental_unit,
+            currency="ETB",
+            status=ListingStatus.ACTIVE,
+            is_available=True,
+        )
+
+    def errors(self, data, user=None):
+        serializer = BookingCreateSerializer(data=data, context={"request": SimpleNamespace(user=user or self.renter)})
+        serializer.is_valid()
+        return {k: [str(e) for e in v] for k, v in serializer.errors.items()}
+
+    def test_missing_start_date(self):
+        end_later = (date.today() + timedelta(days=5)).isoformat()
+        self.assertEqual(
+            self.errors({"property": self.house.pk, "end_date": end_later}),
+            {"start_date": ["This field is required."]},
+        )
+
+    def test_fixed_term_end_before_start(self):
+        start = (date.today() + timedelta(days=2)).isoformat()
+        end_later = (date.today() + timedelta(days=5)).isoformat()
+        self.assertEqual(
+            self.errors({"property": self.house.pk, "start_date": end_later, "end_date": start, "rental_type": "fixed_term"}),
+            {"end_date": ["Move-out date must be after move-in date."]},
+        )
+
+    def test_month_to_month_house_with_end_date(self):
+        start = (date.today() + timedelta(days=2)).isoformat()
+        end_later = (date.today() + timedelta(days=5)).isoformat()
+        self.assertEqual(
+            self.errors({"property": self.house.pk, "start_date": start, "end_date": end_later, "rental_type": "month_to_month"}),
+            {"end_date": ["Move-out date must be empty for month-to-month rentals."]},
+        )
+
+    def test_month_to_month_rental_type_for_car(self):
+        start = (date.today() + timedelta(days=2)).isoformat()
+        end_later = (date.today() + timedelta(days=5)).isoformat()
+        self.assertEqual(
+            self.errors({"property": self.car.pk, "start_date": start, "end_date": end_later, "rental_type": "month_to_month"}),
+            {"rental_type": ["Month-to-month rentals are not supported for vehicles."]},
+        )
+
+    def test_overlap_non_field_error(self):
+        start = (date.today() + timedelta(days=2)).isoformat()
+        end_later = (date.today() + timedelta(days=5)).isoformat()
+        first = BookingCreateSerializer(data={"property": self.house.pk, "start_date": start, "end_date": end_later}, context={"request": self.request})
+        self.assertTrue(first.is_valid(), first.errors)
+        first.save()
+        self.assertEqual(
+            self.errors({"property": self.house.pk, "start_date": start, "end_date": end_later}),
+            {"non_field_errors": ["This property is already booked for part or all of the selected period."]},
+        )
+
+    def test_book_own_listing(self):
+        start = (date.today() + timedelta(days=2)).isoformat()
+        end_later = (date.today() + timedelta(days=5)).isoformat()
+        self.assertEqual(
+            self.errors({"property": self.house.pk, "start_date": start, "end_date": end_later}, user=self.owner),
+            {"property": ["You cannot book your own listing."]},
+        )

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Building2, CalendarCheck, DollarSign, Home, Plus, Sparkles } from 'lucide-react'
+import { ArrowRight, Building2, CalendarCheck, DollarSign, Home, Plus, Sparkles, Inbox } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getAllProperties } from '../../api/property/propertyApi'
+import { listBookings } from '../../api/bookingApi'
 import StatCard from './components/StatCard'
 import PropertyGrid from './components/PropertyGrid'
 import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
+import BookingStatusBadge from '../../components/booking/BookingStatusBadge'
+import { formatAmount, formatDisplayDate, formatRentalType } from '../../lib/bookingDisplay'
 
 const DRAFT_STORAGE_KEY = 'property_add_draft'
 
@@ -16,7 +19,8 @@ export default function OwnerDashboard() {
     const [properties, setProperties] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-
+    const [bookings, setBookings] = useState([])
+    const [bookingsLoading, setBookingsLoading] = useState(true)
 
     useEffect(() => {
         async function loadProperties() {
@@ -36,9 +40,27 @@ export default function OwnerDashboard() {
         loadProperties()
     }, [])
 
+    useEffect(() => {
+        async function loadBookings() {
+            try {
+                const data = await listBookings()
+                const results = Array.isArray(data) ? data : data.results || []
+                setBookings(results)
+            } catch {
+                setBookings([])
+            } finally {
+                setBookingsLoading(false)
+            }
+        }
+        loadBookings()
+    }, [])
+
     const ownerProperties = useMemo(() => {
         return properties.filter((property) => property.owner_email === user?.email)
     }, [properties, user])
+
+    const pendingBookings = useMemo(() => bookings.filter((b) => b.status === 'pending'), [bookings])
+    const recentBookings = useMemo(() => bookings.slice(0, 4), [bookings])
 
     const totalProperties = ownerProperties.length
     const availableProperties = ownerProperties.filter((property) => property.status === 'active').length
@@ -109,6 +131,28 @@ export default function OwnerDashboard() {
                     </div>
                 )}
             </section>
+
+            {/* Pending review banner */}
+            {!bookingsLoading && pendingBookings.length > 0 && (
+                <button
+                    type="button"
+                    onClick={() => navigate('/owner/bookings')}
+                    className="group flex w-full items-center gap-4 rounded-2xl sm:rounded-3xl border border-amber-200 bg-amber-50 p-5 text-left transition hover:bg-amber-100/70 dark:border-amber-900/40 dark:bg-amber-950/40 dark:hover:bg-amber-950/60"
+                >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200">
+                        <Inbox className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-amber-900 dark:text-amber-100">
+                            {pendingBookings.length} booking{pendingBookings.length > 1 ? 's' : ''} waiting for your review.
+                        </span>
+                        <span className="mt-1 block text-xs text-amber-700 dark:text-amber-300">
+                            Go to Bookings to approve or reject.
+                        </span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-amber-500 transition group-hover:translate-x-0.5" />
+                </button>
+            )}
 
             <section className="grid gap-6 xl:grid-cols-[2fr_0.6fr]">
                 <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -190,6 +234,52 @@ export default function OwnerDashboard() {
                     </div>
                 </div>
             </section>
+
+            {/* Recent bookings */}
+            {!bookingsLoading && bookings.length > 0 && (
+                <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Recent bookings</h3>
+                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Latest requests on your managed listings.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/owner/bookings')}
+                            className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                        >
+                            View all
+                        </button>
+                    </div>
+
+                    <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+                        {recentBookings.map((booking) => (
+                            <li key={booking.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/owner/bookings')}
+                                    className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 p-4 text-left transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate font-semibold text-slate-900 dark:text-white">{booking.property_name}</p>
+                                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                            {formatRentalType(booking.rental_type)} · {formatDisplayDate(booking.start_date)}
+                                            {booking.end_date ? ` → ${formatDisplayDate(booking.end_date)}` : ' (ongoing)'}
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{booking.renter_email || 'Renter'}</p>
+                                    </div>
+                                    <div className="flex shrink-0 flex-col items-end gap-1">
+                                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                                            {formatAmount(booking.total_amount, booking.currency)}
+                                        </span>
+                                        <BookingStatusBadge status={booking.status} size="sm" />
+                                    </div>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
         </div>
     )
 }

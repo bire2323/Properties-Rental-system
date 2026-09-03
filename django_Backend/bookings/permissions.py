@@ -36,7 +36,7 @@ class BookingPermission(permissions.BasePermission):
             return _user_manages_property(user, obj.property)
 
         if view.action == "destroy":
-            if obj.renter_id == user.pk and obj.status == obj.BookingStatus.PENDING:
+            if obj.renter_id == user.pk and obj.status in {obj.BookingStatus.PENDING, obj.BookingStatus.APPROVED}:
                 return True
             return user.role == User.Role.ADMIN
 

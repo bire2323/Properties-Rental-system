@@ -13,6 +13,7 @@ class Booking(models.Model):
 
     class BookingStatus(models.TextChoices):
         PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
         CONFIRMED = "confirmed", "Confirmed"
         REJECTED = "rejected", "Rejected"
         CANCELLED = "cancelled", "Cancelled"
@@ -23,7 +24,9 @@ class Booking(models.Model):
         FIXED_TERM = "fixed_term", "Fixed Term"
         MONTH_TO_MONTH = "month_to_month", "Month to Month"
 
-    BLOCKING_STATUSES = (BookingStatus.PENDING, BookingStatus.CONFIRMED)
+    # APPROVED blocks the calendar like PENDING/CONFIRMED: the dates are
+    # reserved while the owner has approved and the booking awaits payment.
+    BLOCKING_STATUSES = (BookingStatus.PENDING, BookingStatus.APPROVED, BookingStatus.CONFIRMED)
     ACTIVE_CALENDAR_STATUSES = set(BLOCKING_STATUSES)
 
     booking_reference = models.CharField(max_length=20, unique=True, editable=False)
