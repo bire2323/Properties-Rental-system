@@ -493,6 +493,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     size = serializers.CharField(source="property_size", read_only=True, default="")
     nightlyPrice = serializers.CharField(source="property_nightly_price", read_only=True, default="")
     addedDate = serializers.CharField(source="property_added_date", read_only=True, default="")
+    registered_user = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
@@ -535,6 +536,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             "nightlyPrice",
             "addedDate",
             "created_at",
+            "registered_user",
         )
 
     def get_date(self, obj):
@@ -553,3 +555,8 @@ class NotificationSerializer(serializers.ModelSerializer):
         if obj.sender:
             return f"{obj.sender.first_name} {obj.sender.last_name}".strip() or obj.sender.email
         return "System"
+
+    def get_registered_user(self, obj):
+        if obj.type != Notification.NotificationType.SYSTEM or not obj.sender:
+            return None
+        return UserSerializer(obj.sender, context=self.context).data

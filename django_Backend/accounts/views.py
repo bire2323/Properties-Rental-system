@@ -749,7 +749,7 @@ class AdminNotificationListAPIView(APIView):
         search = request.query_params.get("search", "").strip()
 
         entries = NotificationSerializer(
-            Notification.objects.select_related("sender")
+            Notification.objects.select_related("sender", "sender__profile", "sender__owner_profile")
             .filter(
                 Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
                 | Q(
@@ -902,7 +902,7 @@ class AdminNotificationDetailAPIView(AdminNotificationListAPIView):
             notification = Notification.objects.filter(
                 Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
                 | Q(type=Notification.NotificationType.SYSTEM, title="New user registration")
-            ).get(id=notification_id)
+            ).select_related("sender", "sender__profile", "sender__owner_profile").get(id=notification_id)
         except (Notification.DoesNotExist, ValueError):
             return Response({"detail": "Notification not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -916,8 +916,9 @@ class AdminNotificationDetailAPIView(AdminNotificationListAPIView):
             )
 
         try:
-            notification = Notification.objects.exclude(
-                type=Notification.NotificationType.SYSTEM
+            notification = Notification.objects.filter(
+                Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
+                | Q(type=Notification.NotificationType.SYSTEM, title="New user registration")
             ).get(id=notification_id)
         except (Notification.DoesNotExist, ValueError):
             return Response({"detail": "Notification not found."}, status=status.HTTP_404_NOT_FOUND)
