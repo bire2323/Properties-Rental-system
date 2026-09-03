@@ -1,94 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { MapPin, Star, Heart, Share2, Calendar, CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car, Fuel, Users, Settings2, Wifi, Shield, Camera, Wind, Zap, X } from 'lucide-react'
+import { MapPin, Star, Heart, Share2, Calendar, CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car, Fuel, Users, Settings2, Wifi, Shield, Camera, Wind, Zap, X, Loader2 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-
-const allVehicles = [
-  {
-    id: 1,
-    images: ['https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1200', 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=1200', 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=1200'],
-    name: 'Toyota Corolla',
-    type: 'sedan',
-    location: 'Bole, Addis Ababa',
-    address: 'Atlas Road, Bole, Addis Ababa',
-    description: 'Reliable and fuel-efficient sedan perfect for city driving and long trips. Features modern technology, comfortable seating, and excellent safety ratings.',
-    price: '3,500',
-    seats: 5,
-    fuel: 'Petrol',
-    rating: 4.8,
-    transmission: 'Automatic',
-    year: 2023,
-    color: 'Silver',
-    plateNumber: 'AA-123-456',
-    mileage: '15,000',
-    vehicleId: 'NX-V-2024-001',
-    datePosted: 'January 10, 2025',
-    features: ['Air Conditioning', 'Bluetooth', 'Backup Camera', 'GPS Navigation', 'USB Ports', 'Power Windows', 'ABS Brakes', 'Airbags'],
-    owner: {
-      name: 'Ahmed Hassan',
-      photo: 'https://ui-avatars.com/api/?name=Ahmed+Hassan&size=200&background=c99b43&color=fff',
-      phone: '+251 911 234 567',
-      email: 'ahmed.hassan@nexaspace.com'
-    }
-  },
-  {
-    id: 2,
-    images: ['https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?q=80&w=1200', 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?q=80&w=1200'],
-    name: 'Hyundai Tucson',
-    type: 'suv',
-    location: 'CMC, Addis Ababa',
-    address: 'CMC Area, Addis Ababa',
-    description: 'Spacious SUV with excellent off-road capabilities and premium interior features.',
-    price: '5,200',
-    seats: 5,
-    fuel: 'Diesel',
-    rating: 4.9,
-    transmission: 'Automatic',
-    year: 2023,
-    color: 'Black',
-    plateNumber: 'AA-234-567',
-    mileage: '8,000',
-    vehicleId: 'NX-V-2024-002',
-    datePosted: 'December 20, 2024',
-    features: ['4WD', 'Sunroof', 'Leather Seats', 'GPS', 'Parking Sensors', 'Cruise Control'],
-    owner: {
-      name: 'Sara Tesfaye',
-      photo: 'https://ui-avatars.com/api/?name=Sara+Tesfaye&size=200&background=c99b43&color=fff',
-      phone: '+251 911 345 678',
-      email: 'sara.tesfaye@nexaspace.com'
-    }
-  },
-  {
-    id: 3,
-    images: ['https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=1200'],
-    name: 'Honda Fit',
-    type: 'hatchback',
-    location: 'Sarbet, Addis Ababa',
-    address: 'Sarbet, Addis Ababa',
-    description: 'Compact and economical hatchback, perfect for city commuting.',
-    price: '2,900',
-    seats: 5,
-    fuel: 'Petrol',
-    rating: 4.6,
-    transmission: 'Manual',
-    year: 2022,
-    color: 'White',
-    plateNumber: 'AA-345-678',
-    mileage: '22,000',
-    vehicleId: 'NX-V-2024-003',
-    datePosted: 'November 15, 2024',
-    features: ['Air Conditioning', 'USB Ports', 'Power Steering', 'Airbags'],
-    owner: {
-      name: 'Michael Bekele',
-      photo: 'https://ui-avatars.com/api/?name=Michael+Bekele&size=200&background=c99b43&color=fff',
-      phone: '+251 911 456 789',
-      email: 'michael@nexaspace.com'
-    }
-  }
-]
+import { getPropertyById } from '../../api/property/propertyApi'
 
 const featureIcons = {
   'Air Conditioning': Wind,
@@ -111,20 +28,92 @@ const featureIcons = {
 function VehicleDetails() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const vehicleId = Number(id)
-  const vehicle = allVehicles.find((v) => v.id === vehicleId) ?? null
+  const [vehicle, setVehicle] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
 
-  if (!vehicle) {
+  useEffect(() => {
+    let active = true
+
+    async function fetchVehicle() {
+      setLoading(true)
+      setError(null)
+      try {
+        const property = await getPropertyById(id)
+        if (!active) return
+        if (!property || typeof property !== 'object') {
+          throw new Error('Vehicle details were not returned by the server.')
+        }
+        if (property.listing_type !== 'car') {
+          setError('This listing is not a vehicle.')
+          setVehicle(null)
+          return
+        }
+
+        const detail = property.car_detail || {}
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+        const images = (property.images || [])
+          .map((image) => typeof image === 'string' ? image : image?.image)
+          .filter(Boolean)
+          .map((image) => image.startsWith('http') ? image : `${apiBaseUrl}${image.startsWith('/') ? '' : '/'}${image}`)
+
+        setVehicle({
+          id: property.id,
+          images: images.length ? images : ['https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1200'],
+          name: property.property_name || `${detail.brand || 'Vehicle'} ${detail.model || ''}`,
+          type: 'car',
+          location: [property.city_name, property.region_name, property.kebele].filter(Boolean).join(', ') || 'Location Unspecified',
+          address: property.address || 'Address unavailable',
+          description: property.description || 'No description available.',
+          price: Number(property.price || 0).toLocaleString('en-US'),
+          rentalUnit: property.rental_unit || 'daily',
+          isAvailable: property.is_available && property.status === 'active',
+          seats: detail.seating_capacity || '-',
+          fuel: detail.fuel_type || '-',
+          rating: property.rating_summary?.average_rating || 'New',
+          transmission: detail.transmission || 'Not specified',
+          year: detail.year || '-',
+          color: detail.color || 'Not specified',
+          plateNumber: detail.plate_number || 'Not specified',
+          mileage: detail.mileage || '-',
+          vehicleId: `NX-V-${String(property.id).padStart(4, '0')}`,
+          datePosted: property.created_at ? new Date(property.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recently',
+          features: (property.features || []).map((feature) => typeof feature === 'string' ? feature : feature?.name).filter(Boolean),
+        })
+      } catch (err) {
+        if (active) setError(err.message || 'Failed to load vehicle details.')
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    if (id) fetchVehicle()
+    return () => { active = false }
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <Navbar />
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-[#c99b43]" />
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (error || !vehicle) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <Navbar />
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Vehicle Not Found</h2>
-            <p className="mt-2 text-slate-600 dark:text-slate-400">The vehicle you're looking for does not exist.</p>
+            <p className="mt-2 text-slate-600 dark:text-slate-400">{error || "The vehicle you're looking for does not exist."}</p>
             <Button
               onClick={() => navigate('/vehicles')}
               className="mt-6 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950"
@@ -140,7 +129,7 @@ function VehicleDetails() {
 
   const nextImage = () => setSelectedImage((prev) => (prev + 1) % vehicle.images.length)
   const prevImage = () => setSelectedImage((prev) => (prev - 1 + vehicle.images.length) % vehicle.images.length)
-  const similarVehicles = allVehicles.filter((v) => v.id !== vehicle.id).slice(0, 3)
+  const similarVehicles = []
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -429,6 +418,22 @@ function VehicleDetails() {
                     </div>
                   </div>
                 </Card>
+
+                <div className="w-full rounded-xl border-2 border-[#c99b43] bg-white p-6 shadow-xl dark:bg-slate-900">
+                  <h2 className="text-2xl font-bold text-[#c99b43]">Book This Vehicle</h2>
+                  <p className="mt-2 text-slate-700 dark:text-slate-300">Rental rate ({vehicle.rentalUnit})</p>
+                  <p className="mt-1 text-2xl font-bold text-[#c99b43]">
+                    ETB {vehicle.price}
+                    <span className="ml-1 text-sm font-normal">/ {vehicle.rentalUnit}</span>
+                  </p>
+                  <Button
+                    disabled={!vehicle.isAvailable}
+                    onClick={() => navigate(`/properties/${vehicle.id}/book`)}
+                    className="mt-5 w-full bg-[#c99b43] text-white hover:bg-[#b88a35]"
+                  >
+                    {vehicle.isAvailable ? 'Book Now' : 'Currently Unavailable'}
+                  </Button>
+                </div>
 
                 {/* Why This Vehicle Stands Out */}
                 <Card className="overflow-hidden border-[#c99b43]/20 bg-gradient-to-br from-[#fff8eb] via-white to-[#fff3d3] p-6 shadow-[0_24px_80px_rgba(201,155,67,0.16)] dark:border-[#c99b43]/20 dark:from-[#1f1a10] dark:via-slate-900 dark:to-[#1a1308]">

@@ -484,6 +484,10 @@ export async function getAdminNotificationDetail(notificationId) {
     }
 }
 
+export async function deleteAdminNotification(notificationId) {
+    return request(`/api/accounts/admin/notifications/${notificationId}/`, { method: 'DELETE' })
+}
+
 export function markAdminNotificationViewed(notificationId) {
     const viewedIds = new Set(JSON.parse(localStorage.getItem('admin-viewed-notifications') || '[]'))
     viewedIds.add(String(notificationId))
@@ -545,6 +549,7 @@ function normalizeAdminNotification(notification) {
         carSeatingCapacity: notification.carSeatingCapacity || notification.car_seating_capacity || '',
         relatedId: notification.related_id,
         actionUrl: notification.action_url,
+        registeredUser: notification.registered_user || null,
     }
 }
 

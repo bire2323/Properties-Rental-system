@@ -123,7 +123,7 @@ export default function OwnerDashboard() {
                         <p className="mt-2">{error}</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
                         <StatCard icon={<Home className="h-4 w-4 sm:h-5 sm:w-5" />} label="Total" value={totalProperties} description="Your active portfolio" accent="bg-[#f6e6c1] text-[#7f5c20]" />
                         <StatCard icon={<Building2 className="h-4 w-4 sm:h-5 sm:w-5" />} label="Available" value={availableProperties} description="Ready for bookings" accent="bg-[#e6f8ef] text-[#1d6f4f]" />
                         <StatCard icon={<CalendarCheck className="h-4 w-4 sm:h-5 sm:w-5" />} label="Rented" value={rentedProperties} description="Currently occupied" accent="bg-[#ede9ff] text-[#5a3d9f]" />

@@ -40,6 +40,14 @@ const publicLinks = [
     { label: 'Vehicles', path: '/vehicles', icon: Car },
     { label: 'About Us', path: '/about', icon: Info },
 ]
+
+const uniqueLinks = links.filter((link, index, items) => (
+    items.findIndex((candidate) => candidate.path === link.path) === index
+))
+
+const uniquePublicLinks = publicLinks.filter((link, index, items) => (
+    items.findIndex((candidate) => candidate.path === link.path) === index
+))
 function BrandSkeleton() {
     return (
         <>
@@ -178,11 +186,11 @@ export default function OwnerSidebar({ isOpen, onClose }) {
 
                 <nav className="flex-1 px-4 py-6 bg-slate-50 dark:bg-slate-950">
                     <div className="space-y-1">
-                        {links.map((item) => {
+                        {uniqueLinks.map((item) => {
                             const Icon = item.icon
                             return (
                                 <NavLink
-                                    key={item.path}
+                                    key={`owner-sidebar-${item.path}`}
                                     to={item.path}
                                     className={({ isActive }) =>
                                         cn(
@@ -206,11 +214,11 @@ export default function OwnerSidebar({ isOpen, onClose }) {
                             Explore
                         </p>
                         <div className="space-y-1">
-                            {publicLinks.map((item) => {
+                            {uniquePublicLinks.map((item) => {
                                 const Icon = item.icon
                                 return (
                                     <NavLink
-                                        key={item.path}
+                                        key={`owner-public-${item.path}`}
                                         to={item.path}
                                         onClick={onClose}
                                         className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white"

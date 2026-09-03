@@ -60,6 +60,10 @@ function mapPropertyToCard(property) {
     beds,
     baths,
     area,
+    brand: isHouse ? '' : (detail.brand || '-'),
+    model: isHouse ? '' : (detail.model || '-'),
+    year: isHouse ? '' : (detail.year || '-'),
+    mileage: isHouse ? '' : (detail.mileage || '-'),
     type: typeDisplay,
     is_available: property.status === 'active',
     created_at: property.created_at,
@@ -99,7 +103,7 @@ function Properties() {
   const defaultFilters = {
     search: '',
     location: '',
-    type: 'all',
+    type: 'house',
     min_price: 0,
     max_price: 200000,
     bedrooms: 'any',
@@ -153,8 +157,7 @@ function Properties() {
     setError(null)
 
     // Prepare backend-compatible filters
-    const apiFilters = { ...filters };
-    if (apiFilters.type === 'all') delete apiFilters.type;
+    const apiFilters = { ...filters, type: 'house' };
     if (apiFilters.bedrooms === 'any') delete apiFilters.bedrooms;
     if (apiFilters.features && apiFilters.features.length === 0) delete apiFilters.features;
     if (apiFilters.search) {
@@ -237,8 +240,7 @@ function Properties() {
     (filters.features?.length || 0);
 
   const getPageTitle = () => {
-    if (filters.type === 'all') return 'All Properties'
-    return `${(filters.type || '').charAt(0).toUpperCase() + (filters.type || '').slice(1)}s`
+    return 'Houses'
   }
 
   // Client-side filtering is no longer needed!

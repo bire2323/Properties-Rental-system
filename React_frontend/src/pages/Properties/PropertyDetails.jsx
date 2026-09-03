@@ -581,7 +581,7 @@ function PropertyDetails() {
 
                 {/* ─── Description ──────────────────────────────────── */}
                 <div className="mt-10">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">About the Property</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{isHouse ? 'About the House' : 'About the Vehicle'}</h2>
                   <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-950/40">
                     <p className="leading-relaxed text-slate-600 dark:text-slate-400">
                       {property.description}
@@ -642,7 +642,7 @@ function PropertyDetails() {
 
                 {/* ─── Features ────────────────────────────────────── */}
                 <div className="mt-10">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Features & Amenities</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{isHouse ? 'House Features & Amenities' : 'Vehicle Features & Amenities'}</h2>
                   {property.features?.length ? (
                     <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                       {property.features.map((feature) => {
@@ -699,8 +699,8 @@ function PropertyDetails() {
                 </Card>
 
                 {/* Booking Card */}
-                <div className="w-full rounded-xl border-2 border-red-500 bg-white p-6 shadow-xl dark:bg-slate-900">
-                  <h2 className="text-2xl font-bold text-red-500">BOOKING CARD</h2>
+                <div className="w-full rounded-xl border-2 border-[#c99b43] bg-white p-6 shadow-xl dark:bg-slate-900">
+                  <h2 className="text-2xl font-bold text-[#c99b43]">BOOKING CARD</h2>
                   <p className="mt-2 text-slate-700 dark:text-slate-300">Rent ({property.rental_unit})</p>
                   <p className="mt-1 text-2xl font-bold text-[#c99b43]">
                     ETB {property.price}

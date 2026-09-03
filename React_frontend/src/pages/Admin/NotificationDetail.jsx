@@ -12,12 +12,13 @@ import {
     MapPin,
     Phone,
     ShieldCheck,
+    Trash2,
     UserRound,
 } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
-import { getAdminNotificationDetail, markAdminNotificationViewed } from '../../api/admin/adminApi'
+import { deleteAdminNotification, getAdminNotificationDetail, markAdminNotificationViewed } from '../../api/admin/adminApi'
 
 function NotificationDetail() {
     const { id } = useParams()
@@ -27,7 +28,10 @@ function NotificationDetail() {
     const [notification, setNotification] = useState(null)
     const [selectedImageIndex, setSelectedImageIndex] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [deleting, setDeleting] = useState(false)
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
     const [error, setError] = useState(null)
+    const [deleteError, setDeleteError] = useState(null)
 
     useEffect(() => {
         const fetchDetail = async () => {
@@ -63,8 +67,63 @@ function NotificationDetail() {
 
     const selectedImage = notification?.images?.[selectedImageIndex] || notification?.image
 
+    const handleDelete = async () => {
+        if (!notification || deleting) return
+        setDeleting(true)
+        setDeleteError(null)
+        try {
+            await deleteAdminNotification(notification.id)
+            navigate('/admin-dashboard/notifications')
+        } catch (err) {
+            console.error('Failed to delete notification:', err)
+            setDeleteError(err.message || 'Failed to delete notification.')
+            setDeleting(false)
+        }
+    }
+
     return (
         <div className={`min-h-screen flex ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+            {showDeleteConfirmation && notification && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="presentation">
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-notification-title"
+                        className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}
+                    >
+                        <h2 id="delete-notification-title" className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            Are you sure?
+                        </h2>
+                        <p className={`mt-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                            This notification will be permanently deleted from the database.
+                        </p>
+                        {deleteError && (
+                            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                                {deleteError}
+                            </p>
+                        )}
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteConfirmation(false)}
+                                disabled={deleting}
+                                className={`rounded-lg border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                disabled={deleting}
+                                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                                {deleting ? 'Deleting...' : 'Yes, Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="flex-1">
                 <AdminTopbar onToggleSidebar={() => setSidebarOpen(true)} />
@@ -83,6 +142,18 @@ function NotificationDetail() {
                     <div className={`overflow-hidden rounded-2xl border shadow-sm ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                         <div className="flex items-center justify-between border-b px-5 py-4">
                             <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Notification Detail</h2>
+                            {!loading && notification && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDeleteConfirmation(true)}
+                                    disabled={deleting}
+                                    title="Delete notification"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    {deleting ? 'Deleting...' : 'Delete'}
+                                </button>
+                            )}
                         </div>
 
                         <div className="p-5">
@@ -104,6 +175,11 @@ function NotificationDetail() {
                                 </div>
                             ) : (
                                 <>
+                                    {deleteError && (
+                                        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                                            {deleteError}
+                                        </div>
+                                    )}
                                     <div className={`rounded-2xl border p-4 ${isDark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}`}>
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-center gap-3">
@@ -129,6 +205,78 @@ function NotificationDetail() {
                                             )}
                                         </div>
                                     </div>
+
+                                    <div className={`mt-6 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-white'}`}>
+                                        <div className="mb-5 flex items-center gap-3">
+                                            <FileText className={`h-5 w-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
+                                            <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Notification Information</h3>
+                                        </div>
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            {[
+                                                ['Notification ID', notification.id],
+                                                ['Type', notification.type],
+                                                ['Status', notification.status || 'Viewed'],
+                                                ['Info', notification.info],
+                                                ['Sender', notification.sender],
+                                                ['Email', notification.email],
+                                                ['Phone', notification.phone],
+                                                ['Date', notification.date],
+                                                ['Time', notification.time],
+                                            ].map(([label, value]) => (
+                                                <div key={label} className={`rounded-lg p-3 ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`}>
+                                                    <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</div>
+                                                    <div className={`mt-1 break-words font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{value || 'Unavailable'}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className={`mt-3 rounded-lg p-3 ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`}>
+                                            <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Details</div>
+                                            <div className={`mt-1 whitespace-pre-wrap break-words ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{notification.details || 'No additional details.'}</div>
+                                        </div>
+                                    </div>
+
+                                    {notification.title === 'New user registration' && notification.registeredUser && (
+                                        <div className={`mt-6 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-white'}`}>
+                                            <div className="mb-5 flex items-center gap-3">
+                                                <UserRound className={`h-5 w-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
+                                                <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Registered User Details</h3>
+                                            </div>
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                {[
+                                                    ['User ID', notification.registeredUser.id],
+                                                    ['First Name', notification.registeredUser.first_name],
+                                                    ['Last Name', notification.registeredUser.last_name],
+                                                    ['Full Name', `${notification.registeredUser.first_name || ''} ${notification.registeredUser.last_name || ''}`.trim()],
+                                                    ['Email', notification.registeredUser.email],
+                                                    ['Role', notification.registeredUser.role_display || notification.registeredUser.role],
+                                                    ['Auth Provider', notification.registeredUser.auth_provider],
+                                                    ['Verified', notification.registeredUser.is_verified ? 'Yes' : 'No'],
+                                                    ['Joined', notification.registeredUser.created_at],
+                                                ].map(([label, value]) => (
+                                                    <div key={label} className={`rounded-lg p-3 ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`}>
+                                                        <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</div>
+                                                        <div className={`mt-1 break-words font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{value || 'Unavailable'}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {notification.registeredUser.profile && (
+                                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                                    {[
+                                                        ['Phone', notification.registeredUser.profile.phone_number],
+                                                        ['Date of Birth', notification.registeredUser.profile.date_of_birth],
+                                                        ['Address', notification.registeredUser.profile.address],
+                                                        ['City', notification.registeredUser.profile.city],
+                                                        ['Country', notification.registeredUser.profile.country],
+                                                    ].map(([label, value]) => (
+                                                        <div key={label} className={`rounded-lg p-3 ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`}>
+                                                            <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</div>
+                                                            <div className={`mt-1 break-words font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{value || 'Unavailable'}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {notification.type === 'Booking' && (
                                         <div className="mt-6 space-y-6">

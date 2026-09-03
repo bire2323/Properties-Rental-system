@@ -78,7 +78,7 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
                         <span className="truncate">{property.location}</span>
                     </p>
 
-                    {property.type === 'House' && (
+                    {property.type === 'House' ? (
                         <div className={`mt-2 flex items-center gap-1.5 sm:gap-3 border-t border-slate-200 pt-2 text-slate-600 dark:border-slate-800 dark:text-slate-400 ${isGrid ? 'text-[9px] sm:text-xs' : 'text-[10px] sm:text-sm'
                             }`}>
                             <div className="flex items-center gap-1">
@@ -96,7 +96,15 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
                                 <span className="truncate max-w-[30px] sm:max-w-none">{property.area}</span>
                             </div>
                         </div>
-                    )}
+                    ) : property.type === 'Car' ? (
+                        <div className={`mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5 border-t border-slate-200 pt-2 text-slate-600 dark:border-slate-800 dark:text-slate-400 ${isGrid ? 'text-[9px] sm:text-xs' : 'text-[10px] sm:text-sm'
+                            }`}>
+                            <span className="truncate"><strong className="font-semibold text-slate-700 dark:text-slate-300">Brand:</strong> {property.brand}</span>
+                            <span className="truncate"><strong className="font-semibold text-slate-700 dark:text-slate-300">Model:</strong> {property.model}</span>
+                            <span className="truncate"><strong className="font-semibold text-slate-700 dark:text-slate-300">Year:</strong> {property.year}</span>
+                            <span className="truncate"><strong className="font-semibold text-slate-700 dark:text-slate-300">Mileage:</strong> {property.mileage}</span>
+                        </div>
+                    ) : null}
                 </div>
 
                 <div className={`flex items-center justify-between ${property.type === 'House' ? 'mt-2 sm:mt-3' : 'mt-2 sm:mt-3 border-t border-slate-200 pt-2 sm:pt-3 dark:border-slate-800'
