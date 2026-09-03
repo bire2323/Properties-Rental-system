@@ -83,7 +83,7 @@ export default function TenantDashboard() {
             </button>
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
             <TenantStatCard icon={<CalendarCheck2 className="h-5 w-5" />} label="Active Bookings" value={activeBookings} />
             <TenantStatCard icon={<CheckCircle2 className="h-5 w-5" />} label="Confirmed" value={upcoming} />
             <TenantStatCard icon={<Clock className="h-5 w-5" />} label="Pending Approval" value={pendingCount} />

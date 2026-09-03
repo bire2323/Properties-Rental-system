@@ -64,7 +64,7 @@ export default function Payment() {
   }, [authLoading, isAuthenticated, property, form, navigate, id])
 
   const handlePay = async () => {
-    if (bookingStatus !== 'confirmed') {
+    if (bookingStatus !== 'approved') {
       setSubmitError('Payment is not available until the owner approves this booking request.')
       return
     }
@@ -100,10 +100,10 @@ export default function Payment() {
     <Button
       type="button"
       onClick={handlePay}
-      disabled={processing || bookingStatus !== 'confirmed'}
+      disabled={processing || bookingStatus !== 'approved'}
       className="h-12 w-full rounded-2xl bg-[#c99b43] text-base font-semibold text-white hover:bg-[#b88a35] disabled:opacity-70"
     >
-      {bookingStatus !== 'confirmed'
+      {bookingStatus !== 'approved'
         ? 'Awaiting owner approval'
         : processing ? 'Processing...' : `Pay ${formatCurrency(pricing?.total || 0, property.currency)}`}
     </Button>
