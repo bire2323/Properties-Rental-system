@@ -147,6 +147,7 @@ const getCategoryIcon = (category) => {
 }
 
 function AuditLog() {
+    const defaultPageSize = 20
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const { isDark } = useTheme()
 
@@ -282,6 +283,16 @@ function AuditLog() {
         const next = Math.min(Math.max(1, p), totalPages)
         setPage(next)
         window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const showMoreEvents = () => {
+        setPageSize((size) => size + defaultPageSize)
+        setPage(1)
+    }
+
+    const showLessEvents = () => {
+        setPageSize(defaultPageSize)
+        setPage(1)
     }
 
     // Derived
@@ -618,7 +629,17 @@ function AuditLog() {
                                     <span><strong className={isDark ? 'text-white' : 'text-slate-900'}>{totalCount}</strong> events</span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-2">
+                                {pageSize > defaultPageSize && (
+                                    <Button variant="outline" size="sm" onClick={showLessEvents} disabled={loading}>
+                                        View less
+                                    </Button>
+                                )}
+                                {events.length >= pageSize && (
+                                    <Button variant="outline" size="sm" onClick={showMoreEvents} disabled={loading}>
+                                        View more
+                                    </Button>
+                                )}
                                 <button
                                     onClick={() => goToPage(page - 1)}
                                     disabled={page <= 1 || loading}
