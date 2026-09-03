@@ -13,6 +13,7 @@ import {
   Moon,
   Search,
   Settings,
+  Star,
   SunMedium,
   User,
   X,
@@ -93,6 +94,7 @@ function Navbar() {
   const [mobilePropertyOpen, setMobilePropertyOpen] = useState(false)
   const [mobileVehicleOpen, setMobileVehicleOpen] = useState(false)
   const [brandLogoFailed, setBrandLogoFailed] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const propertyDropdownRef = useRef(null)
   const vehicleDropdownRef = useRef(null)
   const authDropdownRef = useRef(null)
@@ -263,6 +265,12 @@ function Navbar() {
     }
   }
 
+  const handleSearchSubmit = (event) => {
+    event.preventDefault()
+    const query = searchQuery.trim()
+    navigateTo(`/properties${query ? `?search=${encodeURIComponent(query)}` : ''}`)
+  }
+
   const handleLogout = async () => {
     setAuthDropdownOpen(false)
     setMobileMenuOpen(false)
@@ -272,7 +280,7 @@ function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-[#c99b43]/25 bg-white/90 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-[#c99b43]/35 dark:bg-[linear-gradient(90deg,#03172f_0%,#04254a_55%,#03172f_100%)] dark:text-white dark:shadow-[0_18px_50px_rgba(3,12,26,0.35)]">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-start gap-4 px-4 sm:px-6 lg:px-8">
           <button type="button" onClick={() => navigateTo('/')} className="order-2 hidden shrink-0 items-center gap-3 lg:order-none lg:flex">
             {siteSettingsStatus === 'loading' ? (
               <BrandSkeleton />
@@ -446,7 +454,22 @@ function Navbar() {
             ))}
           </nav>
 
-          <div className="hidden items-center gap-3 lg:flex">
+          <form onSubmit={handleSearchSubmit} className="hidden w-full max-w-xs lg:block">
+            <label className="relative block">
+              <span className="sr-only">Search properties</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c99b43]" />
+              <Star className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c99b43]" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search properties"
+                className="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-9 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
+              />
+            </label>
+          </form>
+
+          <div className="ml-auto hidden items-center gap-3 lg:flex">
             <button
               type="button"
               onClick={toggleTheme}
@@ -601,14 +624,14 @@ function Navbar() {
             </button>
           </div>
 
-          <div className="order-3 flex items-center gap-1 lg:hidden">
+          <div className="order-3 ml-auto flex items-center gap-1 lg:hidden">
             <button
               type="button"
               onClick={toggleTheme}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d]"
-              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label="Toggle light and dark mode"
             >
-              {isDark ? <SunMedium size={18} /> : <Moon size={18} />}
+              <SunMedium size={18} />
             </button>
           </div>
         </div>
@@ -688,6 +711,20 @@ function Navbar() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-3 py-4">
+                <form onSubmit={handleSearchSubmit} className="mb-5 px-1">
+                  <label className="relative block">
+                    <span className="sr-only">Search properties</span>
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c99b43]" />
+                    <Star className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c99b43]" />
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search properties"
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-10 text-sm text-slate-900 outline-none focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
+                    />
+                  </label>
+                </form>
                 <div className="mb-5 space-y-3">
                   <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white text-[#c99b43] dark:border-slate-700 dark:bg-slate-950">

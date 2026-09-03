@@ -5,7 +5,6 @@ import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
 import Testimonials from '../../components/common/Testimonials'
 import { useAuth } from '../../hooks/useAuth'
 import { getAllProperties } from '../../api/property/propertyApi'
@@ -35,13 +34,6 @@ const features = [
     title: 'Best Prices',
     description: 'Competitive pricing and exclusive deals on premium properties.',
   },
-]
-
-const stats = [
-  { number: '10K+', label: 'Properties' },
-  { number: '5K+', label: 'Happy Clients' },
-  { number: '50+', label: 'Cities' },
-  { number: '98%', label: 'Satisfaction' },
 ]
 
 // ─── Map a raw backend property to what the card JSX expects ────────────────
@@ -170,62 +162,13 @@ function Home() {
                 </Button>
               </div>
 
-              {/* Stats */}
-              <div className="mt-12 grid grid-cols-4 gap-4">
-                {stats.map((stat, index) => (
-                  <div
-                    key={index}
-                    className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
-                  >
-                    <div className="text-2xl font-bold text-[#f3c96d] sm:text-3xl">{stat.number}</div>
-                    <div className="mt-1 text-xs text-slate-300 sm:text-sm">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Search Card */}
-            <div className="flex items-center">
-              <Card className="w-full rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-                <h3 className="mb-6 text-2xl font-bold text-white">Search Properties</h3>
-                <div className="space-y-4">
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      placeholder="Location (City, Area)"
-                      className="h-14 rounded-xl border-white/20 bg-white/10 pl-12 text-white placeholder:text-slate-400 focus-visible:border-[#c99b43]"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Building2 className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                    <select className="h-14 w-full rounded-xl border border-white/20 bg-white/10 pl-12 pr-4 text-white focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20">
-                      <option className="bg-slate-800">Property Type</option>
-                      <option className="bg-slate-800">House</option>
-                      <option className="bg-slate-800">Apartment</option>
-                      <option className="bg-slate-800">Villa</option>
-                      <option className="bg-slate-800">Vehicle</option>
-                    </select>
-                  </div>
-                  <Input
-                    placeholder="Price Range"
-                    className="h-14 rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:border-[#c99b43]"
-                  />
-                  <Button
-                    className="h-14 w-full rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-base font-semibold text-slate-950 hover:opacity-90"
-                    onClick={() => navigate('/properties')}
-                  >
-                    <Search className="mr-2 h-5 w-5" />
-                    Search Now
-                  </Button>
-                </div>
-              </Card>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white dark:bg-slate-900">
+      <section className="py-0 bg-white dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
@@ -236,7 +179,7 @@ function Home() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-16 grid grid-cols-2 gap-4 sm:gap-8 lg:grid-cols-4">
             {features.map((feature, index) => (
               <Card
                 key={index}
@@ -257,7 +200,7 @@ function Home() {
       </section>
 
       {/* Top Properties — real data from backend */}
-      <section className="py-20 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+      <section className="py-0 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
