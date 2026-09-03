@@ -21,6 +21,7 @@ import LoadingSkeleton from './components/LoadingSkeleton'
 import EmptyState from './components/EmptyState'
 import { useAuth } from '../../hooks/useAuth'
 import { useLocationSelector } from '../../hooks/useLocationSelector'
+import { toast } from '../../components/ui/toaster'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -680,6 +681,8 @@ export default function EditProperty() {
                 'Please fix all validation errors before saving.'
             )
 
+            toast.error('Please fix the highlighted errors before saving.')
+
             window.scrollTo({
                 top: 0,
                 behavior: 'smooth'
@@ -718,9 +721,13 @@ export default function EditProperty() {
 
                 localStorage.removeItem('property_add_draft');
 
+                toast.success('Property listing published successfully!')
+
                 navigate('/owner/properties');
             } catch (err) {
-                setGeneralError('Failed to save draft.');
+                const message = err.message || 'Failed to save draft.'
+                setGeneralError(message)
+                toast.error(message)
             } finally {
                 setSaving(false);
             }
@@ -730,9 +737,12 @@ export default function EditProperty() {
         setGeneralError(null)
         try {
             await updateProperty(id, buildUpdatePayload(form))
+            toast.success('Property listing updated successfully!')
             navigate(`/owner/properties/${id}`)
         } catch (err) {
-            setGeneralError(err.message || 'Unable to save changes.')
+            const message = err.message || 'Unable to save changes.'
+            setGeneralError(message)
+            toast.error(message)
         } finally {
             setSaving(false)
         }

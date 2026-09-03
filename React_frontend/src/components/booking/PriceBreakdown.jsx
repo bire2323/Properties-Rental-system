@@ -15,11 +15,9 @@ export default function PriceBreakdown({
 
   const unitText = pricing.units > 0
     ? `${pricing.units} ${pricing.unitLabel}${pricing.units > 1 ? 's' : ''}`
-    : '—'
+    : ''
 
-  const priceLabel = property.listingType === 'house'
-    ? (pricing.unitLabel ? `Base rental (${unitText})` : 'Rental amount')
-    : `${formatCurrency(property.priceRaw, property.currency)} × ${unitText}`
+  const priceLabel = `Rent${unitText ? ` (${unitText})` : ''}`
 
   const rowClass = compact
     ? 'flex items-center justify-between gap-3 text-sm'

@@ -25,11 +25,30 @@ async function request(endpoint, options = {}) {
     const payload = responseText ? JSON.parse(responseText) : {}
 
     if (!response.ok) {
-        const message =
+        let message =
             payload?.detail ||
             payload?.message ||
             payload?.error ||
             'Request failed.'
+
+        // DRF validation errors come back as an object mapping field -> errors.
+        // Flatten them into a readable, single-line message for the toast.
+        if ((!payload?.detail && !payload?.message && !payload?.error) && payload && typeof payload === 'object' && !Array.isArray(payload)) {
+            const parts = []
+            for (const [field, value] of Object.entries(payload)) {
+                if (Array.isArray(value)) {
+                    parts.push(value.join(' '))
+                } else if (typeof value === 'string') {
+                    parts.push(value)
+                } else if (value && typeof value === 'object') {
+                    parts.push(JSON.stringify(value))
+                }
+            }
+            if (parts.length) {
+                message = parts.join(' ')
+            }
+        }
+
         throw new Error(message)
     }
 

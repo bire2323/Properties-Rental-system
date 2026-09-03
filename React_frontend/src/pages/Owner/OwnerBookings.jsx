@@ -165,11 +165,10 @@ export default function OwnerBookings() {
 
       {feedback && (
         <div
-          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${
-            feedback.type === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200'
-              : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300'
-          }`}
+          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${feedback.type === 'success'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300'
+            }`}
         >
           {feedback.type === 'success' ? (
             <CheckCircle2 className="h-5 w-5 shrink-0" />
@@ -199,17 +198,15 @@ export default function OwnerBookings() {
                 key={f.key}
                 type="button"
                 onClick={() => setFilter(f.key)}
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  active
-                    ? 'bg-[#c99b43] text-white shadow-sm'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900'
-                }`}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${active
+                  ? 'bg-[#c99b43] text-white shadow-sm'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900'
+                  }`}
               >
                 {f.label}
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  }`}
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}
                 >
                   {count}
                 </span>
@@ -567,34 +564,34 @@ export default function OwnerBookings() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Price breakdown</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Price &amp; earnings</h3>
                   <div className="mt-4 space-y-3">
-                    <DetailRow label="Base price" value={formatAmount(selected.base_price, selected.currency)} />
+                    <DetailRow label="Rent" value={formatAmount(selected.base_price, selected.currency)} />
                     <DetailRow
                       label="Security deposit"
                       value={formatAmount(selected.security_deposit, selected.currency)}
                     />
                     <DetailRow
-                      label="Platform fee"
-                      value={formatAmount(selected.platform_fee_amount, selected.currency)}
-                    />
-                    <DetailRow
-                      label="Owner payout"
-                      value={formatAmount(selected.owner_payout_amount, selected.currency)}
+                      label={`Platform fee (${selected.platform_commission_rate ?? 0}%)`}
+                      value={`-${formatAmount(selected.platform_fee_amount, selected.currency)}`}
                     />
                     <div className="my-1 border-t border-dashed border-slate-200 dark:border-slate-800" />
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-white">Total</span>
-                      <span className="text-lg font-bold text-[#c99b43]">
-                        {formatAmount(selected.total_amount, selected.currency)}
-                      </span>
-                    </div>
+                    <DetailRow
+                      label="Your payout"
+                      value={formatAmount(selected.owner_payout_amount, selected.currency)}
+                    />
+                    <div className="my-1" />
+                    <DetailRow
+                      label="Total paid by tenant"
+                      value={formatAmount(selected.total_amount, selected.currency)}
+                    />
+                    <div className="mb-1 mt-5 pt-10 border-t border-dashed border-slate-200 dark:border-slate-800" />
+                    <DetailRow label="Created" value={formatCreatedDate(selected.created_at)} />
+                    <DetailRow
+                      label="Commission rate"
+                      value={`${Number(selected.platform_commission_rate ?? 0).toFixed(2)}%`}
+                    />
                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <DetailRow label="Created" value={formatCreatedDate(selected.created_at)} />
-                  <DetailRow label="Commission rate" value={`${selected.platform_commission_rate ?? '0'}%`} />
                 </div>
 
                 {canOwnerReview(selected.status) && (

@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { useAuth } from '../../hooks/useAuth'
 import { useLocationSelector } from '../../hooks/useLocationSelector'
+import { toast } from '../../components/ui/toaster'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -1591,6 +1592,7 @@ export default function AddProperty() {
 
         if (Object.keys(stepErrors).length > 0) {
             setErrors(stepErrors)
+            toast.error('Please fix the highlighted errors before continuing.')
             return
         }
         setLoading(true)
@@ -1598,9 +1600,12 @@ export default function AddProperty() {
         try {
             await createProperty(buildPayload(form))
             clearDraft()
+            toast.success('Property listing created successfully!')
             navigate('/owner/properties')
         } catch (err) {
-            setGeneralError(err.message || 'Unable to create property. Please try again.')
+            const message = err.message || 'Unable to create property. Please try again.'
+            setGeneralError(message)
+            toast.error(message)
         } finally {
             setLoading(false)
         }

@@ -584,7 +584,11 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 property_bathrooms=getattr(house, 'bathrooms', None),
                 property_size=f"{house.area_sqft} sqft" if house else '',
                 property_nightly_price=f"{property_obj.currency} {property_obj.price} / {property_obj.get_rental_unit_display().lower()}",
-                property_address=", ".join(filter(None, [property_obj.address, property_obj.city, property_obj.region])),
+                property_address=", ".join(filter(None, [
+                    property_obj.address,
+                    property_obj.city.name if property_obj.city else None,
+                    property_obj.region.name if property_obj.region else None,
+                ])),
                 property_added_date=property_obj.created_at.strftime("%b %d, %Y"),
                 sender_phone=owner_phone,
             )

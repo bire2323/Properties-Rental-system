@@ -11,7 +11,6 @@ import {
   FileClock,
   Home,
   Loader2,
-  Percent as PercentIcon,
   Receipt,
   RefreshCw,
   RotateCcw,
@@ -160,11 +159,10 @@ export default function MyBookings() {
 
       {feedback && (
         <div
-          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${
-            feedback.type === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200'
-              : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300'
-          }`}
+          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${feedback.type === 'success'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300'
+            }`}
         >
           {feedback.type === 'success' ? (
             <CheckCircle2 className="h-5 w-5 shrink-0" />
@@ -194,17 +192,15 @@ export default function MyBookings() {
                 key={f.key}
                 type="button"
                 onClick={() => setFilter(f.key)}
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  active
-                    ? 'bg-[#c99b43] text-white shadow-sm'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900'
-                }`}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${active
+                  ? 'bg-[#c99b43] text-white shadow-sm'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900'
+                  }`}
               >
                 {f.label}
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  }`}
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}
                 >
                   {count}
                 </span>
@@ -451,16 +447,11 @@ export default function MyBookings() {
                     Price breakdown
                   </h3>
                   <div className="mt-4 space-y-3">
-                    <DetailsRow icon={DollarIcon} label="Base price" value={formatAmount(selected.base_price, selected.currency)} />
+                    <DetailsRow icon={DollarIcon} label="Rent" value={formatAmount(selected.base_price, selected.currency)} />
                     <DetailsRow
                       icon={ShieldIcon}
                       label="Security deposit"
                       value={formatAmount(selected.security_deposit, selected.currency)}
-                    />
-                    <DetailsRow
-                      icon={PercentIcon}
-                      label="Platform fee"
-                      value={formatAmount(selected.platform_fee_amount, selected.currency)}
                     />
                     <div className="my-1 border-t border-dashed border-slate-200 dark:border-slate-800" />
                     <div className="flex items-center justify-between">
@@ -473,12 +464,12 @@ export default function MyBookings() {
                 </div>
 
                 <div className="space-y-3">
-                  <DetailsRow icon={User} label="Renter" value={selected.renter_email || '—'} />
+                  <DetailsRow icon={User} label="Renter" value={selected.renter_name || '—'} />
                   {selected.recipient_company && (
                     <DetailsRow icon={BuildingGlyph} label="Recipient company" value={selected.recipient_company} />
                   )}
-                  {selected.recipient_owner && (
-                    <DetailsRow icon={User} label="Recipient owner" value={selected.recipient_owner} />
+                  {selected.rental_type && (
+                    <DetailsRow icon={User} label="Recipient type" value={formatRentalType(selected.rental_type)} />
                   )}
                 </div>
 

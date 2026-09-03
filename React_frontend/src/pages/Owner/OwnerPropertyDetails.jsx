@@ -167,7 +167,7 @@ export default function OwnerPropertyDetails() {
                                 <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
                                     <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
                                         <MapPin className="h-4 w-4" />
-                                        {[property.city, property.region, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
+                                        {[property.city_name, property.region_name, property.kebele].filter(Boolean).join(", ") || 'Location Unspecified'}
                                     </span>
                                     <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
                                         <DollarSign className="h-4 w-4" />

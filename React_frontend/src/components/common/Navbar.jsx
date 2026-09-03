@@ -155,6 +155,7 @@ function Navbar() {
             ? data.map((item) => ({
               value: item.name,
               label: item.name.charAt(0).toUpperCase() + item.name.slice(1),
+              listing_type: item.listing_type,
             }))
             : []
         }
@@ -363,7 +364,7 @@ function Navbar() {
                               <button
                                 key={type.value}
                                 type="button"
-                                onClick={() => handlePropertyTypeClick(type.value)}
+                                onClick={() => handlePropertyTypeClick(type.listing_type)}
                                 className="block w-full truncate rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                               >
                                 {type.label}
@@ -429,7 +430,7 @@ function Navbar() {
                               <button
                                 key={type.value}
                                 type="button"
-                                onClick={() => handleVehicleTypeClick(type.value)}
+                                onClick={() => handleVehicleTypeClick(type.listing_type)}
                                 className="block w-full truncate rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                               >
                                 {type.label}
@@ -815,7 +816,7 @@ function Navbar() {
                               <button
                                 key={`mobile-prop-${type.value}`}
                                 type="button"
-                                onClick={() => handlePropertyTypeClick(type.value)}
+                                onClick={() => handlePropertyTypeClick(type.listing_type)}
                                 className="w-full rounded-xl px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
                               >
                                 {type.label}
@@ -876,7 +877,7 @@ function Navbar() {
                               <button
                                 key={`mobile-veh-${type.value}`}
                                 type="button"
-                                onClick={() => handleVehicleTypeClick(type.value)}
+                                onClick={() => handleVehicleTypeClick(type.listing_type)}
                                 className="w-full rounded-xl px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
                               >
                                 {type.label}

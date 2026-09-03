@@ -985,7 +985,11 @@ class AdminNotificationListAPIView(APIView):
         return {
             "property_title": property_obj.property_name,
             "property_status": property_obj.get_status_display(),
-            "property_address": ", ".join(filter(None, [property_obj.address, property_obj.city, property_obj.region])),
+            "property_address": ", ".join(filter(None, [
+                property_obj.address,
+                property_obj.city.name if property_obj.city else None,
+                property_obj.region.name if property_obj.region else None,
+            ])),
             "property_bedrooms": getattr(house, "bedrooms", 0),
             "property_bathrooms": getattr(house, "bathrooms", 0),
             "property_size": f"{house.area_sqft} sqft" if house else "",
