@@ -463,20 +463,6 @@ export default function BookingCheckout() {
           </div>
           <BookingProgress currentStep={1} />
 
-          {/* Debug: Show missing fields */}
-          {getFormReadinessErrors().length > 0 && (
-            <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900/40 dark:bg-yellow-950/40">
-              <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-300">
-                Complete these fields to enable booking:
-              </p>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-yellow-800 dark:text-yellow-200">
-                {getFormReadinessErrors().map((field, idx) => (
-                  <li key={idx}>{field}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {/* Pricing validation */}
           {pricing && pricing.total <= 0 && (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/40">

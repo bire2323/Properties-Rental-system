@@ -482,7 +482,7 @@ function PropertyDetails() {
                 </div>
 
                 {/* ─── Stats Grid ──────────────────────────────────── */}
-                <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <div className="mt-8 grid grid-cols-3 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                   {/* Price Card (always visible) */}
                   <div className="rounded-2xl border border-[#c99b43]/20 bg-gradient-to-br from-[#fff7e8] to-white p-5 shadow-sm dark:border-[#c99b43]/20 dark:from-[#1e1a11] dark:to-slate-900">
                     <p className="text-sm text-slate-600 dark:text-slate-400">Price ({property.rental_unit})</p>
@@ -590,7 +590,7 @@ function PropertyDetails() {
                 </div>
 
                 {/* ─── Additional Info ────────────────────────────────── */}
-                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-2">
                   {/* Show Furnished only for houses */}
                   {isHouse && (
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">

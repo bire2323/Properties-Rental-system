@@ -11,6 +11,8 @@ import {
   FileClock,
   Home,
   Loader2,
+  Percent as PercentIcon,
+  CreditCard,
   Receipt,
   RefreshCw,
   RotateCcw,
@@ -146,14 +148,34 @@ export default function MyBookings() {
           </p>
         </div>
         {!loading && !error && bookings.length > 0 && (
-          <button
-            type="button"
-            onClick={loadBookings}
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <label className="sr-only" htmlFor="booking-status-filter">Filter bookings by status</label>
+            <select
+              id="booking-status-filter"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              className="h-10 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+            >
+              {FILTERS.map((statusFilter) => {
+                const count = statusFilter.key === 'all'
+                  ? bookings.length
+                  : bookings.filter((booking) => booking.status === statusFilter.key).length
+                return (
+                  <option key={statusFilter.key} value={statusFilter.key}>
+                    {statusFilter.label} ({count})
+                  </option>
+                )
+              })}
+            </select>
+            <button
+              type="button"
+              onClick={loadBookings}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+          </div>
         )}
       </section>
 
@@ -193,8 +215,8 @@ export default function MyBookings() {
                 type="button"
                 onClick={() => setFilter(f.key)}
                 className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${active
-                  ? 'bg-[#c99b43] text-white shadow-sm'
-                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900'
+                    ? 'bg-[#c99b43] text-white shadow-sm'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900'
                   }`}
               >
                 {f.label}
@@ -347,6 +369,16 @@ export default function MyBookings() {
                   View details
                   <ChevronRight className="h-4 w-4" />
                 </button>
+                {booking.status === 'approved' && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.assign(`/properties/${booking.property}/book/payment`)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#c99b43] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Pay
+                  </button>
+                )}
                 {canRenterCancel(booking.status) && (
                   <button
                     type="button"
