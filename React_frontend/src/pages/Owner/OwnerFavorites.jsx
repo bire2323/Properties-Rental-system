@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, Star, MapPin, Loader2, Trash2 } from 'lucide-react'
-import { getFavorites, removeFavorite } from '../../api/property/propertyApi'
+import { Heart, Star, MapPin, Loader2, UserRound } from 'lucide-react'
+import { getOwnerFavorites } from '../../api/property/propertyApi'
 import { Button } from '../../components/ui/button'
 import { getImageUrl } from '../../lib/utils'
 import EmptyState from './components/EmptyState'
@@ -19,22 +19,12 @@ export default function OwnerFavorites() {
     const fetchFavorites = async () => {
         try {
             setLoading(true)
-            const data = await getFavorites()
+            const data = await getOwnerFavorites()
             setFavorites(data)
         } catch (err) {
             setError(err.message || 'Failed to load favorites')
         } finally {
             setLoading(false)
-        }
-    }
-
-    const handleRemoveFavorite = async (propertyId, e) => {
-        e.stopPropagation()
-        try {
-            await removeFavorite(propertyId)
-            setFavorites(prev => prev.filter(f => f.property.id !== propertyId))
-        } catch (err) {
-            console.error('Failed to remove favorite', err)
         }
     }
 
@@ -76,7 +66,8 @@ export default function OwnerFavorites() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">My Favorites</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Property Interest</h2>
+            <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">Tenants who saved your properties and vehicles.</p>
             <div className="grid gap-6 sm:grid-cols-3 lg:grid-cols-5">
                 {favorites.map((fav) => {
                     const property = fav.property
@@ -96,14 +87,8 @@ export default function OwnerFavorites() {
                                     alt={property.property_name}
                                     className="h-full w-full object-cover transition-transform group-hover:scale-110"
                                 />
-                                <div className="absolute right-3 top-3">
-                                    <Button
-                                        size="icon"
-                                        className="h-8 w-8 rounded-full bg-white/90 shadow hover:bg-white hover:text-red-500"
-                                        onClick={(e) => handleRemoveFavorite(property.id, e)}
-                                    >
-                                        <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
+                                <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow">
+                                    <Heart className="h-4 w-4 fill-red-500 text-red-500" />
                                 </div>
                             </div>
                             <div className="p-2">
@@ -127,6 +112,17 @@ export default function OwnerFavorites() {
                                         ETB {parseFloat(property.price).toLocaleString()}
                                     </span>
                                     <span className="text-xs text-slate-500">{property.listing_type}</span>
+                                </div>
+                                <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                                    <UserRound className="h-4 w-4 text-[#c99b43]" />
+                                    <div className="min-w-0 text-xs">
+                                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                                            {`${fav.user?.first_name || ''} ${fav.user?.last_name || ''}`.trim() || fav.user?.email || 'Tenant'}
+                                        </p>
+                                        <p className="truncate text-slate-500 dark:text-slate-400">
+                                            {fav.user?.email || 'Email unavailable'}{fav.user?.phone_number ? ` • ${fav.user.phone_number}` : ''}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

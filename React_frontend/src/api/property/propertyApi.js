@@ -310,3 +310,13 @@ export async function getFavorites() {
         method: 'GET',
     })
 }
+
+/**
+ * GET /api/interactions/owner-favorites/
+ * Retrieves properties and vehicles owned by the authenticated owner that tenants favorited.
+ */
+export async function getOwnerFavorites() {
+    return request(`/api/interactions/owner-favorites/`, {
+        method: 'GET',
+    })
+}

@@ -6,7 +6,7 @@ from rest_framework.generics import ListAPIView
 from django.shortcuts import get_object_or_404
 from .models import PropertyRating, Favorite
 from properties.models import Property
-from .serializers import PropertyRatingSerializer, FavoriteSerializer
+from .serializers import PropertyRatingSerializer, FavoriteSerializer, OwnerFavoriteSerializer
 from django.db.models import Avg, Count
 
 class PropertyRatingAPIView(APIView):
@@ -70,3 +70,23 @@ class UserFavoritesListView(ListAPIView):
     def get_queryset(self):
         # Prefetch related properties and their required fields to avoid N+1
         return Favorite.objects.filter(user=self.request.user).select_related('property').order_by('-created_at')
+
+
+class OwnerFavoritesListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = OwnerFavoriteSerializer
+
+    def get_queryset(self):
+        return Favorite.objects.filter(
+            property__owner=self.request.user,
+        ).select_related(
+            'property',
+            'property__owner',
+            'property__city',
+            'property__region',
+            'user',
+            'user__profile',
+        ).prefetch_related(
+            'property__images',
+            'property__features',
+        ).order_by('-created_at')

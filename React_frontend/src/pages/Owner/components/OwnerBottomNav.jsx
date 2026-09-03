@@ -16,7 +16,7 @@ export default function OwnerBottomNav({ onOpenMenu }) {
                 const Icon = item.icon
                 return (
                     <NavLink
-                        key={item.path}
+                        key={`owner-bottom-${item.path}`}
                         to={item.path}
                         className={({ isActive }) =>
                             cn(
@@ -32,7 +32,7 @@ export default function OwnerBottomNav({ onOpenMenu }) {
                     </NavLink>
                 )
             })}
-            
+
             <button
                 type="button"
                 onClick={onOpenMenu}
