@@ -4,13 +4,13 @@ from django.db import models
 
 class AuditLog(models.Model):
     """
-    Platform-wide immutable audit trail.
+    Platform-wide audit trail.
 
     Records WHO did WHAT, WHEN, WHERE, and to WHICH OBJECT across the entire
     platform (user, booking, payment, property, admin, security, system).
 
-    Records are append-only. They are never edited or deleted through normal
-    application flows.
+    Records are created internally and can only be removed through the
+    admin audit-log workflow.
     """
 
     class Category(models.TextChoices):

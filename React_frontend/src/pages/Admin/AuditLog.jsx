@@ -14,6 +14,7 @@ import {
     Search,
     ShieldAlert,
     Target,
+    Trash2,
     User,
     UserRound,
     Wallet,
@@ -24,7 +25,7 @@ import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import useDebounce from '../../hooks/useDebounce'
-import { getAuditLogs, getAuditLogDetail, getAuditLogSummary } from '../../api/admin/auditApi'
+import { deleteAuditLog, getAuditLogs, getAuditLogDetail, getAuditLogSummary } from '../../api/admin/auditApi'
 import { Button, Input, Select, Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from '../../components/ui'
 import { cn } from '../../lib/utils'
 
@@ -181,7 +182,7 @@ function AuditLog() {
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
     const fetchSummary = useCallback(() => {
-        getAuditLogSummary().then(setSummary).catch(() => {})
+        getAuditLogSummary().then(setSummary).catch(() => { })
     }, [])
 
     const fetchEvents = useCallback(async () => {
@@ -267,6 +268,14 @@ function AuditLog() {
     const closeDetail = () => {
         setDetailEvent(null)
         setDetailError(null)
+    }
+
+    const deleteEvent = async () => {
+        await deleteAuditLog(detailEvent.id)
+        setEvents((prev) => prev.filter((item) => item.id !== detailEvent.id))
+        setTotalCount((count) => Math.max(0, count - 1))
+        fetchSummary()
+        closeDetail()
     }
 
     const goToPage = (p) => {
@@ -711,6 +720,7 @@ function AuditLog() {
                         loading={detailLoading}
                         error={detailError}
                         onClose={closeDetail}
+                        onDelete={deleteEvent}
                         isDark={isDark}
                     />
                 )}
@@ -719,11 +729,25 @@ function AuditLog() {
     )
 }
 
-function AuditDetailDrawer({ event, loading, error, onClose, isDark }) {
+function AuditDetailDrawer({ event, loading, error, onClose, onDelete, isDark }) {
     const catMeta = getCategoryMeta(event.category)
     const sevMeta = getSeverityMeta(event.severity)
     const resMeta = getResultMeta(event.result)
     const formatted = formatTimestamp(event.created_at)
+    const [deleteConfirming, setDeleteConfirming] = useState(false)
+    const [deleteLoading, setDeleteLoading] = useState(false)
+    const [deleteError, setDeleteError] = useState(null)
+
+    const handleDelete = async () => {
+        setDeleteLoading(true)
+        setDeleteError(null)
+        try {
+            await onDelete()
+        } catch (err) {
+            setDeleteError(err.message || 'Failed to delete audit event.')
+            setDeleteLoading(false)
+        }
+    }
 
     const renderJsonBlock = (obj) => {
         if (!obj || typeof obj !== 'object') {
@@ -788,7 +812,7 @@ function AuditDetailDrawer({ event, loading, error, onClose, isDark }) {
                     <h2 className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-slate-900')}>Event Details</h2>
                     <div className="flex items-center gap-2">
                         {loading && <Loader2 className={cn('h-4 w-4 animate-spin', isDark ? 'text-slate-400' : 'text-slate-500')} />}
-                        <button onClick={onClose} className={cn('rounded-lg p-1.5 transition', isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100')}>
+                        <button type="button" onClick={onClose} className={cn('rounded-lg p-1.5 transition', isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100')}>
                             <X className="h-5 w-5" />
                         </button>
                     </div>
@@ -892,6 +916,32 @@ function AuditDetailDrawer({ event, loading, error, onClose, isDark }) {
                             <p className={cn('text-sm', isDark ? 'text-red-300' : 'text-red-600')}>{event.error_message}</p>
                         </Section>
                     )}
+
+                    {deleteError && (
+                        <div className={cn('mb-3 rounded-lg border p-3 text-sm', isDark ? 'border-red-500/30 text-red-300' : 'border-red-200 text-red-600')}>
+                            {deleteError}
+                        </div>
+                    )}
+
+                    <div className={cn('mt-6 border-t pt-4', isDark ? 'border-slate-800' : 'border-slate-200')}>
+                        {!deleteConfirming ? (
+                            <Button type="button" variant="destructive" onClick={() => setDeleteConfirming(true)} disabled={deleteLoading}>
+                                <Trash2 className="h-4 w-4" />
+                                Delete event
+                            </Button>
+                        ) : (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-slate-700')}>Are you sure?</span>
+                                <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleteLoading}>
+                                    {deleteLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Yes, delete
+                                </Button>
+                                <Button type="button" variant="outline" onClick={() => setDeleteConfirming(false)} disabled={deleteLoading}>
+                                    Cancel
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </motion.div>
         </>

@@ -86,6 +86,12 @@ export async function getAuditLogDetail(eventId) {
     })
 }
 
+export async function deleteAuditLog(eventId) {
+    return request(`/api/audit/admin/audit-logs/${eventId}/`, {
+        method: 'DELETE',
+    })
+}
+
 export async function getAuditLogSummary() {
     try {
         return await request('/api/audit/admin/audit-logs/summary/', {
