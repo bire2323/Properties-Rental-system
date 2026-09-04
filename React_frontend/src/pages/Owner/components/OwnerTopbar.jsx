@@ -131,7 +131,7 @@ export default function OwnerTopbar({ onToggleSidebar }) {
                                         setMenuOpen(false)
                                         await logout()
                                     }}
-                                    className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
+                                    className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                                 >
                                     Logout
                                 </button>

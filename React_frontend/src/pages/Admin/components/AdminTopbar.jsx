@@ -202,7 +202,7 @@ export default function AdminTopbar({ onToggleSidebar }) {
                                         setMenuOpen(false)
                                         await logout()
                                     }}
-                                    className={`w-full px-4 py-3 text-left text-sm font-medium transition ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                                    className={`w-full px-4 py-3 text-left text-sm font-medium transition ${isDark ? 'text-red-400 hover:bg-red-950/40 hover:text-red-300' : 'text-red-600 hover:bg-red-50 hover:text-red-700'}`}
                                 >
                                     Logout
                                 </button>
