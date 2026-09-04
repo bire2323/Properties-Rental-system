@@ -18,21 +18,29 @@ const features = [
     icon: Search,
     title: 'Easy Search',
     description: 'Find your dream property with advanced filters and smart recommendations.',
+    accent: 'from-blue-500 to-cyan-400',
+    bg: 'from-blue-500/10 to-cyan-400/5',
   },
   {
     icon: Shield,
     title: 'Verified Listings',
     description: 'All properties verified and inspected for quality and authenticity.',
+    accent: 'from-emerald-500 to-teal-400',
+    bg: 'from-emerald-500/10 to-teal-400/5',
   },
   {
     icon: Key,
     title: 'Instant Booking',
     description: 'Book instantly with secure payments and digital contracts.',
+    accent: 'from-[#c99b43] to-[#f3c96d]',
+    bg: 'from-[#c99b43]/10 to-[#f3c96d]/5',
   },
   {
     icon: TrendingUp,
     title: 'Best Prices',
     description: 'Competitive pricing and exclusive deals on premium properties.',
+    accent: 'from-violet-500 to-purple-400',
+    bg: 'from-violet-500/10 to-purple-400/5',
   },
 ]
 
@@ -167,80 +175,107 @@ function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="mt-10 py-0 bg-white dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* ── Why Choose NexaSpace ─────────────────────────────────────── */}
+      <section className="relative overflow-hidden py-20 sm:py-28 bg-white dark:bg-slate-900">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-gradient-to-br from-[#c99b43]/8 to-[#f3c96d]/4 blur-3xl dark:from-[#c99b43]/5 dark:to-[#f3c96d]/2" />
+          <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-gradient-to-br from-blue-500/8 to-cyan-400/4 blur-3xl dark:from-blue-500/3 dark:to-cyan-400/1" />
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
-              Why Choose NexaSpace?
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#c99b43]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#c99b43] dark:bg-[#c99b43]/20">
+              <Star className="h-3 w-3 fill-[#c99b43]" />
+              Why NexaSpace
+            </span>
+            <h2 className="mt-5 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl dark:text-white">
+              Why Choose{' '}
+              <span className="bg-gradient-to-r from-[#f3c96d] via-[#c99b43] to-[#b98227] bg-clip-text text-transparent">
+                NexaSpace?
+              </span>
             </h2>
-            <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600 dark:text-slate-400">
               Premium features designed to make your property search effortless
             </p>
           </div>
 
-          <div className="mt-16 grid grid-cols-2 gap-4 sm:gap-8 lg:grid-cols-4">
+          <div className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:mt-20 lg:grid-cols-4 lg:gap-6">
             {features.map((feature, index) => (
-              <Card
+              <div
                 key={index}
-                className="group relative overflow-hidden border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 transition-all hover:shadow-xl hover:-translate-y-1 dark:border-slate-800 dark:from-slate-900 dark:to-slate-800"
+                className={`group relative rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl sm:p-7 lg:p-8 border-slate-200/80 bg-white/80 backdrop-blur-sm hover:border-[#c99b43]/30 dark:border-slate-800/80 dark:bg-slate-900/80 dark:hover:border-[#c99b43]/20`}
               >
-                <div className="absolute right-0 top-0 h-20 w-20 translate-x-8 -translate-y-8 rounded-full bg-gradient-to-br from-[#c99b43]/20 to-transparent" />
+                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.bg} opacity-0 transition-opacity duration-300 group-hover:opacity-100`} />
+                <div className="absolute right-4 top-4 text-5xl font-black text-slate-100/80 select-none dark:text-slate-800/60">
+                  {String(index + 1).padStart(2, '0')}
+                </div>
+
                 <div className="relative">
-                  <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#c99b43] to-[#f3c96d] text-white shadow-lg">
+                  <div className={`mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl`}>
                     <feature.icon className="h-7 w-7" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{feature.title}</h3>
-                  <p className="mt-2 text-slate-600 dark:text-slate-400">{feature.description}</p>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{feature.title}</h3>
+                  <p className="mt-2.5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{feature.description}</p>
+                  <div className="mt-4 flex items-center gap-1 text-sm font-semibold text-[#c99b43] opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1">
+                    Learn more
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Top Properties — real data from backend */}
-      <section className="mt-10 py-0 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* ── Featured Properties — real data from backend ──────────────── */}
+      <section className="relative overflow-hidden py-20 sm:py-28 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
-                Featured Properties
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#c99b43]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#c99b43] dark:bg-[#c99b43]/20">
+                <Building2 className="h-3 w-3" />
+                Featured
+              </span>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl dark:text-white">
+                Featured{' '}
+                <span className="bg-gradient-to-r from-[#f3c96d] via-[#c99b43] to-[#b98227] bg-clip-text text-transparent">
+                  Properties
+                </span>
               </h2>
-              <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
+              <p className="mt-3 text-lg text-slate-600 dark:text-slate-400">
                 Handpicked premium properties just for you
               </p>
             </div>
             <Button
               variant="outline"
-              className="border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
+              className="inline-flex items-center gap-2 self-start rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] transition-all hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white sm:self-auto dark:border-[#c99b43]/20 dark:bg-[#c99b43]/10 dark:hover:border-[#c99b43] dark:hover:bg-[#c99b43]"
               onClick={() => navigate('/properties')}
             >
               View All
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Loading state — 4 skeleton cards matching card dimensions */}
+          {/* Loading skeleton */}
           {propertiesLoading && (
-            <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <div className="h-32 sm:h-56 animate-pulse bg-slate-200 dark:bg-slate-800" />
-                  <div className="space-y-2 sm:space-y-3 p-3 sm:p-5">
-                    <div className="h-4 sm:h-5 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-                    <div className="h-3 sm:h-4 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-                    <div className="flex gap-2 sm:gap-3 border-t border-slate-200 pt-2 sm:pt-3 dark:border-slate-800">
-                      <div className="h-3 sm:h-4 w-8 sm:w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-                      <div className="h-3 sm:h-4 w-8 sm:w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-                      <div className="h-3 sm:h-4 w-10 sm:w-14 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-48 sm:h-56 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50" />
+                  <div className="space-y-3 p-5">
+                    <div className="h-5 w-3/4 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+                    <div className="flex gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                      <div className="h-4 w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-4 w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-4 w-14 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </div>
                     <div className="flex items-center justify-between pt-1">
-                      <div className="h-4 sm:h-6 w-16 sm:w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-                      <div className="h-7 sm:h-8 w-16 sm:w-24 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-6 w-20 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-9 w-20 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
                     </div>
                   </div>
                 </div>
@@ -250,16 +285,16 @@ function Home() {
 
           {/* Error state */}
           {!propertiesLoading && propertiesError && (
-            <div className="mt-12 flex items-center justify-center rounded-xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/40 dark:bg-red-950/20">
+            <div className="mt-12 flex items-center justify-center rounded-2xl border border-red-200 bg-red-50/80 p-10 text-center backdrop-blur-sm dark:border-red-900/40 dark:bg-red-950/20">
               <div>
-                <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400">
                   Could not load properties
                 </p>
-                <p className="mt-1 text-xs text-red-500 dark:text-red-500">{propertiesError}</p>
+                <p className="mt-1.5 text-xs text-red-500">{propertiesError}</p>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="mt-4 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                  className="mt-4 rounded-xl border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
                   onClick={() => navigate('/properties')}
                 >
                   Browse all listings
@@ -270,17 +305,17 @@ function Home() {
 
           {/* Empty state */}
           {!propertiesLoading && !propertiesError && topProperties.length === 0 && (
-            <div className="mt-12 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-12 text-center dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="mt-12 flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50/80 p-14 text-center backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/50">
               <div>
-                <p className="text-base font-medium text-slate-700 dark:text-slate-300">
+                <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
                   No properties available right now
                 </p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
                   Check back soon or browse all listings.
                 </p>
                 <Button
                   size="sm"
-                  className="mt-4 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 hover:opacity-90"
+                  className="mt-4 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 hover:opacity-90"
                   onClick={() => navigate('/properties')}
                 >
                   Browse all listings
@@ -289,70 +324,88 @@ function Home() {
             </div>
           )}
 
-          {/* Property cards — real data */}
+          {/* Property cards */}
           {!propertiesLoading && !propertiesError && topProperties.length > 0 && (
-            <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
               {topProperties.map((property) => (
-                <Card
+                <div
                   key={property.id}
-                  className="group overflow-hidden rounded-xl sm:rounded-2xl border-slate-200 bg-white transition-all hover:shadow-2xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900"
+                  className="group overflow-hidden rounded-2xl border bg-white transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border-slate-200/80 dark:border-slate-800/80 dark:bg-slate-900"
                 >
-                  <div className="relative overflow-hidden h-32 sm:h-56">
+                  <div className="relative h-48 sm:h-56 overflow-hidden">
                     <img
                       src={property.image}
                       alt={property.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                       onError={(e) => { e.target.src = FALLBACK_IMAGE }}
                     />
-                    {/* Rating badge — only shown when a rating exists */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
                     {property.rating !== null && (
-                      <div className="absolute right-2 top-2 sm:right-3 sm:top-3 flex items-center gap-1 rounded-full bg-white/95 px-1.5 py-0.5 sm:px-2.5 sm:py-1 backdrop-blur-sm dark:bg-slate-900/95">
-                        <Star className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 fill-[#c99b43] text-[#c99b43]" />
-                        <span className="text-[9px] sm:text-xs font-semibold text-slate-900 dark:text-white">
+                      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 backdrop-blur-md shadow-sm dark:bg-slate-900/90">
+                        <Star className="h-3.5 w-3.5 fill-[#c99b43] text-[#c99b43]" />
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
                           {property.rating}
                         </span>
                       </div>
                     )}
+
+                    <div className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 backdrop-blur-md shadow-sm dark:bg-slate-900/90 dark:text-slate-300">
+                      {property.listing_type === 'car' ? 'Vehicle' : 'Property'}
+                    </div>
+
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-center pb-4 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md">
+                        View Details
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="p-3 sm:p-5">
-                    <h3 className="text-xs sm:text-lg font-semibold text-slate-900 dark:text-white line-clamp-1">
+                  <div className="p-4 sm:p-5">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-[#c99b43] transition-colors duration-300">
                       {property.title}
                     </h3>
-                    <p className="mt-1 flex items-center text-[10px] sm:text-sm text-slate-600 dark:text-slate-400 truncate">
-                      <MapPin className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+                    <p className="mt-1.5 flex items-center text-sm text-slate-500 dark:text-slate-400 truncate">
+                      <MapPin className="mr-1 h-3.5 w-3.5 shrink-0 text-[#c99b43]" />
                       <span className="truncate">{property.location}</span>
                     </p>
 
-                    {/* House-specific details — only rendered when fields are present */}
                     {property.listing_type === 'house' && (property.beds !== null || property.baths !== null || property.area !== null) && (
-                      <div className="mt-2 sm:mt-3 flex items-center gap-1.5 sm:gap-3 border-t border-slate-200 pt-2 sm:pt-3 text-[9px] sm:text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
-                        {property.beds !== null && <span>{property.beds} Beds</span>}
-                        {property.beds !== null && property.baths !== null && <span>•</span>}
-                        {property.baths !== null && <span>{property.baths} Baths</span>}
-                        {property.area !== null && <><span className="hidden sm:inline">•</span><span className="truncate max-w-[30px] sm:max-w-none">{property.area} m²</span></>}
+                      <div className="mt-3 flex items-center gap-3 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                        {property.beds !== null && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">{property.beds}</span> Beds
+                          </span>
+                        )}
+                        {property.baths !== null && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">{property.baths}</span> Baths
+                          </span>
+                        )}
+                        {property.area !== null && (
+                          <span className="inline-flex items-center gap-1 truncate">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">{property.area}</span> m²
+                          </span>
+                        )}
                       </div>
                     )}
 
-                    <div className="mt-2 sm:mt-3 flex items-center justify-between">
-                      <div className="flex flex-col sm:block">
-                        <span className="text-sm sm:text-xl font-bold text-[#c99b43]">
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                      <div>
+                        <span className="text-xl font-extrabold text-[#c99b43]">
                           {property.price}
                         </span>
-                        <span className="text-[9px] sm:text-xs text-slate-600 dark:text-slate-400">
-                          {' '}ETB/{property.rental_unit}
+                        <span className="ml-1 text-xs text-slate-500 dark:text-slate-400">
+                          ETB/{property.rental_unit}
                         </span>
                       </div>
-                      <Button
-                        size="sm"
-                        className="bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-7 px-2 sm:px-4 sm:py-2 text-[10px] sm:text-sm text-slate-950 hover:opacity-90"
-                        onClick={() => navigate(`/properties/${property.id}`)}
-                      >
-                        View
-                      </Button>
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#c99b43]/10 text-[#c99b43] transition-all duration-300 group-hover:bg-[#c99b43] group-hover:text-white group-hover:shadow-md group-hover:shadow-[#c99b43]/20">
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
                     </div>
                   </div>
-                </Card>
+                </div>
               ))}
             </div>
           )}
@@ -447,4 +500,3 @@ function Home() {
 }
 
 export default Home
-

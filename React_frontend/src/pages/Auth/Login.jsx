@@ -5,7 +5,7 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Mail,
+  Mail, Building2
 } from 'lucide-react'
 import logo from '../../assets/logo.jpg'
 import Navbar from '../../components/common/Navbar'
