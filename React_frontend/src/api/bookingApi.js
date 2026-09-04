@@ -225,6 +225,10 @@ export async function cancelBooking(id) {
     return request(`/api/bookings/${id}/`, { method: 'DELETE' })
 }
 
+export async function deleteBooking(id) {
+    return request(`/api/bookings/${id}/`, { method: 'DELETE' })
+}
+
 /**
  * GET /api/bookings/?status=pending&property_id={id}
  * List rental requests for an owner's property.

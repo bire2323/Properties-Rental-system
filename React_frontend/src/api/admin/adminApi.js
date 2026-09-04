@@ -1,3 +1,5 @@
+import { getAdminBookings } from '../bookingApi'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 function resolveMediaUrl(value) {
@@ -126,8 +128,12 @@ export async function deleteProperty(propertyId) {
 
 export async function getPropertyOverviewData() {
     try {
-        const propertiesResponse = await getAllProperties()
+        const [propertiesResponse, bookingsResponse] = await Promise.all([
+            getAllProperties(),
+            getAdminBookings(),
+        ])
         const properties = Array.isArray(propertiesResponse) ? propertiesResponse : propertiesResponse.results || []
+        const bookings = Array.isArray(bookingsResponse) ? bookingsResponse : bookingsResponse.results || []
 
         const labels = []
         const added = []
@@ -150,9 +156,9 @@ export async function getPropertyOverviewData() {
                 return createdAt >= start && createdAt <= end
             }).length
 
-            const rentedThisDate = properties.filter((p) => {
-                const createdAt = new Date(p.created_at)
-                return !p.is_available && createdAt >= start && createdAt <= end
+            const rentedThisDate = bookings.filter((booking) => {
+                const createdAt = new Date(booking.created_at)
+                return ['confirmed', 'completed'].includes(booking.status) && createdAt >= start && createdAt <= end
             }).length
 
             added.push(addedThisDate)

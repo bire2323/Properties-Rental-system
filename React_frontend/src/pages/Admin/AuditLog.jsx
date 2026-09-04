@@ -147,7 +147,7 @@ const getCategoryIcon = (category) => {
 }
 
 function AuditLog() {
-    const defaultPageSize = 20
+    const defaultPageSize = 5
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const { isDark } = useTheme()
 
@@ -156,7 +156,7 @@ function AuditLog() {
     const [totalCount, setTotalCount] = useState(0)
     const [totalPages, setTotalPages] = useState(1)
     const [page, setPage] = useState(1)
-    const [pageSize, setPageSize] = useState(20)
+    const [pageSize, setPageSize] = useState(defaultPageSize)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [actions, setActions] = useState([])
@@ -635,7 +635,7 @@ function AuditLog() {
                                         View less
                                     </Button>
                                 )}
-                                {events.length >= pageSize && (
+                                {totalCount > pageSize && (
                                     <Button variant="outline" size="sm" onClick={showMoreEvents} disabled={loading}>
                                         View more
                                     </Button>

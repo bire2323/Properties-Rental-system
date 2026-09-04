@@ -1,19 +1,19 @@
 import { useTheme } from '../../../hooks/useTheme'
 
-const chartPoints = (values) =>
-    values
-        .map((value, index) => {
-            const x = 30 + index * 76
-            const y = 170 - value * 2
-            return `${x},${y}`
-        })
-        .join(' ')
+const chartPoints = (values, maxValue) => values
+    .map((value, index) => {
+        const x = 30 + index * 80
+        const y = 170 - (value / maxValue) * 140
+        return `${x},${y}`
+    })
+    .join(' ')
 
 export default function PropertyOverviewChart({ chartData = null }) {
     const { isDark } = useTheme()
     const labels = chartData?.labels || []
     const added = chartData?.added || []
     const rented = chartData?.rented || []
+    const maxValue = Math.max(1, ...added, ...rented)
 
     const hasData = labels.length > 0 || added.length > 0 || rented.length > 0
 
@@ -67,7 +67,7 @@ export default function PropertyOverviewChart({ chartData = null }) {
                                 fill="none"
                                 stroke="#3b82f6"
                                 strokeWidth="2.5"
-                                points={chartPoints(added)}
+                                points={chartPoints(added, maxValue)}
                                 strokeLinejoin="round"
                                 strokeLinecap="round"
                             />
@@ -75,7 +75,7 @@ export default function PropertyOverviewChart({ chartData = null }) {
                                 fill="none"
                                 stroke="#f59e0b"
                                 strokeWidth="2.5"
-                                points={chartPoints(rented)}
+                                points={chartPoints(rented, maxValue)}
                                 strokeLinejoin="round"
                                 strokeLinecap="round"
                             />
