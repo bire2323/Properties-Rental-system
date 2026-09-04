@@ -59,6 +59,7 @@ import Settings from '../pages/Tenant/Settings'
 import BecomeOwnerPage from '../pages/RoleChange/BecomeOwnerPage'
 import PendingApproval from '@/pages/Owner/PendingApproval'
 import Categories from '@/pages/Admin/Categories'
+import AboutUs from '../pages/aboutUs'
 
 
 
@@ -72,6 +73,7 @@ function AppRoutes() {
                 <Route path="/become-owner" element={<BecomeOwnerPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/about" element={<AboutUs />} />
 
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id" element={<PropertyDetails />} />
