@@ -186,6 +186,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                     booking, "cancelled", request.user, previous_status, booking.status,
                     "",  # renter cancellation has no reason
                 )
+                _notify_and_email_cancelled(booking, cancelled_for="tenant", reason="")
             return Response(status=status.HTTP_204_NO_CONTENT)
         if request.user.role == User.Role.ADMIN:
             return Response(
@@ -238,6 +239,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 booking, "cancelled", request.user, previous_status, booking.status,
                 reason,
             )
+            _notify_and_email_cancelled(booking, cancelled_for="owner", reason=reason)
         return Response({"detail": "Booking cancelled.", "status": booking.status})
 
     @action(detail=True, methods=["post"], url_path="admin/expire")
@@ -263,6 +265,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 booking, "expired", request.user, previous_status, booking.status,
                 reason,
             )
+            _notify_and_email_expired(booking)
         return Response({"detail": "Booking marked as expired.", "status": booking.status})
 
     @action(detail=True, methods=["post"], url_path="admin/complete")
@@ -288,6 +291,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 booking, "completed", request.user, previous_status, booking.status,
                 reason,
             )
+            _notify_and_email_completed(booking)
         return Response({"detail": "Booking marked as completed.", "status": booking.status})
 
     @action(detail=True, methods=["get"])
@@ -395,3 +399,67 @@ def _record_admin_audit(booking, action, actor, previous_status, new_status, rea
         reason=reason,
         metadata={},
     )
+
+
+def _notify_and_email_cancelled(booking, *, cancelled_for, reason):
+    from .email_service import send_booking_cancelled_email
+    from .notifications import create_booking_notification
+
+    try:
+        send_booking_cancelled_email(
+            booking,
+            cancelled_for=cancelled_for,
+            reason=reason,
+        )
+    except Exception:
+        pass
+    try:
+        create_booking_notification(
+            booking=booking,
+            title="Booking cancelled",
+            details=f"Booking {booking.booking_reference} was cancelled.",
+            info="Booking cancelled",
+            sender=None,
+        )
+    except Exception:
+        pass
+
+
+def _notify_and_email_expired(booking):
+    from .email_service import send_booking_expired_email
+    from .notifications import create_booking_notification
+
+    try:
+        send_booking_expired_email(booking)
+    except Exception:
+        pass
+    try:
+        create_booking_notification(
+            booking=booking,
+            title="Booking expired",
+            details=f"Booking {booking.booking_reference} expired without payment.",
+            info="Booking expired",
+            sender=None,
+        )
+    except Exception:
+        pass
+
+
+def _notify_and_email_completed(booking):
+    from .email_service import send_booking_completed_email
+    from .notifications import create_booking_notification
+
+    try:
+        send_booking_completed_email(booking)
+    except Exception:
+        pass
+    try:
+        create_booking_notification(
+            booking=booking,
+            title="Booking completed",
+            details=f"Booking {booking.booking_reference} was completed.",
+            info="Booking completed",
+            sender=None,
+        )
+    except Exception:
+        pass

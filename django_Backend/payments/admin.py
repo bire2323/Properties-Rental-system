@@ -31,6 +31,7 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
     list_filter = ("status", "payment_method", "currency", "created_at")
     search_fields = (
         "transaction_reference",
+        "tx_ref",
         "provider_reference",
         "payer__email",
         "payer__first_name",

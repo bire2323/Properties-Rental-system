@@ -1,0 +1,18 @@
+{% extends "emails/base.html" %}
+{% block content %}
+    <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Your booking request was not approved</h2>
+    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#374151;">
+        We're sorry — your booking request for <strong>{{ property_name }}</strong>
+        (reference {{ booking_reference }}) was not approved.
+    </p>
+
+    {% if reason %}
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#374151;">
+            Reason: <strong>{{ reason }}</strong>
+        </p>
+    {% endif %}
+
+    <p style="margin:0;font-size:14px;color:#374151;">
+        You can browse other available properties.
+    </p>
+{% endblock %}

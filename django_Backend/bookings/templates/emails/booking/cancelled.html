@@ -1,0 +1,35 @@
+{% extends "emails/base.html" %}
+{% block content %}
+    <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Booking cancelled</h2>
+    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#374151;">
+        Your booking for <strong>{{ property_name }}</strong> (reference
+        {{ booking_reference }}) has been cancelled by the {{ by }}.
+    </p>
+
+    {% if reason %}
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#374151;">
+            Reason: <strong>{{ reason }}</strong>
+        </p>
+    {% endif %}
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;border:1px solid #e5e7eb;border-radius:8px;">
+        <tr>
+            <td style="padding:16px 20px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#6b7280;">Check-in</td>
+                        <td style="padding:4px 0;font-size:13px;color:#111827;text-align:right;">{{ start_date }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#6b7280;">Check-out</td>
+                        <td style="padding:4px 0;font-size:13px;color:#111827;text-align:right;">{{ end_date }}</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:0;font-size:14px;color:#374151;">
+        If you have any questions, please contact our support team.
+    </p>
+{% endblock %}

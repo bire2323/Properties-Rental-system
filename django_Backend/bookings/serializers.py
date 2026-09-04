@@ -234,11 +234,21 @@ class BookingStatusUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         from .services import record_audit_event
+        from .email_service import (
+            send_booking_approved_email,
+            send_booking_rejected_email,
+            send_booking_cancelled_email,
+        )
+        from .notifications import create_booking_notification as notify
 
         previous_status = instance.status
         new_status = validated_data.get("status", instance.status)
         request = self.context.get("request", None)
         actor = request.user if request and request.user.is_authenticated else None
+
+        if new_status == previous_status:
+            # No-op status update; never resend emails/notifications.
+            return instance
 
         instance.status = new_status
         instance.save(update_fields=["status", "updated_at"])
@@ -254,6 +264,39 @@ class BookingStatusUpdateSerializer(serializers.ModelSerializer):
             reason="",
             metadata={},
         )
+
+        # Emails and in-app notifications are separate concerns from the audit
+        # trail. Never let them raise and break a committed status change.
+        try:
+            if new_status == Booking.BookingStatus.APPROVED:
+                send_booking_approved_email(instance)
+                notify(
+                    booking=instance,
+                    title="Booking approved",
+                    details=f"Booking {instance.booking_reference} was approved.",
+                    info="Booking status update",
+                    sender=actor,
+                )
+            elif new_status == Booking.BookingStatus.REJECTED:
+                send_booking_rejected_email(instance, reason="")
+                notify(
+                    booking=instance,
+                    title="Booking rejected",
+                    details=f"Booking {instance.booking_reference} was rejected.",
+                    info="Booking status update",
+                    sender=actor,
+                )
+            elif new_status == Booking.BookingStatus.CANCELLED:
+                send_booking_cancelled_email(instance, cancelled_for="owner", reason="")
+                notify(
+                    booking=instance,
+                    title="Booking cancelled",
+                    details=f"Booking {instance.booking_reference} was cancelled.",
+                    info="Booking status update",
+                    sender=actor,
+                )
+        except Exception:
+            pass
         return instance
 
 

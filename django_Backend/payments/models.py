@@ -51,6 +51,13 @@ class PaymentTransaction(models.Model):
         choices=PaymentMethod.choices,
         help_text="Payment method used."
     )
+    tx_ref = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Provider transaction reference (e.g., Chapa tx_ref) used for the callback/webhook round-trip."
+    )
     provider_reference = models.CharField(
         max_length=100,
         blank=True,

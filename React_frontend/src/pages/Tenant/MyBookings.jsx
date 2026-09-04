@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   AlertCircle,
@@ -72,6 +73,7 @@ function DetailsRow({ icon: Icon, label, value }) {
 
 export default function MyBookings() {
   const reduceMotion = useReducedMotion()
+  const navigate = useNavigate()
   const [bookings, setBookings] = useState([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -372,7 +374,7 @@ export default function MyBookings() {
                 {booking.status === 'approved' && (
                   <button
                     type="button"
-                    onClick={() => window.location.assign(`/properties/${booking.property}/book/payment`)}
+                    onClick={() => navigate(`/bookings/${booking.id}/payment`)}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#c99b43] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#b08838]"
                   >
                     <CreditCard className="h-4 w-4" />

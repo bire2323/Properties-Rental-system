@@ -41,6 +41,8 @@ import Properties from '../pages/Properties/Properties'
 import PropertyDetails from '../pages/Properties/PropertyDetails'
 import BookingCheckout from '../pages/Booking/BookingCheckout'
 import Payment from '../pages/Booking/Payment'
+import PaymentCheckout from '../pages/Booking/PaymentCheckout'
+import PaymentResult from '../pages/Booking/PaymentResult'
 import BookingConfirmation from '../pages/Booking/BookingConfirmation'
 import Vehicles from '../pages/Vehicles/Vehicles'
 import VehicleDetails from '../pages/Vehicles/VehicleDetails'
@@ -76,6 +78,8 @@ function AppRoutes() {
                 <Route path="/properties/:id/book" element={<BookingCheckout />} />
                 <Route path="/properties/:id/book/payment" element={<Payment />} />
                 <Route path="/properties/:id/book/confirmation" element={<BookingConfirmation />} />
+                <Route path="/bookings/:bookingId/payment" element={<PaymentCheckout />} />
+                <Route path="/payment-result" element={<PaymentResult />} />
 
                 <Route path="/vehicles" element={<Vehicles />} />
                 <Route path="/vehicles/:id" element={<VehicleDetails />} />

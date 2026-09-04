@@ -27,7 +27,7 @@ SECRET_KEY =config("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["cellulolytic-nonshredding-kena.ngrok-free.dev", "localhost", "127.0.0.1"]
 
 
 
@@ -167,6 +167,55 @@ SIMPLE_JWT = {
 }
 
 GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID", default="")
+
+# ── Transactional email ──────────────────────────────────────────────────
+# DEVELOPMENT default uses Gmail SMTP so emails reach a real inbox while the
+# app is running locally. Every value can be overridden via environment
+# variables, so production is NOT permanently coupled to Gmail -- swapping
+# providers later only requires changing EMAIL_* in the environment.
+#
+# Credentials are NEVER hard-coded here. Provide them through the .env file
+# (see "Gmail App Password" step); .env is gitignored.
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+# Default to 465 + SSL (SMTPS). Some networks block STARTTLS on port 587, so
+# port 465 is the resilient default for Gmail. Override via env as needed.
+EMAIL_PORT = config("EMAIL_PORT", default=465, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=False, cast=bool)
+EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=True, cast=bool)
+# Timeout (seconds) for each SMTP operation to avoid hanging the request.
+EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=30, cast=int)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+# DEFAULT_FROM_EMAIL falls back to the configured SMTP sender.
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL",
+    default=config("EMAIL_HOST_USER", default="no-reply@example.com"),
+)
+DEFAULT_FROM_NAME = config("DEFAULT_FROM_NAME", default="Property Rental System")
+
+# Base URL of the React frontend used to build email call-to-action links.
+FRONTEND_BASE_URL = config("FRONTEND_BASE_URL", default="http://localhost:3000")
+
+# ── Chapa payment gateway ────────────────────────────────────────────────
+# The secret key is server-side ONLY and must never reach the browser. In
+# development use Chapa TEST/SANDBOX keys. All values come from the .env file
+# (gitignored) -- never hard-code credentials in source.
+CHAPA_SECRET_KEY = config("CHAPA_SECRET_KEY", default="")
+CHAPA_PUBLIC_KEY = config("CHAPA_PUBLIC_KEY", default="")
+CHAPA_WEBHOOK_SECRET = config("CHAPA_WEBHOOK_SECRET", default="")
+CHAPA_CURRENCY = config("CHAPA_CURRENCY", default="ETB")
+# Base API endpoints. Override in local dev to point at a tunneled URL.
+CHAPA_API_BASE = config("CHAPA_API_BASE", default="https://api.chapa.co/v1")
+# Callback/return/webhook URLs must be publicly reachable by Chapa. In local
+# dev point these at a temporary HTTPS tunnel (never localhost). Configured via
+# environment, never hard-coded.
+CHAPA_CALLBACK_URL = config("CHAPA_CALLBACK_URL", default="")
+CHAPA_RETURN_URL = config("CHAPA_RETURN_URL", default="")
+CHAPA_WEBHOOK_URL = config("CHAPA_WEBHOOK_URL", default="")
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

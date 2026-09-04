@@ -1,0 +1,14 @@
+Your booking request was approved
+
+Great news - your booking request for {{ property_name }} (reference {{ booking_reference }}) has been approved.
+
+Booking reference: {{ booking_reference }}
+Check-in: {{ start_date }}
+Check-out: {{ end_date }}
+Amount due: {{ total_amount }}
+
+Your booking is waiting for payment. Payment has not yet been received.
+
+Complete Payment: {{ cta_url }}
+
+This is a system-generated email about your booking on {{ site_name }}.

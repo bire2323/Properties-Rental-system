@@ -1,0 +1,9 @@
+SMTP email delivery test
+
+This is a system-generated delivery test message from {{ site_name }}. It is not a booking notification and does not represent any payment.
+
+Recipient: {{ recipient }}
+SMTP backend: {{ backend }}
+SMTP host: {{ host }}:{{ port }}
+
+If you are reading this, real SMTP delivery to your inbox is working.

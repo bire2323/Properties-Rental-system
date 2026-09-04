@@ -1,0 +1,10 @@
+Booking expired
+
+The booking for {{ property_name }} (reference {{ booking_reference }}) has expired without payment confirmation.
+
+Check-in: {{ start_date }}
+Check-out: {{ end_date }}
+
+If you still wish to book this property, please submit a new booking request.
+
+This is a system-generated email about your booking on {{ site_name }}.

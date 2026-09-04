@@ -1,0 +1,10 @@
+Booking completed
+
+Your booking at {{ property_name }} (reference {{ booking_reference }}) has been marked as completed.
+
+Check-in: {{ start_date }}
+Check-out: {{ end_date }}
+
+Thank you for booking with {{ site_name }}. If you have any questions, please contact our support team.
+
+This is a system-generated email about your booking on {{ site_name }}.

@@ -117,6 +117,23 @@ export async function listPayments(filters = {}) {
 }
 
 /**
+ * GET /api/payments/lookup/?tx_ref=...
+ * Resolve a booking from a Chapa transaction reference.
+ *
+ * Called when the renter returns to /payment-result after Chapa's hosted
+ * checkout. The backend only reads its own DB state — it does NOT verify with
+ * Chapa and does NOT confirm anything, so the Chapa browser return "status" is
+ * never trusted. The authoritative confirmation happens via the webhook /
+ * callback / verify flow.
+ *
+ * @param {string} txRef - Chapa transaction reference (tx_ref / trx_ref)
+ * @returns {Promise<Object>} { booking, booking_reference, booking_status, tx_ref, payment_id, payment_status }
+ */
+export async function lookupPaymentByTxRef(txRef) {
+    return request(`/api/payments/lookup/?tx_ref=${encodeURIComponent(txRef)}`, { method: 'GET' })
+}
+
+/**
  * POST /api/payments/{id}/verify/
  * Verify a payment after provider callback.
  * 

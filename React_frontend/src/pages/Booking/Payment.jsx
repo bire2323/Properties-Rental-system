@@ -13,21 +13,8 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useAuth } from '../../hooks/useAuth'
 import { useBooking } from '../../context/BookingContext'
+import { createPayment } from '../../api/paymentApi'
 import { formatCurrency, validateBookingDetails } from '../../lib/bookingUtils'
-
-function validatePayment(method, payment) {
-  const errors = {}
-  if (method === 'card') {
-    if (!payment.cardholderName.trim()) errors.cardholderName = 'Required'
-    if (payment.cardNumber.replace(/\D/g, '').length < 12) errors.cardNumber = 'Enter a valid card number'
-    if (!payment.expiry.trim()) errors.expiry = 'Required'
-    if (!payment.cvc.trim()) errors.cvc = 'Required'
-  }
-  if (method === 'mobile' && !payment.mobileNumber.trim()) {
-    errors.mobileNumber = 'Mobile number is required'
-  }
-  return errors
-}
 
 export default function Payment() {
   const { id } = useParams()
@@ -39,6 +26,7 @@ export default function Payment() {
     form,
     payment,
     pricing,
+    bookingId,
     bookingStatus,
     updatePayment,
   } = useBooking()
@@ -68,10 +56,8 @@ export default function Payment() {
       setSubmitError('Payment is not available until the owner approves this booking request.')
       return
     }
-
-    const paymentErrors = validatePayment(payment.method, payment)
-    if (Object.keys(paymentErrors).length > 0) {
-      setErrors(paymentErrors)
+    if (!bookingId) {
+      setSubmitError('Booking reference is missing. Please open the approved booking from Your Bookings.')
       return
     }
 
@@ -79,9 +65,22 @@ export default function Payment() {
     setSubmitError(null)
     setProcessing(true)
 
-    await new Promise((resolve) => setTimeout(resolve, reduceMotion ? 600 : 1800))
-    setProcessing(false)
-    setSubmitError('Real payment integration is not active yet. The backend will handle payment verification after approval.')
+    try {
+      const result = await createPayment({
+        booking: bookingId,
+        payment_method: 'chapa',
+      })
+      if (!result?.checkout_url) {
+        throw new Error('No secure checkout link was returned.')
+      }
+      // Send the user to Chapa's hosted checkout. Booking confirmation only
+      // happens after Django's server-side verification (webhook / callback /
+      // manual verify) — never from the frontend alone.
+      window.location.href = result.checkout_url
+    } catch (err) {
+      setSubmitError(err.message || 'Could not start payment. Please try again.')
+      setProcessing(false)
+    }
   }
 
   if (authLoading || !property) {
@@ -105,7 +104,7 @@ export default function Payment() {
     >
       {bookingStatus !== 'approved'
         ? 'Awaiting owner approval'
-        : processing ? 'Processing...' : `Pay ${formatCurrency(pricing?.total || 0, property.currency)}`}
+        : processing ? 'Redirecting to secure payment...' : `Pay ${formatCurrency(pricing?.total || 0, property.currency)}`}
     </Button>
   )
 
@@ -183,7 +182,7 @@ export default function Payment() {
                   <div className="mt-6 flex items-start gap-2 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-950/50 dark:text-slate-400">
                     <Lock className="mt-0.5 h-4 w-4 shrink-0 text-[#c99b43]" />
                     <p>
-                      In a future release, your payment information will be securely processed by the selected payment provider. This demo does not process real payments.
+                      You will be redirected to Chapa's secure checkout to complete payment. Your booking is confirmed only after the payment is verified.
                     </p>
                   </div>
                   {submitError && (

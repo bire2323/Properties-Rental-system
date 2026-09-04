@@ -1,0 +1,12 @@
+Booking cancelled
+
+Your booking for {{ property_name }} (reference {{ booking_reference }}) has been cancelled by the {{ by }}.
+
+Reason: {{ reason }}
+
+Check-in: {{ start_date }}
+Check-out: {{ end_date }}
+
+If you have any questions, please contact our support team.
+
+This is a system-generated email about your booking on {{ site_name }}.

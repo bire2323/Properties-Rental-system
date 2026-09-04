@@ -287,6 +287,21 @@ def confirm_booking_from_payment(payment_transaction):
             "currency": payment_transaction.currency,
         },
     )
+    from .email_service import send_booking_confirmed_email
+    from .notifications import create_booking_notification as notify
+
+    send_booking_confirmed_email(booking)
+    try:
+        notify(
+            booking=booking,
+            title="Booking confirmed",
+            details=f"Payment verified for booking {booking.booking_reference}; booking confirmed.",
+            info="Payment received",
+            sender=None,
+        )
+    except Exception:
+        # Notification must never break the confirmation flow.
+        pass
     return booking
 
 
@@ -330,6 +345,9 @@ def create_booking(*, renter, property_id, rental_type, start_date, end_date):
             reason="",
             metadata={},
         )
+        from .email_service import send_booking_created_email
+
+        send_booking_created_email(booking)
         return booking
 
 

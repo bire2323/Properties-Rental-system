@@ -1,0 +1,9 @@
+Your booking request was not approved
+
+We're sorry - your booking request for {{ property_name }} (reference {{ booking_reference }}) was not approved.
+
+Reason: {{ reason }}
+
+You can browse other available properties.
+
+This is a system-generated email about your booking on {{ site_name }}.

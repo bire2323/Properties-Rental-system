@@ -1,0 +1,13 @@
+Your booking is confirmed
+
+Your booking for {{ property_name }} (reference {{ booking_reference }}) has been confirmed after payment verification.
+
+Booking reference: {{ booking_reference }}
+Check-in: {{ start_date }}
+Check-out: {{ end_date }}
+Payment received: {{ total_amount }}
+Booking status: CONFIRMED
+
+View my bookings: {{ cta_url }}
+
+This is a system-generated email about your booking on {{ site_name }}.

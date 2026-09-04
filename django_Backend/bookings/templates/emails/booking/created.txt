@@ -1,0 +1,14 @@
+New booking request
+
+{{ tenant_name }} has requested to book {{ property_name }}.
+
+Booking reference: {{ booking_reference }}
+Property: {{ property_name }}
+Tenant: {{ tenant_name }}
+Check-in: {{ start_date }}
+Check-out: {{ end_date }}
+Amount due: {{ total_amount }}
+
+Please approve or reject this booking request. Once approved, the tenant can complete payment.
+
+This is a system-generated email about your booking on {{ site_name }}.

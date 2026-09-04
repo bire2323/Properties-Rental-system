@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/interactions/', include('interactions.urls')),
     path('api/site-settings/', include('site_settings.urls')),
     path('api/audit/', include('audit.urls')),
+    path('api/payments/', include('payments.urls')),
 ]
 
 if settings.DEBUG:

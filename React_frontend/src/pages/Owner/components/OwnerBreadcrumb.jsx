@@ -27,7 +27,7 @@ export default function OwnerBreadcrumb() {
     })
 
     return (
-        <div className="rounded-3xl border border-slate-50  px-2 py-1.5 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+        <div className="rounded-3xl   px-2 py-1.5 text-sm text-slate-600  dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
             <nav className="flex flex-wrap items-center gap-1">
                 {crumbItems.map((item, index) => {
                     const isLast = index === crumbItems.length - 1
