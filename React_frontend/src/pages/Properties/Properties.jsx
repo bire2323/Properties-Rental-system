@@ -150,6 +150,18 @@ function Properties() {
     if (typeParam && ['house', 'car', 'all'].includes(typeParam.toLowerCase())) {
       setFilters(prev => ({ ...prev, type: typeParam.toLowerCase() }))
     }
+    const searchParam = searchParams.get('search')
+    if (searchParam !== null) {
+      setFilters(prev => ({ ...prev, search: searchParam }))
+    }
+    const regionParam = searchParams.get('region')
+    if (regionParam !== null) {
+      setFilters(prev => ({ ...prev, region_id: regionParam || '' }))
+    }
+    const cityParam = searchParams.get('city')
+    if (cityParam !== null) {
+      setFilters(prev => ({ ...prev, city_id: cityParam || '' }))
+    }
   }, [searchParams])
 
   async function fetchProperties() {

@@ -5,11 +5,9 @@ import { getImageUrl } from '@/lib/utils'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Building2,
-  Car,
   ChevronDown,
   ChevronRight,
   Heart,
-  Home as HomeIcon,
   LogOut,
   MapPin,
   Menu,
@@ -23,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../hooks/useTheme'
+import { useLocationSelector } from '../../hooks/useLocationSelector'
 import { getSiteSettings, resolveSiteMediaUrl } from '../../api/siteSettingsApi'
 import { getPublicCategories } from '@/api/admin/categoryApi'
 
@@ -99,6 +98,16 @@ function Navbar() {
   const [brandLogoFailed, setBrandLogoFailed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const {
+    regions,
+    cities,
+    selectedRegionId,
+    selectedCityId,
+    setRegionId,
+    setCityId,
+    reset: resetLocation,
+    loading: locLoading,
+  } = useLocationSelector()
   const propertyDropdownRef = useRef(null)
   const vehicleDropdownRef = useRef(null)
   const authDropdownRef = useRef(null)
@@ -273,7 +282,11 @@ function Navbar() {
   const handleSearchSubmit = (event) => {
     event.preventDefault()
     const query = searchQuery.trim()
-    navigateTo(`/properties${query ? `?search=${encodeURIComponent(query)}` : ''}`)
+    const params = new URLSearchParams()
+    if (query) params.set('search', query)
+    if (selectedRegionId) params.set('region', selectedRegionId)
+    if (selectedCityId) params.set('city', selectedCityId)
+    navigateTo(`/properties${params.toString() ? `?${params.toString()}` : ''}`)
   }
 
   const handleLogout = async () => {
@@ -384,10 +397,15 @@ function Navbar() {
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
                               transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
-                              className="absolute left-0 top-full mt-3 w-60"
+                              className="absolute left-0 top-full z-[60] mt-3 w-60"
                               onMouseLeave={() => setPropertyDropdownOpen(false)}
                             >
                               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95">
+                                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+                                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[#b98227] dark:text-[#f3c96d]">
+                                    Browse Properties
+                                  </span>
+                                </div>
                                 <div className="max-h-96 overflow-y-auto p-2">
                                   <button
                                     type="button"
@@ -466,10 +484,15 @@ function Navbar() {
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
                               transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
-                              className="absolute left-0 top-full mt-3 w-60"
+                              className="absolute left-0 top-full z-[60] mt-3 w-60"
                               onMouseLeave={() => setVehicleDropdownOpen(false)}
                             >
                               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95">
+                                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+                                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[#b98227] dark:text-[#f3c96d]">
+                                    Browse Vehicles
+                                  </span>
+                                </div>
                                 <div className="max-h-96 overflow-y-auto p-2">
                                   <button
                                     type="button"
@@ -735,78 +758,62 @@ function Navbar() {
                       </span>
                     </label>
 
-                    {/* Property type */}
+                    {/* Region */}
                     <div className="group relative flex flex-1 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950/40">
-                      <HomeIcon className="h-5 w-5 shrink-0 text-[#c99b43]" />
+                      <MapPin className="h-5 w-5 shrink-0 text-[#c99b43]" />
                       <span className="flex-1">
-                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Property type</span>
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Region</span>
                         <select
-                          aria-label="Property type"
-                          defaultValue=""
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val === 'all') {
-                              handlePropertyTypeClick('')
-                            } else if (val) {
-                              const match = propertyCategories.find((c) => c.value === val)
-                              if (match) handlePropertyTypeClick(match.listing_type)
-                            }
-                          }}
-                          className="w-full appearance-none bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+                          aria-label="Region"
+                          value={selectedRegionId ?? ''}
+                          disabled={locLoading}
+                          onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                          className="w-full appearance-none bg-transparent text-sm font-medium text-slate-700 outline-none disabled:opacity-50 dark:text-slate-200"
                         >
-                          <option value="all" className="bg-white dark:bg-slate-900">Any property</option>
-                          {listingOptionsStatus === 'success' &&
-                            propertyCategories.map((type) => (
-                              <option key={type.value} value={type.value} className="bg-white dark:bg-slate-900">{type.label}</option>
-                            ))}
+                          <option value="" className="bg-white dark:bg-slate-900">{locLoading ? 'Loading…' : 'All regions'}</option>
+                          {regions.map((r) => (
+                            <option key={r.id} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
+                          ))}
                         </select>
                       </span>
                       <ChevronDown size={15} className="shrink-0 text-slate-400" />
                     </div>
 
-                    {/* Vehicle type */}
+                    {/* City */}
                     <div className="group relative flex flex-1 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950/40">
-                      <Car className="h-5 w-5 shrink-0 text-[#c99b43]" />
+                      <Building2 className="h-5 w-5 shrink-0 text-[#c99b43]" />
                       <span className="flex-1">
-                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vehicle type</span>
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">City</span>
                         <select
-                          aria-label="Vehicle type"
-                          defaultValue=""
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val === 'all') {
-                              handleVehicleTypeClick('')
-                            } else if (val) {
-                              const match = vehicleCategories.find((c) => c.value === val)
-                              if (match) handleVehicleTypeClick(match.listing_type)
-                            }
-                          }}
-                          className="w-full appearance-none bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+                          aria-label="City"
+                          value={selectedCityId ?? ''}
+                          disabled={!selectedRegionId || cities.length === 0}
+                          onChange={(e) => setCityId(e.target.value ? Number(e.target.value) : null)}
+                          className="w-full appearance-none bg-transparent text-sm font-medium text-slate-700 outline-none disabled:opacity-50 dark:text-slate-200"
                         >
-                          <option value="all" className="bg-white dark:bg-slate-900">Any vehicle</option>
-                          {listingOptionsStatus === 'success' &&
-                            vehicleCategories.map((type) => (
-                              <option key={type.value} value={type.value} className="bg-white dark:bg-slate-900">{type.label}</option>
-                            ))}
+                          <option value="" className="bg-white dark:bg-slate-900">{selectedRegionId ? 'All cities' : 'Select a region'}</option>
+                          {cities.map((c) => (
+                            <option key={c.id} value={c.id} className="bg-white dark:bg-slate-900">{c.name}</option>
+                          ))}
                         </select>
                       </span>
                       <ChevronDown size={15} className="shrink-0 text-slate-400" />
                     </div>
 
                     {/* Search button */}
-                    <div className="flex items-center justify-center p-2 lg:p-3">
+                    <div className="flex items-center justify-center p-2 lg:p-2.5 lg:pr-3">
                       <button
                         type="submit"
                         aria-label="Search properties"
-                        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-6 text-sm font-semibold text-slate-950 shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-[#c99b43]/25 hover:scale-[1.02] active:scale-95 lg:w-12 lg:rounded-full"
+                        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-7 text-sm font-semibold text-slate-950 shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-[#c99b43]/25 hover:scale-[1.02] active:scale-95"
                       >
                         <Search className="h-5 w-5" />
-                        <span className="lg:hidden">Search</span>
+                        <span>Search</span>
                       </button>
                     </div>
                   </div>
                   <p className="text-center text-xs text-slate-400 dark:text-slate-500">
-                    Search by location, or pick a property or vehicle type.
+                    Search by location, region, or city.
                   </p>
                 </form>
               </motion.div>

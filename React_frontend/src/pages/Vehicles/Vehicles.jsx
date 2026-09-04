@@ -319,7 +319,7 @@ function Vehicles() {
             {/* Content Area */}
             <main className="flex-1 min-w-0">
               {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4" : "flex flex-col gap-4"}>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <VehicleCardSkeleton key={i} />
                   ))}
@@ -348,7 +348,7 @@ function Vehicles() {
               )}
 
               {!loading && !error && sortedVehicles.length > 0 && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4" : "flex flex-col gap-4"}>
                   {sortedVehicles.map((vehicle, index) => (
                     <motion.div
                       key={vehicle.id}
