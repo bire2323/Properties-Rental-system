@@ -7,6 +7,7 @@ class SiteSettings(models.Model):
     site_name = models.CharField(max_length=100)
     site_tagline = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
+    about_us = models.TextField(blank=True)
     session_timeout_minutes = models.PositiveIntegerField(default=30, validators=[MinValueValidator(1)])
     login_attempts_limit = models.PositiveIntegerField(default=5, validators=[MinValueValidator(1)])
     booking_expiration_hours = models.PositiveIntegerField(default=24, validators=[MinValueValidator(1)])

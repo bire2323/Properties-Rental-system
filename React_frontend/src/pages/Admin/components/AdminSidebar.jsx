@@ -172,7 +172,7 @@ export default function AdminSidebar({ isOpen, onClose }) {
                         await logout()
                         navigate('/login')
                     }}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${isDark ? 'text-slate-400 hover:bg-red-900/20 hover:text-red-400' : 'text-slate-600 hover:bg-red-50 hover:text-red-600'}`}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${isDark ? 'text-red-400 hover:bg-red-900/20 hover:text-red-300' : 'text-red-600 hover:bg-red-50 hover:text-red-700'}`}
                 >
                     <LogOut className="h-4 w-4" />
                     Logout

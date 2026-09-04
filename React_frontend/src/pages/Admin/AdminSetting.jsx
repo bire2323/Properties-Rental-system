@@ -42,6 +42,7 @@ const settingsContent = {
             { key: 'site_name', label: 'Website Name', value: '', type: 'text' },
             { key: 'site_tagline', label: 'Website Tagline', value: '', type: 'text' },
             { key: 'description', label: 'Website Description', value: '', type: 'textarea' },
+            { key: 'about_us', label: 'About Us', value: '', type: 'textarea' },
             { key: 'contact_phone', label: 'Contact Phone', value: '', type: 'tel', icon: Phone },
             { key: 'email', label: 'Contact Email', value: '', type: 'email', icon: Mail },
             { key: 'address', label: 'Office Address', value: '', type: 'textarea', icon: Building2 },

@@ -168,7 +168,7 @@ function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-0 bg-white dark:bg-slate-900">
+      <section className="mt-10 py-0 bg-white dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
@@ -200,7 +200,7 @@ function Home() {
       </section>
 
       {/* Top Properties — real data from backend */}
-      <section className="py-0 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+      <section className="mt-10 py-0 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

@@ -116,6 +116,12 @@ class AdminBookingApiTests(TestCase):
         res = self._renter_client().get("/api/bookings/admin/reports/")
         self.assertIn(res.status_code, (403, 404, 405))
 
+    def test_admin_can_delete_booking(self):
+        booking_id = self.booking.pk
+        res = self._admin_client().delete(f"/api/bookings/{booking_id}/")
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(Booking.objects.filter(pk=booking_id).exists())
+
     # ─── Filters ────────────────────────────────────────────────────────
 
     def test_filter_by_status(self):

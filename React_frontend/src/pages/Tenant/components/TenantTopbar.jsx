@@ -84,7 +84,7 @@ export default function TenantTopbar({ onToggleSidebar }) {
                             <div className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/20 dark:border-slate-800 dark:bg-slate-950">
                                 <button onClick={() => { setOpen(false) }} className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">View Profile</button>
                                 <button onClick={() => { setOpen(false) }} className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Settings</button>
-                                <button onClick={async () => { await logout() }} className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Logout</button>
+                                <button onClick={async () => { await logout() }} className="block w-full px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">Logout</button>
                             </div>
                         )}
                     </div>

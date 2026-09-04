@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Q, Count, OuterRef, Subquery, Sum
 
 from accounts.models import User
@@ -170,6 +170,23 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         booking = self.get_object()
+        if request.user.role == User.Role.ADMIN:
+            with transaction.atomic():
+                with connection.cursor() as schema_cursor:
+                    notification_columns = {
+                        column.name
+                        for column in connection.introspection.get_table_description(
+                            schema_cursor, "accounts_notification"
+                        )
+                    }
+                if "booking_id" in notification_columns:
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            "UPDATE accounts_notification SET booking_id = NULL WHERE booking_id = %s",
+                            [booking.pk],
+                        )
+                booking.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         if booking.renter_id == request.user.pk:
             cancellable = {
                 Booking.BookingStatus.PENDING,
@@ -190,11 +207,6 @@ class BookingViewSet(viewsets.ModelViewSet):
                 )
                 _notify_and_email_cancelled(booking, cancelled_for="tenant", reason="")
             return Response(status=status.HTTP_204_NO_CONTENT)
-        if request.user.role == User.Role.ADMIN:
-            return Response(
-                {"detail": "Booking history cannot be deleted; change its status instead."},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED,
-            )
         return Response({"detail": "Only the renter can cancel this booking."}, status=status.HTTP_403_FORBIDDEN)
 
     # ─── ADMIN EXCEPTIONAL ACTIONS ────────────────────────────────────────

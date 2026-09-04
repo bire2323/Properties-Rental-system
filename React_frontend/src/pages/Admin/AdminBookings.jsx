@@ -27,6 +27,7 @@ import {
     adminCancelBooking,
     adminExpireBooking,
     adminCompleteBooking,
+    deleteBooking,
 } from '../../api/bookingApi'
 import { getAllProperties } from '../../api/admin/adminApi'
 import {
@@ -141,6 +142,7 @@ function AdminBookingDrawer({
         if (['approved', 'confirmed'].includes(booking?.status)) {
             list.push({ key: 'complete', label: 'Mark as completed' })
         }
+        list.push({ key: 'delete', label: 'Delete booking' })
         return list
     }, [booking?.status])
 
@@ -155,6 +157,13 @@ function AdminBookingDrawer({
                 await adminExpireBooking(booking.id, reason)
             } else if (action.key === 'complete') {
                 await adminCompleteBooking(booking.id, reason)
+            } else if (action.key === 'delete') {
+                await deleteBooking(booking.id)
+                setConfirmOpen(false)
+                setAction(null)
+                onClose()
+                await onRefresh()
+                return
             }
             setConfirmOpen(false)
             setAction(null)
@@ -396,19 +405,25 @@ function AdminBookingDrawer({
                                         {action.label}
                                     </h3>
                                     <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                                        You are about to {action.label.toLowerCase()}: {booking.booking_reference}. This will change the booking status permanently.
+                                        {action.key === 'delete'
+                                            ? `Are you sure you want to permanently delete booking ${booking.booking_reference}? This cannot be undone.`
+                                            : `You are about to ${action.label.toLowerCase()}: ${booking.booking_reference}. This will change the booking status permanently.`}
                                     </p>
 
-                                    <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                        Reason <span className="text-red-500">*</span>
-                                    </label>
-                                    <textarea
-                                        value={reason}
-                                        onChange={(e) => setReason(e.target.value)}
-                                        rows={3}
-                                        placeholder="Provide a mandatory reason for this action..."
-                                        className={`mt-2 w-full rounded-xl border p-3 text-sm outline-none focus:ring-2 focus:ring-[#C99B43]/20 ${isDark ? 'border-slate-700 bg-slate-900 text-white placeholder:text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400'}`}
-                                    />
+                                    {action.key !== 'delete' && (
+                                        <>
+                                            <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                Reason <span className="text-red-500">*</span>
+                                            </label>
+                                            <textarea
+                                                value={reason}
+                                                onChange={(e) => setReason(e.target.value)}
+                                                rows={3}
+                                                placeholder="Provide a mandatory reason for this action..."
+                                                className={`mt-2 w-full rounded-xl border p-3 text-sm outline-none focus:ring-2 focus:ring-[#C99B43]/20 ${isDark ? 'border-slate-700 bg-slate-900 text-white placeholder:text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400'}`}
+                                            />
+                                        </>
+                                    )}
 
                                     {actionError && (
                                         <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
@@ -428,9 +443,9 @@ function AdminBookingDrawer({
                                         </button>
                                         <button
                                             type="button"
-                                            disabled={submitting || reason.trim().length < 3}
+                                            disabled={submitting || (action.key !== 'delete' && reason.trim().length < 3)}
                                             onClick={performAction}
-                                            className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-60 ${action.key === 'cancel'
+                                            className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-60 ${action.key === 'delete' || action.key === 'cancel'
                                                 ? 'bg-red-600 hover:bg-red-700'
                                                 : action.key === 'complete'
                                                     ? 'bg-emerald-600 hover:bg-emerald-700'
@@ -656,10 +671,10 @@ export default function AdminBookings() {
                                             setTimeout(refresh, 0)
                                         }}
                                         className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold transition ${filters.status === o.value
-                                                ? 'bg-[#C99B43] text-white shadow-sm'
-                                                : isDark
-                                                    ? 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                                            ? 'bg-[#C99B43] text-white shadow-sm'
+                                            : isDark
+                                                ? 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                                : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                                             }`}
                                     >
                                         {o.label}
