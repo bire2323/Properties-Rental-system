@@ -717,6 +717,7 @@ export default function AdminBookings() {
                                 <table className="w-full text-left text-sm">
                                     <thead className={`border-b text-xs uppercase tracking-wider ${isDark ? 'border-slate-800 bg-slate-900 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
                                         <tr>
+                                            <th className="w-12 px-4 py-4 text-center text-[10px] font-bold text-slate-400">#</th>
                                             <th className="px-6 py-4 font-semibold">Reference / Property</th>
                                             <th className="px-6 py-4 font-semibold">Renter</th>
                                             <th className="px-6 py-4 font-semibold">Owner</th>
@@ -730,8 +731,9 @@ export default function AdminBookings() {
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                        {bookings.slice(0, visibleBookingCount).map((booking) => (
+                                        {bookings.slice(0, visibleBookingCount).map((booking, idx) => (
                                             <tr key={booking.id} className={`transition ${isDark ? 'hover:bg-slate-900/60' : 'hover:bg-slate-50/70'}`}>
+                                                <td className="px-4 py-4 text-center text-xs font-bold text-slate-400 dark:text-slate-500">{idx + 1}</td>
                                                 <td className="px-6 py-4">
                                                     <button type="button" onClick={() => setSelected(booking)} className="text-left">
                                                         <p className="font-mono text-[11px] text-slate-400">{booking.booking_reference}</p>
@@ -805,9 +807,12 @@ export default function AdminBookings() {
                                     <div className="p-5">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
-                                                <p className="truncate text-lg font-semibold text-slate-900 dark:text-white">
-                                                    {booking.property_name}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{i + 1}</span>
+                                                    <p className="truncate text-lg font-semibold text-slate-900 dark:text-white">
+                                                        {booking.property_name}
+                                                    </p>
+                                                </div>
                                                 <p className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500">
                                                     {booking.booking_reference}
                                                 </p>

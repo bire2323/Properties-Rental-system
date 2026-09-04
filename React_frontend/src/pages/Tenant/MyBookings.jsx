@@ -320,12 +320,15 @@ export default function MyBookings() {
                   />
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-lg font-semibold text-slate-900 dark:text-white">
-                        {booking.property_name}
-                      </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{i + 1}</span>
+                          <p className="truncate text-lg font-semibold text-slate-900 dark:text-white">
+                            {booking.property_name}
+                          </p>
+                        </div>
                       <p className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500">{booking.booking_reference}</p>
                     </div>
                     <BookingStatusBadge status={booking.status} size="sm" />

@@ -64,6 +64,8 @@ class BookingViewSet(viewsets.ModelViewSet):
             latest_payment_created_at=Subquery(latest_qs.values("created_at")[:1]),
         )
 
+        queryset = queryset.order_by("-created_at", "-id")
+
         if user.role == User.Role.ADMIN:
             queryset = self._apply_admin_filters(queryset)
             return queryset
@@ -300,7 +302,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         events = (
             booking.audit_events
             .select_related("actor")
-            .order_by("created_at", "id")
+            .order_by("-created_at", "-id")
         )
         serializer = BookingAuditEventSerializer(events, many=True, context={"request": request})
         return Response(serializer.data)
