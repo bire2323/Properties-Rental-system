@@ -125,7 +125,7 @@ export default function Testimonials() {
 
     return (
         <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
                 <div className="text-center">
                     <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl dark:text-white">

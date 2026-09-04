@@ -99,15 +99,17 @@ const ShareButton = ({ propertyId, title }) => {
     }
 
     return (
-        <div ref={containerRef} className="relative inline-block text-left">
+        <div ref={containerRef} className="relative  text-left">
             <Button
                 type="button"
                 variant="outline"
                 size="icon"
                 onClick={toggleDropdown}
                 aria-label="Share property"
+                className="text-gray-900 hover:text-black w-fit p-1"
             >
                 <Share2 className="h-5 w-5" />
+                <span className='text-[11px]'>share</span>
                 {copied && (
                     <span className="absolute -top-1 -right-1 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />

@@ -54,7 +54,7 @@ function Footer() {
     <footer className="relative overflow-hidden border-t border-[#c99b43]/20 bg-[radial-gradient(circle_at_top,_rgba(205,160,69,0.12),_transparent_28%),linear-gradient(180deg,_#fffdf8_0%,_#f8fbff_100%)] text-slate-900 dark:border-[#c99b43]/30 dark:bg-[radial-gradient(circle_at_top,_rgba(205,160,69,0.18),_transparent_32%),linear-gradient(135deg,_#031226_0%,_#07244a_45%,_#031226_100%)] dark:text-white">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f3c96d] to-transparent" />
 
-      <div className="mx-auto max-w-7xl px-6 py-14 sm:px-8 lg:px-10">
+      <div className="mx-auto max-w-screen-2xl px-6 py-14 sm:px-8 lg:px-10">
         {/* Desktop Footer Layout */}
         <div className="hidden lg:block">
           <div className="grid gap-10 border-b border-[#c99b43]/20 pb-10 lg:grid-cols-[1.25fr_repeat(4,0.8fr)] dark:border-[#c99b43]/20">

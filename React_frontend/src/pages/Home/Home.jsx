@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { ArrowRight, Building2, CheckCircle, Key, MapPin, Search, Shield, Star, TrendingUp, Users } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ArrowRight, Building2, CheckCircle, ChevronLeft, ChevronRight, Key, MapPin, Search, Shield, Star, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
@@ -85,6 +85,14 @@ function Home() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  const featuredScrollerRef = useRef(null)
+
+  const scrollFeatured = (dir) => {
+    const el = featuredScrollerRef.current
+    if (!el) return
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' })
+  }
+
   // ─── Top Properties fetch ─────────────────────────────────────────────────
   const [topProperties, setTopProperties] = useState([])
   const [propertiesLoading, setPropertiesLoading] = useState(true)
@@ -96,12 +104,12 @@ function Home() {
     setPropertiesError(null)
 
     // Request only active, available listings — visibility enforced server-side.
-    // Slice to 4 client-side (no limit param on the backend).
+    // Slice to 6 client-side (no limit param on the backend).
     getAllProperties({ status: 'active', is_available: 'true' })
       .then((data) => {
         if (cancelled) return
         const raw = Array.isArray(data) ? data : (data?.results ?? [])
-        setTopProperties(raw.slice(0, 4).map(mapProperty))
+        setTopProperties(raw.slice(0, 6).map(mapProperty))
       })
       .catch((err) => {
         if (cancelled) return
@@ -229,7 +237,7 @@ function Home() {
 
       {/* ── Featured Properties — real data from backend ──────────────── */}
       <section className="relative overflow-hidden py-20 sm:py-28 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#c99b43]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#c99b43] dark:bg-[#c99b43]/20">
@@ -246,23 +254,43 @@ function Home() {
                 Handpicked premium properties just for you
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="inline-flex items-center gap-2 self-start rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] transition-all hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white sm:self-auto dark:border-[#c99b43]/20 dark:bg-[#c99b43]/10 dark:hover:border-[#c99b43] dark:hover:bg-[#c99b43]"
-              onClick={() => navigate('/properties')}
-            >
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hidden h-10 w-10 shrink-0 rounded-xl border-slate-200 bg-white/70 text-slate-600 hover:border-[#c99b43]/40 hover:text-[#c99b43] sm:inline-flex dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
+                onClick={() => scrollFeatured(-1)}
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="hidden h-10 w-10 shrink-0 rounded-xl border-slate-200 bg-white/70 text-slate-600 hover:border-[#c99b43]/40 hover:text-[#c99b43] sm:inline-flex dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
+                onClick={() => scrollFeatured(1)}
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="inline-flex items-center gap-2 shrink-0 self-start rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] transition-all hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white sm:self-auto dark:border-[#c99b43]/20 dark:bg-[#c99b43]/10 dark:hover:border-[#c99b43] dark:hover:bg-[#c99b43]"
+                onClick={() => navigate('/properties')}
+              >
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Loading skeleton */}
           {propertiesLoading && (
-            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
-              {Array.from({ length: 4 }).map((_, i) => (
+            <div className="mt-12 flex gap-4 overflow-x-auto pb-2 no-scrollbar sm:gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                  className="w-[46%] shrink-0 sm:w-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
                 >
                   <div className="h-48 sm:h-56 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50" />
                   <div className="space-y-3 p-5">
@@ -326,11 +354,14 @@ function Home() {
 
           {/* Property cards */}
           {!propertiesLoading && !propertiesError && topProperties.length > 0 && (
-            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
+            <div
+              ref={featuredScrollerRef}
+              className="mt-12 flex gap-4 overflow-x-auto pb-2 no-scrollbar sm:gap-6 snap-x"
+            >
               {topProperties.map((property) => (
                 <div
                   key={property.id}
-                  className="group overflow-hidden rounded-2xl border bg-white transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border-slate-200/80 dark:border-slate-800/80 dark:bg-slate-900"
+                  className="group w-[46%] shrink-0 snap-start sm:w-[320px] overflow-hidden rounded-2xl border bg-white transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border-slate-200/80 dark:border-slate-800/80 dark:bg-slate-900"
                 >
                   <div className="relative h-48 sm:h-56 overflow-hidden">
                     <img
@@ -352,13 +383,6 @@ function Home() {
 
                     <div className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 backdrop-blur-md shadow-sm dark:bg-slate-900/90 dark:text-slate-300">
                       {property.listing_type === 'car' ? 'Vehicle' : 'Property'}
-                    </div>
-
-                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-center pb-4 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md">
-                        View Details
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </span>
                     </div>
                   </div>
 
@@ -392,17 +416,24 @@ function Home() {
                     )}
 
                     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
-                      <div>
+                      <div className="flex flex-col">
                         <span className="text-xl font-extrabold text-[#c99b43]">
                           {property.price}
                         </span>
-                        <span className="ml-1 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
                           ETB/{property.rental_unit}
                         </span>
                       </div>
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#c99b43]/10 text-[#c99b43] transition-all duration-300 group-hover:bg-[#c99b43] group-hover:text-white group-hover:shadow-md group-hover:shadow-[#c99b43]/20">
-                        <ArrowRight className="h-4 w-4" />
-                      </span>
+                      <Button
+                        size="sm"
+                        className="rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-8 px-3 text-xs font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:shadow-[#c99b43]/20 hover:opacity-90"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/properties/${property.id}`);
+                        }}
+                      >
+                        View
+                      </Button>
                     </div>
                   </div>
                 </div>

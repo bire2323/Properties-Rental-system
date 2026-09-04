@@ -55,19 +55,19 @@ function mapVehicleToCard(property) {
 
 function VehicleCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="h-48 animate-pulse bg-slate-200 dark:bg-slate-800" />
+    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-100 dark:border-slate-800/60 dark:bg-slate-900 dark:ring-slate-800/40">
+      <div className="h-28 sm:h-48 lg:h-44 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50" />
       <div className="space-y-3 p-4">
-        <div className="h-5 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="flex gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
-          <div className="h-4 w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-          <div className="h-4 w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-          <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="h-5 w-3/4 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+        <div className="flex gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <div className="h-4 w-10 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-4 w-10 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-4 w-12 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
         </div>
         <div className="flex items-center justify-between pt-2">
-          <div className="h-6 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-          <div className="h-8 w-16 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+          <div className="h-6 w-20 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+          <div className="h-8 w-16 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
         </div>
       </div>
     </div>
@@ -220,18 +220,18 @@ function Vehicles() {
   })
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-white dark:bg-slate-950">
       <Navbar />
 
       {/* Toolbar */}
-      <section className="sticky top-20 z-30 border-b border-slate-200 bg-white py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+      <section className="sticky top-20 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md py-4 shadow-sm dark:border-slate-800/80 dark:bg-slate-900/95">
+        <div className="mx-auto max-w-screen-2xl lg:mx-10 px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
                 Vehicles for Rent
               </h1>
-              <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 {loading ? (
                   <span className="inline-flex items-center gap-1.5">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -246,16 +246,16 @@ function Vehicles() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
-                className="lg:hidden"
                 onClick={() => setIsFilterOpen(true)}
+                className="h-9 rounded-lg border-slate-200 bg-white/80 px-3 text-xs font-medium text-slate-600 hover:border-[#c99b43]/40 hover:bg-[#c99b43]/5 hover:text-[#c99b43] dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:border-[#c99b43]/30"
               >
-                <Filter className="mr-2 h-4 w-4" />
+                <Filter className="mr-1.5 h-3.5 w-3.5" />
                 Filters
                 {activeFilterCount > 0 && (
-                  <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#c99b43] text-xs font-bold text-white">
+                  <span className="ml-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#c99b43] text-[10px] font-bold text-white">
                     {activeFilterCount}
                   </span>
                 )}
@@ -265,36 +265,36 @@ function Vehicles() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="h-10 appearance-none rounded-lg border border-slate-300 bg-white pl-3 pr-9 text-sm font-medium transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="h-9 appearance-none rounded-lg border border-slate-200 bg-white/80 pl-3 pr-8 text-xs font-medium transition-all duration-200 hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700/60 dark:bg-slate-800/40 dark:text-white dark:hover:border-slate-600"
                 >
                   <option value="newest">Newest</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
                   <option value="popular">Most Popular</option>
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               </div>
 
-              <div className="hidden sm:flex items-center gap-1 rounded-lg border border-slate-300 p-1 dark:border-slate-700">
+              <div className="hidden sm:flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/80 p-0.5 dark:border-slate-700/60 dark:bg-slate-800/40">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`rounded p-1.5 transition-colors ${viewMode === 'grid'
-                    ? 'bg-[#c99b43] text-white'
-                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                  className={`rounded-md p-1.5 transition-all duration-200 ${viewMode === 'grid'
+                    ? 'bg-[#c99b43] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-700'
                     }`}
                   aria-label="Grid view"
                 >
-                  <Grid3x3 className="h-4 w-4" />
+                  <Grid3x3 className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`rounded p-1.5 transition-colors ${viewMode === 'list'
-                    ? 'bg-[#c99b43] text-white'
-                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                  className={`rounded-md p-1.5 transition-all duration-200 ${viewMode === 'list'
+                    ? 'bg-[#c99b43] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-700'
                     }`}
                   aria-label="List view"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
@@ -303,12 +303,12 @@ function Vehicles() {
       </section>
 
       {/* Main Layout */}
-      <section className="bg-slate-50 py-8 dark:bg-slate-950">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-8">
+      <section className="bg-white py-8 dark:bg-slate-950">
+        <div className="mx-auto max-w-screen-2xl lg:mx-10 px-4 sm:px-6 lg:px-8">
+          <div className="flex gap-4 lg:gap-6">
 
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:block w-[280px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
+            <aside className="hidden lg:block w-[260px] xl:w-[272px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
               <VehicleSidebarFilters
                 filters={filters}
                 setFilters={setFilters}
@@ -319,7 +319,7 @@ function Vehicles() {
             {/* Content Area */}
             <main className="flex-1 min-w-0">
               {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <VehicleCardSkeleton key={i} />
                   ))}
@@ -327,19 +327,19 @@ function Vehicles() {
               )}
 
               {!loading && error && (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="rounded-full bg-red-100 p-6 dark:bg-red-900/30">
-                    <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400" />
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200/60 bg-white py-20 text-center shadow-sm dark:border-red-900/30 dark:bg-slate-900">
+                  <div className="rounded-full bg-red-50 p-5 dark:bg-red-950/30">
+                    <AlertCircle className="h-10 w-10 text-red-400 dark:text-red-500" />
                   </div>
-                  <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
+                  <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
                     Failed to Load Vehicles
                   </h3>
-                  <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
+                  <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
                     {error}
                   </p>
                   <Button
                     onClick={fetchVehicles}
-                    className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-[#c99b43] to-[#f3c96d] text-slate-950 shadow-sm hover:opacity-90"
+                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-sm hover:opacity-90"
                   >
                     <RefreshCw className="h-4 w-4" />
                     Try Again
@@ -348,134 +348,141 @@ function Vehicles() {
               )}
 
               {!loading && !error && sortedVehicles.length > 0 && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
-                  {sortedVehicles.map((vehicle) => (
-                    <Card
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
+                  {sortedVehicles.map((vehicle, index) => (
+                    <motion.div
                       key={vehicle.id}
-                      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900 ${viewMode === 'list' ? 'flex flex-row h-32 sm:h-48' : ''
-                        }`}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.35 }}
                     >
-                      {/* Image Container */}
-                      <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-2/5 sm:w-1/3 shrink-0 h-full' : 'h-32 sm:h-48 lg:h-44'}`}>
-                        <img
-                          src={vehicle.image}
-                          alt={vehicle.name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
+                      <Card
+                        className={`group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:ring-slate-200 dark:border-slate-800/60 dark:bg-slate-900 dark:ring-slate-800/40 dark:hover:ring-slate-700/60 ${viewMode === 'list' ? 'flex flex-row h-32 sm:h-48' : ''
+                          }`}
+                      >
+                        {/* Image Container */}
+                        <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-2/5 sm:w-1/3 shrink-0 h-full' : 'h-28 sm:h-48 lg:h-44'}`}>
+                          <img
+                            src={vehicle.image}
+                            alt={vehicle.name}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          {/* Subtle gradient overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-                        {/* Type Badge */}
-                        <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
-                          <span className="inline-flex rounded-full bg-[#c99b43] px-2 py-0.5 text-[9px] font-semibold text-white shadow-md sm:px-3 sm:py-1 sm:text-xs">
-                            {vehicle.type}
-                          </span>
-                        </div>
-
-                        {/* Favorite Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(vehicle.id);
-                          }}
-                          className="absolute right-2 top-2 sm:right-3 sm:top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/95 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-white dark:bg-slate-900/95 dark:hover:bg-slate-900 sm:h-8 sm:w-8"
-                          aria-label="Add to favorites"
-                        >
-                          {favoriteLoading[vehicle.id] ? (
-                            <Loader2 className="h-3 w-3 animate-spin text-slate-400 sm:h-4.5 sm:w-4.5" />
-                          ) : (
-                            <Heart
-                              className={`h-3 w-3 transition-colors sm:h-4.5 sm:w-4.5 ${favorites.includes(vehicle.id)
-                                ? 'fill-red-500 text-red-500'
-                                : 'text-slate-600 dark:text-slate-400'
-                                }`}
-                            />
-                          )}
-                        </button>
-
-                        {/* Rating Badge */}
-                        <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 flex items-center gap-1 rounded-full bg-white/95 px-1.5 py-0.5 shadow-md backdrop-blur-sm dark:bg-slate-900/95 sm:px-2.5 sm:py-1">
-                          <Star className="h-2.5 w-2.5 fill-[#c99b43] text-[#c99b43] sm:h-3.5 sm:w-3.5" />
-                          <span className="text-[9px] font-semibold text-slate-900 dark:text-white sm:text-xs">
-                            {vehicle.rating}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className={`p-3 sm:p-4 lg:p-4 flex flex-col justify-between ${viewMode === 'list' ? 'flex-1 min-w-0' : ''}`}>
-                        <div>
-                          {/* Title */}
-                          <h3 className="text-xs font-semibold text-slate-900 transition-colors group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d] sm:text-base lg:text-sm line-clamp-1">
-                            {vehicle.name}
-                          </h3>
-
-                          {/* Location */}
-                          <p className="mt-1 flex items-center gap-1 text-[10px] text-slate-600 dark:text-slate-400 sm:text-sm lg:text-xs truncate">
-                            <MapPin className="h-3 w-3 shrink-0 text-slate-400 sm:h-3.5 sm:w-3.5" />
-                            <span className="truncate">{vehicle.location}</span>
-                          </p>
-
-                          {/* Vehicle Details */}
-                          <div className={`mt-2 flex flex-wrap items-center gap-1 sm:gap-2 border-slate-200 text-[9px] text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:gap-3 lg:gap-2 lg:text-[11px] ${viewMode === 'list' ? '' : 'border-t pt-2 sm:pt-3'}`}>
-                            <div className="flex items-center gap-0.5 sm:gap-1">
-                              <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                              <span>{vehicle.seats}</span>
-                            </div>
-                            <div className="h-2 w-px bg-slate-300 dark:bg-slate-700 sm:h-3" />
-                            <div className="flex items-center gap-0.5 sm:gap-1">
-                              <Fuel className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                              <span className="truncate max-w-[30px] sm:max-w-none">{vehicle.fuel}</span>
-                            </div>
-                            <div className="h-2 w-px bg-slate-300 dark:bg-slate-700 sm:h-3" />
-                            <div className="flex items-center gap-0.5 sm:gap-1">
-                              <Settings2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                              <span className="hidden sm:inline-block">{vehicle.transmission}</span>
-                              <span className="inline-block sm:hidden">{vehicle.transmission.substring(0, 4)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Price & CTA */}
-                        <div className="mt-2 flex items-center justify-between sm:mt-4">
-                          <div className="flex flex-col sm:block">
-                            <span className="text-sm font-bold text-[#c99b43] sm:text-xl lg:text-lg">
-                              {vehicle.price}
-                            </span>
-                            <span className="text-[9px] text-slate-500 dark:text-slate-400 sm:text-xs">
-                              {' '}ETB/d
+                          {/* Type Badge */}
+                          <div className="absolute left-2 top-2 sm:left-3 sm:top-3 z-10">
+                            <span className="inline-flex rounded-full bg-[#c99b43]/90 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-md backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-xs">
+                              {vehicle.type}
                             </span>
                           </div>
-                          <Button
-                            size="sm"
-                            className="rounded-lg bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-7 px-2 text-[10px] font-semibold text-slate-950 shadow-sm transition-all hover:shadow-md hover:opacity-90 sm:h-8 sm:px-3 sm:py-1.5 sm:text-xs lg:px-2.5 lg:py-1"
+
+                          {/* Favorite Button */}
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/vehicles/${vehicle.id}`);
+                              toggleFavorite(vehicle.id);
                             }}
+                            className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10 flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900"
+                            aria-label="Add to favorites"
                           >
-                            View
-                          </Button>
+                            {favoriteLoading[vehicle.id] ? (
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-slate-400" />
+                            ) : (
+                              <Heart
+                                className={`h-3 w-3 sm:h-4 sm:w-4 transition-colors duration-200 ${favorites.includes(vehicle.id)
+                                  ? 'fill-red-500 text-red-500'
+                                  : 'text-slate-500 dark:text-slate-400'
+                                  }`}
+                              />
+                            )}
+                          </button>
+
+                          {/* Rating Badge */}
+                          <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-10 flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 shadow-md backdrop-blur-md dark:bg-slate-900/90 sm:px-2.5 sm:py-1">
+                            <Star className="h-2.5 w-2.5 fill-[#c99b43] text-[#c99b43] sm:h-3.5 sm:w-3.5" />
+                            <span className="text-[9px] font-bold text-slate-900 dark:text-white sm:text-xs">
+                              {vehicle.rating}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </Card>
+
+                        {/* Content */}
+                        <div className={`p-2.5 sm:p-4 flex flex-col justify-between ${viewMode === 'list' ? 'flex-1 min-w-0' : ''}`}>
+                          <div>
+                            {/* Title */}
+                            <h3 className="text-xs sm:text-base font-semibold text-slate-900 transition-colors duration-200 group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d] line-clamp-1">
+                              {vehicle.name}
+                            </h3>
+
+                            {/* Location */}
+                            <p className="mt-1 flex items-center gap-1 text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 truncate">
+                              <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-[#c99b43]" />
+                              <span className="truncate">{vehicle.location}</span>
+                            </p>
+
+                            {/* Vehicle Details */}
+                            <div className={`mt-2 sm:mt-3 flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 ${viewMode === 'list' ? '' : 'border-t border-slate-100 pt-2 sm:pt-3 dark:border-slate-800'}`}>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                <span>{vehicle.seats}</span>
+                              </div>
+                              <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
+                              <div className="flex items-center gap-1">
+                                <Fuel className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                <span className="truncate max-w-[36px] sm:max-w-none">{vehicle.fuel}</span>
+                              </div>
+                              <div className="hidden sm:block h-3 w-px bg-slate-200 dark:bg-slate-700" />
+                              <div className="hidden sm:flex items-center gap-1">
+                                <Settings2 className="h-3.5 w-3.5" />
+                                <span>{vehicle.transmission}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Price & CTA */}
+                          <div className="mt-2 sm:mt-4 flex items-center justify-between border-t border-slate-100 pt-2 sm:pt-3 dark:border-slate-800">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm sm:text-xl font-bold text-[#c99b43]">
+                                {vehicle.price}
+                              </span>
+                              <span className="text-[9px] sm:text-xs text-slate-400 dark:text-slate-500">
+                                ETB/d
+                              </span>
+                            </div>
+                            <Button
+                              size="sm"
+                              className="rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-7 px-2.5 text-[11px] font-semibold text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-[#c99b43]/20 hover:opacity-90 sm:h-9 sm:px-4 sm:text-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/vehicles/${vehicle.id}`);
+                              }}
+                            >
+                              View
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
                   ))}
                 </div>
               )}
 
               {!loading && !error && sortedVehicles.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="rounded-full bg-slate-100 p-6 dark:bg-slate-800">
-                    <Car className="h-12 w-12 text-slate-400 dark:text-slate-600" />
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-20 text-center shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
+                  <div className="rounded-full bg-slate-100 p-5 dark:bg-slate-800/60">
+                    <Car className="h-10 w-10 text-slate-300 dark:text-slate-600" />
                   </div>
-                  <h3 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
+                  <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
                     No Vehicles Found
                   </h3>
-                  <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-400">
+                  <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
                     We couldn't find any vehicles matching your search criteria. Try adjusting your filters.
                   </p>
                   <Button
                     onClick={handleClearAll}
                     variant="outline"
-                    className="mt-6 border-[#c99b43] text-[#c99b43] hover:bg-[#c99b43] hover:text-white"
+                    className="mt-6 rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white"
                   >
                     Clear Filters
                   </Button>

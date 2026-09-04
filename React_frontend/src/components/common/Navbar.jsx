@@ -5,10 +5,13 @@ import { getImageUrl } from '@/lib/utils'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Building2,
+  Car,
   ChevronDown,
   ChevronRight,
   Heart,
+  Home as HomeIcon,
   LogOut,
+  MapPin,
   Menu,
   Moon,
   Search,
@@ -95,6 +98,7 @@ function Navbar() {
   const [mobileVehicleOpen, setMobileVehicleOpen] = useState(false)
   const [brandLogoFailed, setBrandLogoFailed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   const propertyDropdownRef = useRef(null)
   const vehicleDropdownRef = useRef(null)
   const authDropdownRef = useRef(null)
@@ -278,368 +282,536 @@ function Navbar() {
     await logout()
   }
 
+  const isNavActive = (path) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-[#c99b43]/25 bg-white/90 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-[#c99b43]/35 dark:bg-[linear-gradient(90deg,#03172f_0%,#04254a_55%,#03172f_100%)] dark:text-white dark:shadow-[0_18px_50px_rgba(3,12,26,0.35)]">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-start gap-4 px-4 sm:px-6 lg:px-8">
-          <button type="button" onClick={() => navigateTo('/')} className="order-2 hidden shrink-0 items-center gap-3 lg:order-none lg:flex">
-            {siteSettingsStatus === 'loading' ? (
-              <BrandSkeleton />
-            ) : siteSettingsStatus === 'success' ? (
-              <>
-                {siteLogoUrl && !brandLogoFailed ? (
-                  <img
-                    src={siteLogoUrl}
-                    alt={`${siteName || 'Website'} logo`}
-                    className="h-14 w-auto max-w-[3.5rem] object-contain"
-                    onError={() => setBrandLogoFailed(true)}
-                  />
-                ) : (
-                  <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]">
-                    <Building2 size={26} />
-                  </span>
-                )}
-                <span className="max-w-[11rem] truncate text-lg font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d] sm:max-w-[14rem]">
-                  <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
-                    {siteName || 'Home'}
-                  </span>
-                </span>
-              </>
-            ) : (
-              <BrandFallback isDark={isDark} />
-            )}
-          </button>
-
-          <nav className="hidden items-center gap-5 lg:flex">
-            {navItems.map((item) => (
-              <div key={item.label} className="relative">
-                {item.label === 'Properties' ? (
-                  <div ref={propertyDropdownRef}>
-                    <button
-                      onClick={(e) => {
-                        const isChevron = e.target.closest('svg')
-                        if (isChevron) {
-                          setPropertyDropdownOpen(!propertyDropdownOpen)
-                        } else {
-                          navigateTo('/properties')
-                        }
-                      }}
-                      onMouseEnter={() => setPropertyDropdownOpen(true)}
-                      className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
-                    >
-                      <span>{item.label}</span>
-                      <ChevronDown
-                        size={16}
-                        className={`transition-transform duration-200 ${propertyDropdownOpen ? 'rotate-180' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setPropertyDropdownOpen(!propertyDropdownOpen)
-                        }}
-                      />
-                    </button>
-
-                    {/* Property Dropdown Menu */}
-                    {propertyDropdownOpen && (
-                      <div
-                        className="absolute left-0 top-full mt-2 w-56 animate-in fade-in slide-in-from-top-2 duration-200"
-                        onMouseLeave={() => setPropertyDropdownOpen(false)}
-                      >
-                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
-                          <div className="max-h-96 overflow-y-auto p-2">
-                            <button
-                              type="button"
-                              onClick={() => handlePropertyTypeClick('')}
-                              className="block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                            >
-                              All Properties
-                            </button>
-                            {listingOptionsStatus === 'loading' && <DropdownSkeletonRows />}
-                            {listingOptionsStatus === 'error' && (
-                              <DropdownStatusRow message="Property categories are unavailable right now." />
-                            )}
-                            {listingOptionsStatus === 'success' && propertyCategories.length === 0 && (
-                              <DropdownStatusRow message="No property categories available." />
-                            )}
-                            {listingOptionsStatus === 'success' && propertyCategories.map((type) => (
-                              <button
-                                key={type.value}
-                                type="button"
-                                onClick={() => handlePropertyTypeClick(type.listing_type)}
-                                className="block w-full truncate rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                              >
-                                {type.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : item.label === 'Vehicles' ? (
-                  <div ref={vehicleDropdownRef}>
-                    <div onMouseEnter={() => setVehicleDropdownOpen(true)} className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVehicleDropdownOpen(false)
-                          navigateTo('/vehicles')
-                        }}
-                        className="px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
-                      >
-                        <span>{item.label}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setVehicleDropdownOpen(!vehicleDropdownOpen)}
-                        className="flex items-center px-1 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
-                        aria-label="Toggle vehicle types"
-                      >
-                        <ChevronDown
-                          size={16}
-                          className={`transition-transform duration-200 ${vehicleDropdownOpen ? 'rotate-180' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setVehicleDropdownOpen(!vehicleDropdownOpen)
-                          }}
-                        />
-                      </button>
-                    </div>
-
-                    {vehicleDropdownOpen && (
-                      <div
-                        className="absolute left-0 top-full mt-2 w-56 animate-in fade-in slide-in-from-top-2 duration-200"
-                        onMouseLeave={() => setVehicleDropdownOpen(false)}
-                      >
-                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
-                          <div className="max-h-96 overflow-y-auto p-2">
-                            <button
-                              type="button"
-                              onClick={() => handleVehicleTypeClick('')}
-                              className="block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                            >
-                              All Vehicles
-                            </button>
-                            {listingOptionsStatus === 'loading' && <DropdownSkeletonRows />}
-                            {listingOptionsStatus === 'error' && (
-                              <DropdownStatusRow message="Vehicle categories are unavailable right now." />
-                            )}
-                            {listingOptionsStatus === 'success' && vehicleCategories.length === 0 && (
-                              <DropdownStatusRow message="No vehicle categories available." />
-                            )}
-                            {listingOptionsStatus === 'success' && vehicleCategories.map((type) => (
-                              <button
-                                key={type.value}
-                                type="button"
-                                onClick={() => handleVehicleTypeClick(type.listing_type)}
-                                className="block w-full truncate rounded-lg px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                              >
-                                {type.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => navigateTo(item.path)}
-                    className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
-                  >
-                    <span>{item.label}</span>
-                    {item.hasDropdown && <ChevronDown size={16} />}
-                  </button>
-                )}
-              </div>
-            ))}
-          </nav>
-
-          <form onSubmit={handleSearchSubmit} className="hidden w-full max-w-xs lg:block">
-            <label className="relative block">
-              <span className="sr-only">Search properties</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c99b43]" />
-              <Star className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c99b43]" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search properties"
-                className="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-9 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
-              />
-            </label>
-          </form>
-
-          <div className="ml-auto hidden items-center gap-3 lg:flex">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] transition hover:bg-[#c99b43]/12 dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d]"
-              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={isDark ? 'Light mode' : 'Dark mode'}
-            >
-              {isDark ? <SunMedium size={17} /> : <Moon size={17} />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-100 dark:hover:bg-[#c99b43]/10 dark:hover:text-[#f3c96d]"
-              aria-label="Favorites"
-              title="Favorites"
-            >
-              <Heart size={16} />
-            </button>
-
-            {loading ? (
-              <span className="rounded-full border border-[#c99b43]/30 px-2.5 py-1 text-[11px] font-semibold text-[#b27a23] dark:text-[#f3c96d]">
-                Checking session...
-              </span>
-            ) : user ? (
-              <div className="relative" ref={authDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setAuthDropdownOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full border border-[#c99b43]/30 bg-[#c99b43]/8 p-1 pr-2 text-slate-700 transition hover:bg-[#c99b43]/12 dark:border-[#c99b43]/40 dark:bg-white/5 dark:text-white"
-                  aria-label="Open profile menu"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] text-sm font-semibold text-slate-950 shadow-sm">
-                    {profileImageUrl ? (
+        <div className="relative mx-auto flex max-w-screen-2xl lg:mx-10 flex-col px-4 sm:px-6 lg:px-8">
+          {/* ─── Top row ─────────────────────────────────────────────── */}
+          <div className="relative flex min-h-20 items-center justify-between">
+            {/* Left: mobile menu + logo */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 transition hover:bg-[#c99b43]/10 lg:hidden dark:text-slate-100 dark:hover:bg-white/10"
+                aria-label="Open navigation menu"
+                aria-haspopup="dialog"
+                aria-controls="mobile-nav-drawer"
+                aria-expanded={mobileMenuOpen}
+              >
+                <Menu size={20} />
+              </button>
+              <button type="button" onClick={() => navigateTo('/')} className="flex shrink-0 items-center gap-3 transition-transform duration-200 hover:scale-[1.02]">
+                {siteSettingsStatus === 'loading' ? (
+                  <BrandSkeleton />
+                ) : siteSettingsStatus === 'success' ? (
+                  <>
+                    {siteLogoUrl && !brandLogoFailed ? (
                       <img
-                        src={profileImageUrl}
-                        alt={profileLabel}
-                        className="h-full w-full rounded-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                          e.target.parentElement.textContent = userInitial
-                        }}
+                        src={siteLogoUrl}
+                        alt={`${siteName || 'Website'} logo`}
+                        className="h-11 w-auto max-w-[3rem] object-contain lg:h-14 lg:max-w-[3.5rem]"
+                        onError={() => setBrandLogoFailed(true)}
                       />
                     ) : (
-                      userInitial
+                      <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] lg:h-14 lg:w-14 dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]">
+                        <Building2 size={22} />
+                      </span>
                     )}
-                  </span>
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform duration-200 ${authDropdownOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
-
-                {authDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthDropdownOpen(false)
-                        const dashboardRoute = getDashboardRoute(user?.role)
-                        navigate(dashboardRoute)
-                      }}
-                      className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                    >
-                      <User size={15} />
-                      <span>Profile</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAuthDropdownOpen(false)}
-                      className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                    >
-                      <Settings size={15} />
-                      <span>Settings</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                    >
-                      <LogOut size={15} />
-                      <span>Log out</span>
-                    </button>
-                  </div>
+                    <span className="max-w-[8rem] truncate text-base font-semibold tracking-tight text-[#0b2141] sm:max-w-[11rem] sm:text-lg lg:max-w-[14rem] dark:text-[#f3c96d]">
+                      <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
+                        {siteName || 'Home'}
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  <BrandFallback isDark={isDark} />
                 )}
-              </div>
-            ) : (
-              <div className="relative" ref={authDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setAuthDropdownOpen((open) => !open)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
-                >
-                  <User size={16} />
-                  <span>Sign In</span>
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform duration-200 ${authDropdownOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
+              </button>
+            </div>
 
-                {authDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-fit overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthDropdownOpen(false)
-                        navigate('/login')
-                      }}
-                      className="flex items-center w-30 gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                    >
-                      <User size={15} />
-                      <span>Sign In</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthDropdownOpen(false)
-                        navigate('/register')
-                      }}
-                      className="flex items-center w-30 gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                    >
-                      <User size={15} />
-                      <span>Sign Up</span>
-                    </button>
+            {/* Center: bordered pill navigation (desktop) */}
+            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200/80 bg-white/70 p-1 shadow-sm backdrop-blur-md lg:flex dark:border-slate-700/60 dark:bg-slate-900/60">
+              {navItems.map((item) => {
+                const active = isNavActive(item.path)
+                return (
+                  <div key={item.label} className="relative">
+                    {item.label === 'Properties' ? (
+                      <div ref={propertyDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const isChevron = e.target.closest('svg')
+                            if (isChevron) {
+                              setPropertyDropdownOpen(!propertyDropdownOpen)
+                            } else {
+                              navigateTo('/properties')
+                            }
+                          }}
+                          onMouseEnter={() => setPropertyDropdownOpen(true)}
+                          className={`relative flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition ${active || propertyDropdownOpen
+                            ? 'bg-[#c99b43]/12 text-[#b98227] dark:bg-[#c99b43]/20 dark:text-[#f3c96d]'
+                            : 'text-slate-700 hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]'}`}
+                        >
+                          {active && (
+                            <motion.span
+                              layoutId="nav-active"
+                              className="absolute inset-0 rounded-full bg-[#c99b43]/10 dark:bg-[#c99b43]/15"
+                              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                            />
+                          )}
+                          <span className="relative">{item.label}</span>
+                          <ChevronDown
+                            size={14}
+                            className={`relative transition-transform duration-200 ${propertyDropdownOpen ? 'rotate-180' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPropertyDropdownOpen(!propertyDropdownOpen)
+                            }}
+                          />
+                        </button>
+
+                        <AnimatePresence>
+                          {propertyDropdownOpen && (
+                            <motion.div
+                              key="nav-prop-menu"
+                              initial={prefersReducedMotion ? false : { opacity: 0, y: -8, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+                              transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+                              className="absolute left-0 top-full mt-3 w-60"
+                              onMouseLeave={() => setPropertyDropdownOpen(false)}
+                            >
+                              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95">
+                                <div className="max-h-96 overflow-y-auto p-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePropertyTypeClick('')}
+                                    className="block w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                                  >
+                                    All Properties
+                                  </button>
+                                  {listingOptionsStatus === 'loading' && <DropdownSkeletonRows />}
+                                  {listingOptionsStatus === 'error' && (
+                                    <DropdownStatusRow message="Property categories are unavailable right now." />
+                                  )}
+                                  {listingOptionsStatus === 'success' && propertyCategories.length === 0 && (
+                                    <DropdownStatusRow message="No property categories available." />
+                                  )}
+                                  {listingOptionsStatus === 'success' && propertyCategories.map((type) => (
+                                    <button
+                                      key={type.value}
+                                      type="button"
+                                      onClick={() => handlePropertyTypeClick(type.listing_type)}
+                                      className="block w-full truncate rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                                    >
+                                      {type.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : item.label === 'Vehicles' ? (
+                      <div ref={vehicleDropdownRef}>
+                        <div onMouseEnter={() => setVehicleDropdownOpen(true)} className="flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVehicleDropdownOpen(false)
+                              navigateTo('/vehicles')
+                            }}
+                            className={`relative flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition ${active || vehicleDropdownOpen
+                              ? 'bg-[#c99b43]/12 text-[#b98227] dark:bg-[#c99b43]/20 dark:text-[#f3c96d]'
+                              : 'text-slate-700 hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]'}`}
+                          >
+                            {active && (
+                              <motion.span
+                                layoutId="nav-active"
+                                className="absolute inset-0 rounded-full bg-[#c99b43]/10 dark:bg-[#c99b43]/15"
+                                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                              />
+                            )}
+                            <span className="relative">{item.label}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setVehicleDropdownOpen(!vehicleDropdownOpen)}
+                            className="flex items-center rounded-full p-1 text-sm font-medium text-slate-700 transition hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]"
+                            aria-label="Toggle vehicle types"
+                          >
+                            <ChevronDown
+                              size={14}
+                              className={`transition-transform duration-200 ${vehicleDropdownOpen ? 'rotate-180' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setVehicleDropdownOpen(!vehicleDropdownOpen)
+                              }}
+                            />
+                          </button>
+                        </div>
+
+                        <AnimatePresence>
+                          {vehicleDropdownOpen && (
+                            <motion.div
+                              key="nav-veh-menu"
+                              initial={prefersReducedMotion ? false : { opacity: 0, y: -8, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+                              transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+                              className="absolute left-0 top-full mt-3 w-60"
+                              onMouseLeave={() => setVehicleDropdownOpen(false)}
+                            >
+                              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95">
+                                <div className="max-h-96 overflow-y-auto p-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleVehicleTypeClick('')}
+                                    className="block w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                                  >
+                                    All Vehicles
+                                  </button>
+                                  {listingOptionsStatus === 'loading' && <DropdownSkeletonRows />}
+                                  {listingOptionsStatus === 'error' && (
+                                    <DropdownStatusRow message="Vehicle categories are unavailable right now." />
+                                  )}
+                                  {listingOptionsStatus === 'success' && vehicleCategories.length === 0 && (
+                                    <DropdownStatusRow message="No vehicle categories available." />
+                                  )}
+                                  {listingOptionsStatus === 'success' && vehicleCategories.map((type) => (
+                                    <button
+                                      key={type.value}
+                                      type="button"
+                                      onClick={() => handleVehicleTypeClick(type.listing_type)}
+                                      className="block w-full truncate rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                                    >
+                                      {type.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => navigateTo(item.path)}
+                        className={`relative flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition ${active
+                          ? 'text-[#b98227] dark:text-[#f3c96d]'
+                          : 'text-slate-700 hover:text-[#c99b43] dark:text-slate-100 dark:hover:text-[#f3c96d]'}`}
+                      >
+                        {active && (
+                          <motion.span
+                            layoutId="nav-active"
+                            className="absolute inset-0 rounded-full bg-[#c99b43]/10 dark:bg-[#c99b43]/15"
+                            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                          />
+                        )}
+                        <span className="relative">{item.label}</span>
+                        {item.hasDropdown && <ChevronDown size={14} />}
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+                )
+              })}
+            </nav>
 
-          <div className="order-1 flex items-center gap-1 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 transition hover:bg-[#c99b43]/10 dark:text-slate-100 dark:hover:bg-white/10"
-              aria-label="Open navigation menu"
-              aria-haspopup="dialog"
-              aria-controls="mobile-nav-drawer"
-              aria-expanded={mobileMenuOpen}
-            >
-              <Menu size={20} />
-            </button>
-            <button type="button" onClick={() => navigateTo('/')} className="flex min-w-0 items-center gap-2 lg:hidden">
-              {siteSettingsStatus === 'loading' ? (
-                <div className="h-10 w-10 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-              ) : siteLogoUrl && !brandLogoFailed ? (
-                <img src={siteLogoUrl} alt={`${siteName || 'Website'} logo`} className="h-10 w-auto max-w-[2.75rem] object-contain" onError={() => setBrandLogoFailed(true)} />
-              ) : (
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#c99b43]/25 bg-[#c99b43]/10 text-[#b98227] dark:border-[#c99b43]/35 dark:bg-white/5 dark:text-[#f3c96d]"><Building2 size={20} /></span>
-              )}
-              <span className="max-w-[11rem] truncate text-sm font-semibold tracking-tight text-[#0b2141] dark:text-[#f3c96d] sm:max-w-[14rem]">
-                <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
-                  {siteName || 'Home'}
+            {/* Right: search toggle, theme, favorites, user */}
+            <div className="flex items-center gap-1.5 lg:gap-2">
+              <button
+                type="button"
+                onClick={() => setSearchOpen((open) => !open)}
+                aria-label={searchOpen ? 'Close search' : 'Open search'}
+                aria-expanded={searchOpen}
+                title={searchOpen ? 'Close search' : 'Search'}
+                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 ${searchOpen
+                  ? 'bg-[#c99b43] text-white shadow-md'
+                  : 'border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] hover:bg-[#c99b43] hover:text-white dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d] dark:hover:bg-[#c99b43] dark:hover:text-white'}`}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={searchOpen ? 'close' : 'search'}
+                    initial={prefersReducedMotion ? false : { rotate: -90, opacity: 0, scale: 0.6 }}
+                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                    exit={prefersReducedMotion ? { opacity: 0 } : { rotate: 90, opacity: 0, scale: 0.6 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+                    className="flex items-center justify-center"
+                  >
+                    {searchOpen ? <X size={17} /> : <Search size={17} />}
+                  </motion.span>
+                </AnimatePresence>
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] transition-all duration-200 hover:bg-[#c99b43]/12 hover:scale-105 dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d] dark:hover:bg-white/10"
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={isDark ? 'Light mode' : 'Dark mode'}
+              >
+                {isDark ? <SunMedium size={17} /> : <Moon size={17} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:bg-[#c99b43]/10 hover:text-[#c99b43] hover:scale-105 sm:flex lg:flex dark:text-slate-100 dark:hover:bg-[#c99b43]/10 dark:hover:text-[#f3c96d]"
+                aria-label="Favorites"
+                title="Favorites"
+              >
+                <Heart size={16} />
+              </button>
+
+              {loading ? (
+                <span className="hidden rounded-full border border-[#c99b43]/30 px-2.5 py-1 text-[11px] font-semibold text-[#b27a23] lg:block dark:text-[#f3c96d]">
+                  Checking session...
                 </span>
-              </span>
-            </button>
+              ) : user ? (
+                <div className="relative" ref={authDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAuthDropdownOpen((open) => !open)}
+                    className="flex items-center gap-2 rounded-full border border-[#c99b43]/30 bg-[#c99b43]/8 p-1 pr-2 text-slate-700 transition hover:bg-[#c99b43]/12 dark:border-[#c99b43]/40 dark:bg-white/5 dark:text-white"
+                    aria-label="Open profile menu"
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] text-sm font-semibold text-slate-950 shadow-sm">
+                      {profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt={profileLabel}
+                          className="h-full w-full rounded-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                            e.target.parentElement.textContent = userInitial
+                          }}
+                        />
+                      ) : (
+                        userInitial
+                      )}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`hidden transition-transform duration-200 sm:block ${authDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  <AnimatePresence>
+                    {authDropdownOpen && (
+                      <motion.div
+                        key="auth-menu"
+                        initial={prefersReducedMotion ? false : { opacity: 0, y: -8, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+                        transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+                        className="absolute right-0 top-full mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthDropdownOpen(false)
+                            const dashboardRoute = getDashboardRoute(user?.role)
+                            navigate(dashboardRoute)
+                          }}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                        >
+                          <User size={15} />
+                          <span>Profile</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAuthDropdownOpen(false)}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                        >
+                          <Settings size={15} />
+                          <span>Settings</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                        >
+                          <LogOut size={15} />
+                          <span>Log out</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <div className="relative" ref={authDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAuthDropdownOpen((open) => !open)}
+                    className="flex items-center gap-1.5 rounded-full border border-[#c99b43]/35 p-1.5 pr-2 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-100 dark:hover:bg-white/5 dark:hover:text-[#f3c96d]"
+                    aria-label="Open account menu"
+                  >
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#c99b43]/10 text-[#b98227] dark:bg-white/5 dark:text-[#f3c96d]">
+                      <User size={15} />
+                    </span>
+                    <span className="hidden lg:inline">Sign In</span>
+                    <ChevronDown
+                      size={16}
+                      className={`hidden transition-transform duration-200 sm:block ${authDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  <AnimatePresence>
+                    {authDropdownOpen && (
+                      <motion.div
+                        key="auth-menu-guest"
+                        initial={prefersReducedMotion ? false : { opacity: 0, y: -8, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+                        transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+                        className="absolute right-0 top-full mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthDropdownOpen(false)
+                            navigate('/login')
+                          }}
+                          className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                        >
+                          <User size={15} />
+                          <span>Sign In</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthDropdownOpen(false)
+                            navigate('/register')
+                          }}
+                          className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                        >
+                          <User size={15} />
+                          <span>Sign Up</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="order-3 ml-auto flex items-center gap-1 lg:hidden">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c99b43]/35 bg-[#c99b43]/8 text-[#b98227] dark:border-[#c99b43]/40 dark:bg-white/6 dark:text-[#f3c96d]"
-              aria-label="Toggle light and dark mode"
-            >
-              <SunMedium size={18} />
-            </button>
-          </div>
+          {/* ─── Expandable search panel ─────────────────────────────── */}
+          <AnimatePresence initial={false}>
+            {searchOpen && (
+              <motion.div
+                key="search-panel"
+                initial={prefersReducedMotion ? { opacity: 1 } : { height: 0, opacity: 0 }}
+                animate={prefersReducedMotion ? { opacity: 1 } : { height: 'auto', opacity: 1 }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <form
+                  onSubmit={handleSearchSubmit}
+                  className="mx-auto flex w-full flex-col gap-3 pb-4 sm:pb-5 lg:max-w-4xl"
+                >
+                  <div className="flex flex-col divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-[#c99b43]/5 lg:flex-row lg:items-center lg:divide-x lg:divide-y-0 dark:divide-slate-700/60 dark:border-slate-700/60 dark:bg-slate-900">
+                    {/* Location */}
+                    <label className="group flex flex-1 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 focus-within:bg-slate-50 dark:hover:bg-slate-950/40 dark:focus-within:bg-slate-950/40">
+                      <MapPin className="h-5 w-5 shrink-0 text-[#c99b43]" />
+                      <span className="flex-1">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Location</span>
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(event) => setSearchQuery(event.target.value)}
+                          placeholder="Where are you going?"
+                          className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
+                        />
+                      </span>
+                    </label>
+
+                    {/* Property type */}
+                    <div className="group relative flex flex-1 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950/40">
+                      <HomeIcon className="h-5 w-5 shrink-0 text-[#c99b43]" />
+                      <span className="flex-1">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Property type</span>
+                        <select
+                          aria-label="Property type"
+                          defaultValue=""
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val === 'all') {
+                              handlePropertyTypeClick('')
+                            } else if (val) {
+                              const match = propertyCategories.find((c) => c.value === val)
+                              if (match) handlePropertyTypeClick(match.listing_type)
+                            }
+                          }}
+                          className="w-full appearance-none bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+                        >
+                          <option value="all" className="bg-white dark:bg-slate-900">Any property</option>
+                          {listingOptionsStatus === 'success' &&
+                            propertyCategories.map((type) => (
+                              <option key={type.value} value={type.value} className="bg-white dark:bg-slate-900">{type.label}</option>
+                            ))}
+                        </select>
+                      </span>
+                      <ChevronDown size={15} className="shrink-0 text-slate-400" />
+                    </div>
+
+                    {/* Vehicle type */}
+                    <div className="group relative flex flex-1 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950/40">
+                      <Car className="h-5 w-5 shrink-0 text-[#c99b43]" />
+                      <span className="flex-1">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vehicle type</span>
+                        <select
+                          aria-label="Vehicle type"
+                          defaultValue=""
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val === 'all') {
+                              handleVehicleTypeClick('')
+                            } else if (val) {
+                              const match = vehicleCategories.find((c) => c.value === val)
+                              if (match) handleVehicleTypeClick(match.listing_type)
+                            }
+                          }}
+                          className="w-full appearance-none bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+                        >
+                          <option value="all" className="bg-white dark:bg-slate-900">Any vehicle</option>
+                          {listingOptionsStatus === 'success' &&
+                            vehicleCategories.map((type) => (
+                              <option key={type.value} value={type.value} className="bg-white dark:bg-slate-900">{type.label}</option>
+                            ))}
+                        </select>
+                      </span>
+                      <ChevronDown size={15} className="shrink-0 text-slate-400" />
+                    </div>
+
+                    {/* Search button */}
+                    <div className="flex items-center justify-center p-2 lg:p-3">
+                      <button
+                        type="submit"
+                        aria-label="Search properties"
+                        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-6 text-sm font-semibold text-slate-950 shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-[#c99b43]/25 hover:scale-[1.02] active:scale-95 lg:w-12 lg:rounded-full"
+                      >
+                        <Search className="h-5 w-5" />
+                        <span className="lg:hidden">Search</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+                    Search by location, or pick a property or vehicle type.
+                  </p>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </header>
 

@@ -212,14 +212,64 @@ function PropertyDetails() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen bg-white dark:bg-slate-950">
         <Navbar />
-        <div className="flex h-[70vh] items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#c99b43]" />
-            <p className="mt-4 text-slate-600 dark:text-slate-400">Loading property details...</p>
+
+        {/* Top Navigation skeleton */}
+        <section className="border-b border-slate-200 bg-white py-4 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <div className="h-9 w-40 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
+                <div className="h-9 w-9 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
+
+        <section className="bg-white py-8 dark:bg-slate-900">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 lg:flex-row">
+              {/* Main image skeleton */}
+              <div className="relative flex-1 lg:flex-[2]">
+                <div className="h-96 w-full animate-pulse rounded-l-[28px] bg-gradient-to-br from-slate-200 to-slate-100 md:h-[400px] lg:h-[400px] dark:from-slate-800 dark:to-slate-800/50" />
+              </div>
+
+              {/* Thumbnails skeleton */}
+              <div className="grid flex-1 grid-cols-2 gap-3 lg:flex-[1]">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-28 w-full animate-pulse rounded-xl bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50"
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-8 grid gap-8 lg:grid-cols-3">
+              {/* Main content skeleton */}
+              <div className="lg:col-span-2">
+                <div className="h-6 w-3/5 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
+                <div className="mt-3 h-4 w-1/3 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/60" />
+                  ))}
+                </div>
+                <div className="mt-8 space-y-3">
+                  <div className="h-4 w-full animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+                  <div className="h-4 w-11/12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+                  <div className="h-4 w-4/5 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+                </div>
+              </div>
+
+              {/* Booking card skeleton */}
+              <div className="h-80 animate-pulse rounded-2xl border border-slate-200/80 bg-slate-100/60 dark:border-slate-800 dark:bg-slate-800/40" />
+            </div>
+          </div>
+        </section>
+
         <Footer />
       </div>
     )
@@ -268,21 +318,29 @@ function PropertyDetails() {
               <ArrowLeft className="h-4 w-4" />
               Back to Properties
             </Button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleFavoriteClick}
                 disabled={isFavoriteLoading}
-                className={isFavorite ? 'border-red-500 text-red-500' : ''}
+                className={isFavorite ? 'border-red-500 text-red-500 w-fit p-1' : 'w-fit p-1'}
               >
                 {isFavoriteLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span className='text-[11px]'>save</span>
+                  </>
                 ) : (
-                  <Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
+                  <>
+                    <Heart className={`h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
+                    <span className='text-[11px]'>save</span>
+                  </>
                 )}
               </Button>
-              <ShareButton propertyId={property.id} title={property.title} />
+              <div className='flex'>
+                <ShareButton propertyId={property.id} title={property.title} />
+              </div>
             </div>
           </div>
         </div>
