@@ -60,17 +60,16 @@ export default function TenantTopbar({ onToggleSidebar }) {
                     </Link>
 
                     <div className="relative" ref={ref}>
-                        <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm dark:border-slate-800 dark:bg-slate-900">
-                            <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-semibold">
-
+                        <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800">
+                            <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100 flex items-center justify-center font-semibold">
                                 {profileImageUrl ? (
                                     <img
                                         src={profileImageUrl}
-                                        alt={profileLabel}
+                                        alt={user?.first_name || 'Profile'}
                                         className="h-full w-full rounded-full object-cover"
                                         onError={(e) => {
                                             e.target.style.display = 'none';
-                                            e.target.parentElement.textContent = profileInitial;
+                                            e.target.parentElement.textContent = userInitial;
                                         }}
                                     />
                                 ) : (
@@ -78,14 +77,14 @@ export default function TenantTopbar({ onToggleSidebar }) {
                                 )}
                             </div>
                             <span className="hidden sm:inline">{user?.first_name || user?.email?.split('@')[0]}</span>
-                            <ChevronDown className="h-4 w-4 text-slate-500" />
+                            <ChevronDown className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                         </button>
 
                         {open && (
-                            <div className="absolute right-0 mt-2 w-48 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-950">
-                                <button onClick={() => { setOpen(false) }} className="block w-full px-4 py-2 text-left text-sm text-slate-700">View Profile</button>
-                                <button onClick={() => { setOpen(false) }} className="block w-full px-4 py-2 text-left text-sm text-slate-700">Settings</button>
-                                <button onClick={async () => { await logout() }} className="block w-full px-4 py-2 text-left text-sm text-slate-700">Logout</button>
+                            <div className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/20 dark:border-slate-800 dark:bg-slate-950">
+                                <button onClick={() => { setOpen(false) }} className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">View Profile</button>
+                                <button onClick={() => { setOpen(false) }} className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Settings</button>
+                                <button onClick={async () => { await logout() }} className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Logout</button>
                             </div>
                         )}
                     </div>

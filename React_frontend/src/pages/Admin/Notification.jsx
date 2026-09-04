@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
     ArrowRight,
     Bell,
+    CalendarDays,
     ChevronLeft,
     ChevronRight,
     House,
@@ -14,7 +15,7 @@ import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import { getAdminNotifications } from '../../api/admin/adminApi'
 
-const tabs = ['All', 'Property', 'New User']
+const tabs = ['All', 'Property', 'Booking', 'New User']
 
 function Notification() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -31,16 +32,14 @@ function Notification() {
         try {
             const filters = {}
             const data = await getAdminNotifications(filters)
-            setNotifications(data.filter((item) => (
-                item.type === 'Property' || item.title === 'New user registration'
-            )))
+            setNotifications(data)
         } catch (error) {
             console.error('Failed to fetch notifications:', error)
             setNotifications([])
         } finally {
             setLoading(false)
         }
-    }, [activeTab])
+    }, [])
 
     useEffect(() => {
         fetchNotifications()
@@ -51,7 +50,9 @@ function Notification() {
             ? notifications.filter((item) => item.title === 'New user registration')
             : activeTab === 'Property'
                 ? notifications.filter((item) => item.type === 'Property')
-                : notifications
+                : activeTab === 'Booking'
+                    ? notifications.filter((item) => item.type === 'Booking')
+                    : notifications
         const query = search.trim().toLowerCase()
         if (!query) return tabNotifications
         return tabNotifications.filter((item) => {
@@ -157,7 +158,11 @@ function Notification() {
                                     >
                                         <div className="flex items-start gap-3">
                                             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-slate-700 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
-                                                {item.type === 'Property' ? <House className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                                                {item.type === 'Property'
+                                                    ? <House className="h-4 w-4" />
+                                                    : item.type === 'Booking'
+                                                        ? <CalendarDays className="h-4 w-4" />
+                                                        : <Bell className="h-4 w-4" />}
                                             </div>
                                             <div className="min-w-0">
                                                 <div className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>

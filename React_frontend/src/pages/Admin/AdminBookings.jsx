@@ -358,10 +358,10 @@ function AdminBookingDrawer({
                                                 setConfirmOpen(true)
                                             }}
                                             className={`w-full rounded-2xl border px-5 py-3 text-sm font-semibold transition ${a.key === 'cancel'
-                                                    ? 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40'
-                                                    : a.key === 'complete'
-                                                        ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-900/50 dark:hover:bg-emerald-950/40'
-                                                        : 'border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-900/50 dark:hover:bg-amber-950/40'
+                                                ? 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40'
+                                                : a.key === 'complete'
+                                                    ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-900/50 dark:hover:bg-emerald-950/40'
+                                                    : 'border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-900/50 dark:hover:bg-amber-950/40'
                                                 }`}
                                         >
                                             {a.label}
@@ -431,10 +431,10 @@ function AdminBookingDrawer({
                                             disabled={submitting || reason.trim().length < 3}
                                             onClick={performAction}
                                             className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-60 ${action.key === 'cancel'
-                                                    ? 'bg-red-600 hover:bg-red-700'
-                                                    : action.key === 'complete'
-                                                        ? 'bg-emerald-600 hover:bg-emerald-700'
-                                                        : 'bg-amber-600 hover:bg-amber-700'
+                                                ? 'bg-red-600 hover:bg-red-700'
+                                                : action.key === 'complete'
+                                                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                                                    : 'bg-amber-600 hover:bg-amber-700'
                                                 }`}
                                         >
                                             {submitting ? (
@@ -466,8 +466,10 @@ function DetailRow({ label, value }) {
 export default function AdminBookings() {
     const reduceMotion = useReducedMotion()
     const { isDark } = useTheme()
+    const initialBookingCount = 5
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [bookings, setBookings] = useState([])
+    const [visibleBookingCount, setVisibleBookingCount] = useState(initialBookingCount)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [selected, setSelected] = useState(null)
@@ -496,6 +498,7 @@ export default function AdminBookings() {
             const data = await getAdminBookings(filterArgs)
             const results = Array.isArray(data) ? data : data.results || []
             setBookings(results)
+            setVisibleBookingCount(initialBookingCount)
         } catch (err) {
             setError(err.message || 'Unable to load bookings.')
             setBookings([])
@@ -652,13 +655,12 @@ export default function AdminBookings() {
                                             setFilters((f) => ({ ...f, status: filters.status === o.value ? '' : o.value }))
                                             setTimeout(refresh, 0)
                                         }}
-                                        className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                                            filters.status === o.value
+                                        className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold transition ${filters.status === o.value
                                                 ? 'bg-[#C99B43] text-white shadow-sm'
                                                 : isDark
                                                     ? 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
                                                     : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                                        }`}
+                                            }`}
                                     >
                                         {o.label}
                                     </button>
@@ -728,7 +730,7 @@ export default function AdminBookings() {
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                        {bookings.map((booking) => (
+                                        {bookings.slice(0, visibleBookingCount).map((booking) => (
                                             <tr key={booking.id} className={`transition ${isDark ? 'hover:bg-slate-900/60' : 'hover:bg-slate-50/70'}`}>
                                                 <td className="px-6 py-4">
                                                     <button type="button" onClick={() => setSelected(booking)} className="text-left">
@@ -792,7 +794,7 @@ export default function AdminBookings() {
                     {/* Mobile / tablet cards */}
                     {!loading && !error && bookings.length > 0 && (
                         <div className="mt-6 grid gap-4 xl:hidden lg:grid-cols-2">
-                            {bookings.map((booking, i) => (
+                            {bookings.slice(0, visibleBookingCount).map((booking, i) => (
                                 <motion.article
                                     key={booking.id}
                                     initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
@@ -856,6 +858,29 @@ export default function AdminBookings() {
                                     </div>
                                 </motion.article>
                             ))}
+                        </div>
+                    )}
+
+                    {!loading && !error && bookings.length > initialBookingCount && (
+                        <div className="mt-4 flex justify-center gap-3">
+                            {visibleBookingCount > initialBookingCount && (
+                                <button
+                                    type="button"
+                                    onClick={() => setVisibleBookingCount(initialBookingCount)}
+                                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${isDark ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                    View less
+                                </button>
+                            )}
+                            {visibleBookingCount < bookings.length && (
+                                <button
+                                    type="button"
+                                    onClick={() => setVisibleBookingCount((count) => Math.min(count + initialBookingCount, bookings.length))}
+                                    className="rounded-lg bg-[#c99b43] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                                >
+                                    View more
+                                </button>
+                            )}
                         </div>
                     )}
 

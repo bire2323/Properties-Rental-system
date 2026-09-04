@@ -75,7 +75,7 @@ class AdminAuditLogListAPIView(APIView):
 
 
 class AdminAuditLogDetailAPIView(APIView):
-    """Return a single audit event with full detail (admin only)."""
+    """Return or delete a single audit event (admin only)."""
 
     def get(self, request, event_id, *args, **kwargs):
         if not _is_admin(request):
@@ -96,6 +96,24 @@ class AdminAuditLogDetailAPIView(APIView):
             AuditLogDetailSerializer(event).data,
             status=status.HTTP_200_OK,
         )
+
+    def delete(self, request, event_id, *args, **kwargs):
+        if not _is_admin(request):
+            return Response(
+                {"detail": "You do not have permission to access this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            event = AuditLog.objects.get(pk=event_id)
+        except AuditLog.DoesNotExist:
+            return Response(
+                {"detail": "Audit event not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AdminAuditLogSummaryAPIView(APIView):

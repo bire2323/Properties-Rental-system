@@ -146,6 +146,19 @@ class RegisterAPIView(GenericAPIView):
             request=request,
         )
 
+        user_name = user.get_full_name().strip() or user.email
+        Notification.objects.create(
+            type=Notification.NotificationType.SYSTEM,
+            status=Notification.NotificationStatus.NEW,
+            title="New user registration",
+            details=f"{user_name} registered a new {user.get_role_display().lower()} account.",
+            info="User registration",
+            sender=user,
+            sender_name=user_name,
+            sender_email=user.email,
+            sender_phone=getattr(getattr(user, "profile", None), "phone_number", "") or "",
+        )
+
         tokens = create_tokens(user)
         response = Response(
             {
@@ -920,7 +933,8 @@ class AdminNotificationListAPIView(APIView):
         entries = NotificationSerializer(
             Notification.objects.select_related("sender", "sender__profile", "sender__owner_profile")
             .filter(
-                Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
+                Q(type=Notification.NotificationType.BOOKING)
+                | Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
                 | Q(
                     type=Notification.NotificationType.SYSTEM,
                     title="New user registration",
@@ -1073,7 +1087,8 @@ class AdminNotificationDetailAPIView(AdminNotificationListAPIView):
 
         try:
             notification = Notification.objects.filter(
-                Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
+                Q(type=Notification.NotificationType.BOOKING)
+                | Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
                 | Q(type=Notification.NotificationType.SYSTEM, title="New user registration")
             ).select_related("sender", "sender__profile", "sender__owner_profile").get(id=notification_id)
         except (Notification.DoesNotExist, ValueError):
@@ -1090,7 +1105,8 @@ class AdminNotificationDetailAPIView(AdminNotificationListAPIView):
 
         try:
             notification = Notification.objects.filter(
-                Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
+                Q(type=Notification.NotificationType.BOOKING)
+                | Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
                 | Q(type=Notification.NotificationType.SYSTEM, title="New user registration")
             ).get(id=notification_id)
         except (Notification.DoesNotExist, ValueError):

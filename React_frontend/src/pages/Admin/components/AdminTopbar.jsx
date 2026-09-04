@@ -158,9 +158,7 @@ export default function AdminTopbar({ onToggleSidebar }) {
                         )}
                     </div>
 
-                    <Link to="/admin-dashboard/notifications" className={`hidden h-10 w-10 items-center justify-center rounded-lg border transition sm:inline-flex ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
-                        <Heart className="h-5 w-5" />
-                    </Link>
+
 
                     <div className="relative" ref={menuRef}>
                         <button

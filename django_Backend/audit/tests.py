@@ -5,7 +5,7 @@ Covers:
 - The `audit_event` / `audit_system_event` services (actor snapshot, system actor, safety).
 - The audit admin API endpoints (list, filter, search, pagination, detail, summary).
 - Admin-only authorization enforcement (admin vs tenant vs owner).
-- Immutability of audit records (no add / change in Django admin).
+    - Audit record protection (no add / change in Django admin, admin API delete).
 - Integration: registration -> USER_REGISTERED (and NO notification).
 - Integration: login success/failure -> LOGIN_SUCCESS / LOGIN_FAILED.
 - Integration: booking lifecycle generates BOOKING_* audit events.
@@ -188,6 +188,37 @@ class AuditLogAdminApiTests(TestCase):
         denied = non_admin.get(f"/api/audit/admin/audit-logs/{event.pk}/")
         self.assertEqual(denied.status_code, 403)
 
+    def test_admin_can_delete_audit_event(self):
+        event = audit_event(
+            actor=self.tenant,
+            action="REMOVABLE_EVENT",
+            category=AuditLog.Category.SYSTEM,
+        )
+
+        response = self.admin_client.delete(f"/api/audit/admin/audit-logs/{event.pk}/")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(AuditLog.objects.filter(pk=event.pk).exists())
+
+    def test_non_admin_cannot_delete_audit_event(self):
+        event = audit_event(
+            actor=self.tenant,
+            action="PROTECTED_EVENT",
+            category=AuditLog.Category.SYSTEM,
+        )
+        client = APIClient()
+        client.force_authenticate(user=self.tenant)
+
+        response = client.delete(f"/api/audit/admin/audit-logs/{event.pk}/")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(AuditLog.objects.filter(pk=event.pk).exists())
+
+    def test_delete_missing_audit_event_returns_not_found(self):
+        response = self.admin_client.delete("/api/audit/admin/audit-logs/999999/")
+
+        self.assertEqual(response.status_code, 404)
+
     def test_search_filters_events(self):
         user = _make_user("search@example.com", User.Role.TENANT)
         audit_event(actor=user, action="USER_REGISTERED", category=AuditLog.Category.USER,
@@ -281,8 +312,13 @@ class AuditRegistrationTests(TestCase):
                 result=AuditLog.Result.SUCCESS,
             ).exists()
         )
-        # Normal registration must NOT create an admin notification.
-        self.assertFalse(Notification.objects.exists())
+        self.assertTrue(
+            Notification.objects.filter(
+                type=Notification.NotificationType.SYSTEM,
+                title="New user registration",
+                sender__email="new@example.com",
+            ).exists()
+        )
 
 
 class AuditLoginTests(TestCase):
