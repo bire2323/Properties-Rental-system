@@ -25,8 +25,30 @@ import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import useDebounce from '../../hooks/useDebounce'
-import { deleteAuditLog, getAuditLogs, getAuditLogDetail, getAuditLogSummary } from '../../api/admin/auditApi'
-import { Button, Input, Select, Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from '../../components/ui'
+import { bulkDeleteAuditLogs, deleteAuditLog, getAuditLogs, getAuditLogDetail, getAuditLogSummary } from '../../api/admin/auditApi'
+import {
+    Button,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    Input,
+    Select,
+    Table,
+    TableBody,
+    TableHead,
+    TableHeader,
+    TableRow,
+    TableCell,
+} from '../../components/ui'
+import { toast } from '../../components/ui/toaster'
 import { cn } from '../../lib/utils'
 
 const CATEGORIES = [
@@ -78,6 +100,14 @@ const RANGES = [
     { value: 'today', label: 'Today' },
     { value: '7d', label: 'Last 7 Days' },
     { value: '30d', label: 'Last 30 Days' },
+    { value: 'custom', label: 'Custom Range…' },
+]
+
+const DELETE_PERIODS = [
+    { value: 'today', label: "Delete Today's Logs", description: 'All events from the current calendar day.' },
+    { value: '7d', label: 'Delete Last 7 Days', description: 'All events from the previous 7 days, including today.' },
+    { value: 'last_week', label: 'Delete Last Week', description: 'All events from the previous completed calendar week.' },
+    { value: 'last_month', label: 'Delete Last Month', description: 'All events from the previous completed calendar month.' },
 ]
 
 const getCategoryMeta = (category) => {
@@ -146,6 +176,40 @@ const getCategoryIcon = (category) => {
     return map[category] || Info
 }
 
+function FilterChip({ label, onClear, isDark }) {
+    return (
+        <span className={cn(
+            'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition',
+            isDark
+                ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+        )}>
+            {label}
+            <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onClear() }}
+                className={cn(
+                    'ml-0.5 rounded p-0.5 transition',
+                    isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                )}
+            >
+                <X className="h-3 w-3" />
+            </button>
+        </span>
+    )
+}
+
+function MobileFilterGroup({ label, isDark, children }) {
+    return (
+        <div>
+            <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>
+                {label}
+            </label>
+            {children}
+        </div>
+    )
+}
+
 function AuditLog() {
     const defaultPageSize = 20
     const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -182,6 +246,12 @@ function AuditLog() {
     const [detailError, setDetailError] = useState(null)
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
+    // Bulk-delete state
+    const [bulkDeletePeriod, setBulkDeletePeriod] = useState(null)
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+    const [bulkDeleting, setBulkDeleting] = useState(false)
+    const [bulkDeleteError, setBulkDeleteError] = useState(null)
+
     const fetchSummary = useCallback(() => {
         getAuditLogSummary().then(setSummary).catch(() => { })
     }, [])
@@ -200,7 +270,7 @@ function AuditLog() {
                 result,
                 actor,
                 target_type: targetType,
-                range,
+                range: range === 'custom' ? '' : range,
                 date_from: dateFrom,
                 date_to: dateTo,
             }
@@ -247,6 +317,41 @@ function AuditLog() {
         setDateFrom('')
         setDateTo('')
         setPage(1)
+    }
+
+    const activeDeletePeriod = bulkDeletePeriod
+        ? DELETE_PERIODS.find((p) => p.value === bulkDeletePeriod)
+        : null
+
+    const openBulkDelete = (period) => {
+        setBulkDeletePeriod(period)
+        setBulkDeleteError(null)
+        setBulkDeleteOpen(true)
+    }
+
+    const confirmBulkDelete = async () => {
+        if (!bulkDeletePeriod) return
+        setBulkDeleting(true)
+        setBulkDeleteError(null)
+        try {
+            const result = await bulkDeleteAuditLogs(bulkDeletePeriod)
+            const count = result?.deleted_count ?? 0
+            const label = activeDeletePeriod?.label || bulkDeletePeriod
+            if (count > 0) {
+                toast.success(`${count} audit ${count === 1 ? 'event' : 'events'} deleted from ${label}.`)
+            } else {
+                toast.info(`No audit events were found for ${label}.`)
+            }
+            setBulkDeleteOpen(false)
+            setBulkDeletePeriod(null)
+            setPage(1)
+            fetchEvents()
+            fetchSummary()
+        } catch (err) {
+            setBulkDeleteError(err.message || 'Failed to delete audit logs.')
+        } finally {
+            setBulkDeleting(false)
+        }
     }
 
     const openDetail = async (eventId) => {
@@ -318,7 +423,7 @@ function AuditLog() {
         return (
             <TableRow
                 key={event.id}
-                className={cn('cursor-pointer', isDark ? 'hover:bg-slate-800/60 border-slate-800' : 'hover:bg-slate-50 border-slate-100')}
+                className={cn('cursor-pointer transition', isDark ? 'hover:bg-slate-800/60 border-slate-800/50' : 'hover:bg-slate-50/80 border-slate-100')}
                 onClick={() => openDetail(event.id)}
             >
                 <TableCell><div><div className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-slate-900')}>{time}</div><div className={cn('text-xs', isDark ? 'text-slate-500' : 'text-slate-400')}>{date}</div></div></TableCell>
@@ -355,7 +460,7 @@ function AuditLog() {
                     </span>
                 </TableCell>
                 <TableCell>
-                    <button className={cn('rounded-lg border px-2.5 py-1 text-xs font-semibold transition', isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>
+                    <button className={cn('rounded-lg border px-2.5 py-1 text-xs font-semibold transition', isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300')}>
                         Details
                     </button>
                 </TableCell>
@@ -376,8 +481,8 @@ function AuditLog() {
                 transition={{ delay: Math.min(index * 0.03, 0.3) }}
                 onClick={() => openDetail(event.id)}
                 className={cn(
-                    'cursor-pointer rounded-xl border p-4 transition',
-                    isDark ? 'border-slate-800 bg-slate-900 hover:bg-slate-800/60' : 'border-slate-200 bg-white hover:bg-slate-50'
+                    'cursor-pointer rounded-2xl border p-4 transition',
+                    isDark ? 'border-slate-800 bg-slate-900/80 hover:border-slate-700 hover:bg-slate-900 shadow-lg shadow-black/5' : 'border-slate-200 bg-white hover:shadow-md shadow-sm'
                 )}
             >
                 <div className="flex items-start justify-between gap-3">
@@ -450,71 +555,177 @@ function AuditLog() {
                             variant="outline"
                             size="sm"
                             onClick={() => setMobileFiltersOpen(true)}
-                            className={cn('lg:hidden', isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-700')}
+                            className={cn('lg:hidden rounded-xl gap-1.5', isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50')}
                         >
                             <Filter className="h-4 w-4" />
                             Filters
-                            {hasActiveFilters && <span className="ml-1 h-2 w-2 rounded-full bg-red-500" />}
+                            {hasActiveFilters && (
+                                <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                                    {[category, action, severity, result, targetType, range, dateFrom, dateTo, debouncedSearch].filter(Boolean).length}
+                                </span>
+                            )}
                         </Button>
                     </div>
 
                     {/* Summary cards */}
                     <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                         {summaryCards.map(({ label, value, icon: Icon, color }) => (
-                            <div key={label} className={cn('rounded-xl border p-3 sm:p-4', isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white')}>
-                                <div className={cn('mb-2 flex h-8 w-8 items-center justify-center rounded-lg', color)}>
+                            <div key={label} className={cn('rounded-2xl border p-4 transition', isDark ? 'border-slate-800 bg-slate-900/80 shadow-lg shadow-black/5 hover:bg-slate-900' : 'border-slate-200 bg-white shadow-sm hover:shadow-md')}>
+                                <div className={cn('mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl', color)}>
                                     <Icon className="h-4 w-4" />
                                 </div>
-                                <div className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-slate-900')}>{value}</div>
-                                <div className={cn('text-xs font-medium', isDark ? 'text-slate-400' : 'text-slate-500')}>{label}</div>
+                                <div className={cn('text-xl font-bold', isDark ? 'text-white' : 'text-slate-900')}>{value}</div>
+                                <div className={cn('mt-0.5 text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>{label}</div>
                             </div>
                         ))}
                     </div>
 
                     {/* Desktop filters */}
                     <div className={cn(
-                        'mb-4 hidden rounded-xl border p-4 lg:block',
-                        isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
+                        'mb-4 hidden rounded-2xl border p-5 lg:block',
+                        isDark ? 'border-slate-800 bg-slate-900/80 shadow-lg shadow-black/5' : 'border-slate-200 bg-white shadow-sm'
                     )}>
-                        <div className="grid grid-cols-12 gap-3">
-                            <div className="col-span-3">
+                        {/* Header row */}
+                        <div className="mb-4 flex items-center justify-between">
+                            <div className={cn('flex items-center gap-2 text-sm font-semibold', isDark ? 'text-slate-200' : 'text-slate-700')}>
+                                <div className={cn('flex h-7 w-7 items-center justify-center rounded-lg', isDark ? 'bg-slate-800' : 'bg-slate-100')}>
+                                    <Filter className={cn('h-3.5 w-3.5', isDark ? 'text-slate-400' : 'text-slate-500')} />
+                                </div>
+                                Filters
+                                {hasActiveFilters && (
+                                    <span className={cn('ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold', isDark ? 'bg-[#3b7cb8]/20 text-[#5ba3e0]' : 'bg-[#255070]/10 text-[#255070]')}>
+                                        {[category, action, severity, result, targetType, range, dateFrom, dateTo, debouncedSearch].filter(Boolean).length}
+                                    </span>
+                                )}
+                            </div>
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={resetFilters}
+                                    className={cn(
+                                        'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition',
+                                        isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                                    )}
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                    Clear all
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Filter controls row 1: search + primary filters */}
+                        <div className="flex flex-wrap items-end gap-3">
+                            <div className="min-w-[200px] flex-1 sm:min-w-[260px]">
+                                <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Search</label>
                                 <div className="relative">
                                     <Search className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', isDark ? 'text-slate-500' : 'text-slate-400')} />
                                     <Input
                                         value={search}
                                         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-                                        placeholder="Search events..."
-                                        className={cn('pl-9', isDark ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-900')}
+                                        placeholder="Search events, actors, targets..."
+                                        className={cn(
+                                            'rounded-xl border-slate-200 bg-white pl-9 focus:border-[#255070] focus:ring-[#255070]/20',
+                                            'dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500',
+                                            'dark:focus:border-[#3b7cb8] dark:focus:ring-[#3b7cb8]/20'
+                                        )}
                                     />
                                 </div>
                             </div>
-                            <div className="col-span-2">
+                            <div className="w-[160px]">
+                                <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Category</label>
                                 <Select options={CATEGORIES} value={category} onChange={(e) => { setCategory(e.target.value); setPage(1) }} />
                             </div>
-                            <div className="col-span-2">
+                            <div className="w-[160px]">
+                                <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Action</label>
                                 <Select options={actionOptions} value={action} onChange={(e) => { setAction(e.target.value); setPage(1) }} placeholder="All Actions" />
                             </div>
-                            <div className="col-span-1">
+                            <div className="w-[130px]">
+                                <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Severity</label>
                                 <Select options={SEVERITIES} value={severity} onChange={(e) => { setSeverity(e.target.value); setPage(1) }} />
                             </div>
-                            <div className="col-span-1">
+                            <div className="w-[130px]">
+                                <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Result</label>
                                 <Select options={RESULTS} value={result} onChange={(e) => { setResult(e.target.value); setPage(1) }} />
                             </div>
-                            <div className="col-span-1">
+                            <div className="w-[150px]">
+                                <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Object Type</label>
                                 <Select options={TARGET_TYPES} value={targetType} onChange={(e) => { setTargetType(e.target.value); setPage(1) }} />
                             </div>
-                            <div className="col-span-2">
+                        </div>
+
+                        {/* Filter controls row 2: date range */}
+                        <div className={cn('mt-3 flex flex-wrap items-end gap-3 border-t pt-3', isDark ? 'border-slate-800' : 'border-slate-100')}>
+                            <div className="w-[160px]">
+                                <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Date Range</label>
                                 <Select options={RANGES} value={range} onChange={(e) => { setRange(e.target.value); setPage(1) }} />
                             </div>
+                            {range === 'custom' && (
+                                <>
+                                    <div className="w-[170px]">
+                                        <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>From</label>
+                                        <Input
+                                            type="date"
+                                            value={dateFrom}
+                                            onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
+                                            className={cn(
+                                                'rounded-xl border-slate-200 bg-white focus:border-[#255070] focus:ring-[#255070]/20',
+                                                'dark:border-slate-600 dark:bg-slate-800 dark:text-white',
+                                                'dark:focus:border-[#3b7cb8] dark:focus:ring-[#3b7cb8]/20'
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="w-[170px]">
+                                        <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>To</label>
+                                        <Input
+                                            type="date"
+                                            value={dateTo}
+                                            onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
+                                            className={cn(
+                                                'rounded-xl border-slate-200 bg-white focus:border-[#255070] focus:ring-[#255070]/20',
+                                                'dark:border-slate-600 dark:bg-slate-800 dark:text-white',
+                                                'dark:focus:border-[#3b7cb8] dark:focus:ring-[#3b7cb8]/20'
+                                            )}
+                                        />
+                                    </div>
+                                    <div className={cn('rounded-xl border px-3.5 py-2.5 text-xs', isDark ? 'border-slate-700 bg-slate-800/50 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500')}>
+                                        {dateFrom && dateTo
+                                            ? <>Events between <strong className={isDark ? 'text-slate-300' : 'text-slate-700'}>{dateFrom}</strong> and <strong className={isDark ? 'text-slate-300' : 'text-slate-700'}>{dateTo}</strong></>
+                                            : 'Pick start and end dates'}
+                                    </div>
+                                </>
+                            )}
                         </div>
+
+                        {/* Active filter chips */}
                         {hasActiveFilters && (
-                            <div className="mt-3 flex items-center justify-between">
-                                <span className={cn('text-xs', isDark ? 'text-slate-400' : 'text-slate-500')}>
-                                    Showing {events.length} of {totalCount} events
-                                </span>
-                                <button onClick={resetFilters} className={cn('text-xs font-semibold', isDark ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700')}>
-                                    Clear all filters
-                                </button>
+                            <div className={cn('mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3', isDark ? 'border-slate-800' : 'border-slate-100')}>
+                                <span className={cn('text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>Active:</span>
+                                {debouncedSearch && (
+                                    <FilterChip label={`Search: "${debouncedSearch}"`} onClear={() => { setSearch(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {category && (
+                                    <FilterChip label={`Category: ${CATEGORIES.find(c => c.value === category)?.label || category}`} onClear={() => { setCategory(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {action && (
+                                    <FilterChip label={`Action: ${formatAction(action)}`} onClear={() => { setAction(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {severity && (
+                                    <FilterChip label={`Severity: ${SEVERITIES.find(s => s.value === severity)?.label || severity}`} onClear={() => { setSeverity(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {result && (
+                                    <FilterChip label={`Result: ${RESULTS.find(r => r.value === result)?.label || result}`} onClear={() => { setResult(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {targetType && (
+                                    <FilterChip label={`Type: ${TARGET_TYPES.find(t => t.value === targetType)?.label || targetType}`} onClear={() => { setTargetType(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {range && (
+                                    <FilterChip label={`Range: ${RANGES.find(r => r.value === range)?.label || range}`} onClear={() => { setRange(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {dateFrom && (
+                                    <FilterChip label={`From: ${dateFrom}`} onClear={() => { setDateFrom(''); setPage(1) }} isDark={isDark} />
+                                )}
+                                {dateTo && (
+                                    <FilterChip label={`To: ${dateTo}`} onClear={() => { setDateTo(''); setPage(1) }} isDark={isDark} />
+                                )}
                             </div>
                         )}
                     </div>
@@ -534,84 +745,130 @@ function AuditLog() {
                                     initial={{ x: '100%' }}
                                     animate={{ x: 0 }}
                                     exit={{ x: '100%' }}
-                                    transition={{ type: 'tween', duration: 0.25 }}
+                                    transition={{ type: 'tween', duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                                     className={cn(
-                                        'fixed inset-y-0 right-0 z-50 w-[88%] max-w-sm overflow-y-auto p-4 lg:hidden',
-                                        isDark ? 'bg-slate-900 border-l border-slate-800' : 'bg-white border-l border-slate-200'
+                                        'fixed inset-y-0 right-0 z-50 flex w-[85%] max-w-sm flex-col lg:hidden',
+                                        isDark ? 'bg-slate-950 border-l border-slate-800' : 'bg-white border-l border-slate-200'
                                     )}
                                 >
-                                    <div className="mb-4 flex items-center justify-between">
-                                        <h2 className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-slate-900')}>Filters</h2>
-                                        <button onClick={() => setMobileFiltersOpen(false)} className={cn('rounded-lg p-1.5', isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100')}>
+                                    {/* Sticky header */}
+                                    <div className={cn('flex items-center justify-between border-b px-5 py-4', isDark ? 'border-slate-800' : 'border-slate-200')}>
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={cn('flex h-7 w-7 items-center justify-center rounded-lg', isDark ? 'bg-slate-800' : 'bg-slate-100')}>
+                                                <Filter className={cn('h-3.5 w-3.5', isDark ? 'text-slate-400' : 'text-slate-500')} />
+                                            </div>
+                                            <h2 className={cn('text-base font-bold', isDark ? 'text-white' : 'text-slate-900')}>Filters</h2>
+                                            {hasActiveFilters && (
+                                                <span className={cn('inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold', isDark ? 'bg-[#3b7cb8]/20 text-[#5ba3e0]' : 'bg-[#255070]/10 text-[#255070]')}>
+                                                    {[category, action, severity, result, targetType, range, dateFrom, dateTo, debouncedSearch].filter(Boolean).length}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => setMobileFiltersOpen(false)}
+                                            className={cn('rounded-xl p-2 transition', isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100')}
+                                        >
                                             <X className="h-5 w-5" />
                                         </button>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Search</label>
-                                            <div className="relative">
-                                                <Search className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', isDark ? 'text-slate-500' : 'text-slate-400')} />
-                                                <Input
-                                                    value={search}
-                                                    onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-                                                    placeholder="Search events..."
-                                                    className={cn('pl-9', isDark ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-slate-50')}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Category</label>
-                                            <Select options={CATEGORIES} value={category} onChange={(e) => { setCategory(e.target.value); setPage(1) }} />
-                                        </div>
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Action</label>
-                                            <Select options={actionOptions} value={action} onChange={(e) => { setAction(e.target.value); setPage(1) }} placeholder="All Actions" />
-                                        </div>
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Severity</label>
-                                            <Select options={SEVERITIES} value={severity} onChange={(e) => { setSeverity(e.target.value); setPage(1) }} />
-                                        </div>
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Result</label>
-                                            <Select options={RESULTS} value={result} onChange={(e) => { setResult(e.target.value); setPage(1) }} />
-                                        </div>
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Actor</label>
-                                            <Input
-                                                value={actor}
-                                                onChange={(e) => { setActor(e.target.value); setPage(1) }}
-                                                placeholder="User, admin, or system"
-                                                className={isDark ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-slate-50'}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Object Type</label>
-                                            <Select options={TARGET_TYPES} value={targetType} onChange={(e) => { setTargetType(e.target.value); setPage(1) }} />
-                                        </div>
-                                        <div>
-                                            <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>Date Range</label>
-                                            <Select options={RANGES} value={range} onChange={(e) => { setRange(e.target.value); setPage(1) }} />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>From</label>
-                                                <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1) }} className={isDark ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-200 bg-slate-50'} />
-                                            </div>
-                                            <div>
-                                                <label className={cn('mb-1.5 block text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>To</label>
-                                                <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1) }} className={isDark ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-200 bg-slate-50'} />
-                                            </div>
-                                        </div>
+                                    {/* Scrollable filter body */}
+                                    <div className="flex-1 overflow-y-auto px-5 py-4">
+                                        <div className="space-y-5">
+                                            <MobileFilterGroup label="Search" isDark={isDark}>
+                                                <div className="relative">
+                                                    <Search className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', isDark ? 'text-slate-500' : 'text-slate-400')} />
+                                                    <Input
+                                                        value={search}
+                                                        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                                                        placeholder="Search events..."
+                                                        className={cn(
+                                                            'rounded-xl border-slate-200 bg-white pl-9 focus:border-[#255070] focus:ring-[#255070]/20',
+                                                            'dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500',
+                                                            'dark:focus:border-[#3b7cb8] dark:focus:ring-[#3b7cb8]/20'
+                                                        )}
+                                                    />
+                                                </div>
+                                            </MobileFilterGroup>
 
-                                        <div className="grid grid-cols-2 gap-3 pt-2">
-                                            <Button variant="outline" onClick={resetFilters} className={isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-700'}>
-                                                Reset
-                                            </Button>
-                                            <Button onClick={() => setMobileFiltersOpen(false)} className="bg-[#255070] text-white hover:bg-[#1c4159]">
-                                                Apply
-                                            </Button>
+                                            <MobileFilterGroup label="Category" isDark={isDark}>
+                                                <Select options={CATEGORIES} value={category} onChange={(e) => { setCategory(e.target.value); setPage(1) }} />
+                                            </MobileFilterGroup>
+
+                                            <MobileFilterGroup label="Action" isDark={isDark}>
+                                                <Select options={actionOptions} value={action} onChange={(e) => { setAction(e.target.value); setPage(1) }} placeholder="All Actions" />
+                                            </MobileFilterGroup>
+
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <MobileFilterGroup label="Severity" isDark={isDark}>
+                                                    <Select options={SEVERITIES} value={severity} onChange={(e) => { setSeverity(e.target.value); setPage(1) }} />
+                                                </MobileFilterGroup>
+                                                <MobileFilterGroup label="Result" isDark={isDark}>
+                                                    <Select options={RESULTS} value={result} onChange={(e) => { setResult(e.target.value); setPage(1) }} />
+                                                </MobileFilterGroup>
+                                            </div>
+
+                                            <MobileFilterGroup label="Actor" isDark={isDark}>
+                                                <Input
+                                                    value={actor}
+                                                    onChange={(e) => { setActor(e.target.value); setPage(1) }}
+                                                    placeholder="User, admin, or system"
+                                                    className={cn(
+                                                        'rounded-xl border-slate-200 bg-white focus:border-[#255070] focus:ring-[#255070]/20',
+                                                        'dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500',
+                                                        'dark:focus:border-[#3b7cb8] dark:focus:ring-[#3b7cb8]/20'
+                                                    )}
+                                                />
+                                            </MobileFilterGroup>
+
+                                            <MobileFilterGroup label="Object Type" isDark={isDark}>
+                                                <Select options={TARGET_TYPES} value={targetType} onChange={(e) => { setTargetType(e.target.value); setPage(1) }} />
+                                            </MobileFilterGroup>
+
+                                            <div className={cn('border-t pt-5', isDark ? 'border-slate-800' : 'border-slate-100')}>
+                                                <MobileFilterGroup label="Date Range" isDark={isDark}>
+                                                    <Select options={RANGES} value={range} onChange={(e) => { setRange(e.target.value); setPage(1) }} />
+                                                </MobileFilterGroup>
+                                                <div className="mt-3 grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>From</label>
+                                                        <Input
+                                                            type="date"
+                                                            value={dateFrom}
+                                                            onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
+                                                            className={cn(
+                                                                'rounded-xl border-slate-200 bg-white focus:border-[#255070] focus:ring-[#255070]/20',
+                                                                'dark:border-slate-600 dark:bg-slate-800 dark:text-white',
+                                                                'dark:focus:border-[#3b7cb8] dark:focus:ring-[#3b7cb8]/20'
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className={cn('mb-1.5 block text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>To</label>
+                                                        <Input
+                                                            type="date"
+                                                            value={dateTo}
+                                                            onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
+                                                            className={cn(
+                                                                'rounded-xl border-slate-200 bg-white focus:border-[#255070] focus:ring-[#255070]/20',
+                                                                'dark:border-slate-600 dark:bg-slate-800 dark:text-white',
+                                                                'dark:focus:border-[#3b7cb8] dark:focus:ring-[#3b7cb8]/20'
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
+                                    </div>
+
+                                    {/* Sticky footer */}
+                                    <div className={cn('flex items-center gap-3 border-t px-5 py-4', isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-white')}>
+                                        <Button variant="outline" onClick={resetFilters} className={cn('flex-1 rounded-xl', isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>
+                                            Reset all
+                                        </Button>
+                                        <Button onClick={() => setMobileFiltersOpen(false)} className="flex-1 rounded-xl bg-[#255070] text-white hover:bg-[#1c4159]">
+                                            Apply filters
+                                        </Button>
                                     </div>
                                 </motion.div>
                             </>
@@ -619,52 +876,101 @@ function AuditLog() {
                     </AnimatePresence>
 
                     {/* Content */}
-                    <div className={cn('overflow-hidden rounded-xl border shadow-sm', isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white')}>
+                    <div className={cn('overflow-hidden rounded-2xl border shadow-sm', isDark ? 'border-slate-800 bg-slate-900/80 shadow-lg shadow-black/5' : 'border-slate-200 bg-white shadow-sm')}>
                         {/* Toolbar */}
-                        <div className={cn('flex items-center justify-between gap-3 border-b px-4 py-3', isDark ? 'border-slate-800' : 'border-slate-200')}>
-                            <div className={cn('text-sm', isDark ? 'text-slate-300' : 'text-slate-600')}>
-                                {loading ? (
-                                    <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</span>
-                                ) : (
-                                    <span><strong className={isDark ? 'text-white' : 'text-slate-900'}>{totalCount}</strong> events</span>
+                        <div className={cn('flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3.5', isDark ? 'border-slate-800' : 'border-slate-100')}>
+                            <div className="flex items-center gap-3">
+                                <div className={cn('text-sm', isDark ? 'text-slate-300' : 'text-slate-600')}>
+                                    {loading ? (
+                                        <span className="inline-flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin text-[#255070] dark:text-[#5ba3e0]" />
+                                            Loading...
+                                        </span>
+                                    ) : (
+                                        <span>
+                                            <strong className={isDark ? 'text-white' : 'text-slate-900'}>{totalCount}</strong>{' '}
+                                            event{totalCount !== 1 ? 's' : ''}
+                                        </span>
+                                    )}
+                                </div>
+                                {pageSize > defaultPageSize && (
+                                    <button
+                                        onClick={showLessEvents}
+                                        disabled={loading}
+                                        className={cn(
+                                            'text-xs font-medium transition',
+                                            isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                                        )}
+                                    >
+                                        Show less
+                                    </button>
+                                )}
+                                {events.length >= pageSize && !loading && (
+                                    <button
+                                        onClick={showMoreEvents}
+                                        className="text-xs font-medium text-[#255070] transition hover:text-[#1c4159] dark:text-[#5ba3e0] dark:hover:text-[#7bb8e8]"
+                                    >
+                                        Show more
+                                    </button>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                {pageSize > defaultPageSize && (
-                                    <Button variant="outline" size="sm" onClick={showLessEvents} disabled={loading}>
-                                        View less
-                                    </Button>
-                                )}
-                                {events.length >= pageSize && (
-                                    <Button variant="outline" size="sm" onClick={showMoreEvents} disabled={loading}>
-                                        View more
-                                    </Button>
-                                )}
-                                <button
-                                    onClick={() => goToPage(page - 1)}
-                                    disabled={page <= 1 || loading}
-                                    className={cn('rounded-lg border p-1.5 transition', isDark ? 'border-slate-700 text-slate-300 disabled:opacity-40' : 'border-slate-200 text-slate-600 disabled:opacity-40')}
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-                                <span className={cn('px-2 text-sm', isDark ? 'text-slate-300' : 'text-slate-600')}>{page} / {totalPages}</span>
-                                <button
-                                    onClick={() => goToPage(page + 1)}
-                                    disabled={page >= totalPages || loading}
-                                    className={cn('rounded-lg border p-1.5 transition', isDark ? 'border-slate-700 text-slate-300 disabled:opacity-40' : 'border-slate-200 text-slate-600 disabled:opacity-40')}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        variant="destructive"
+                                        size="sm"
+                                        disabled={loading}
+                                        className={cn('rounded-xl', isDark ? 'border-red-500/30' : 'border-red-200')}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        Delete Logs
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-72">
+                                        <div className={cn('px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>
+                                            Bulk delete audit logs
+                                        </div>
+                                        <DropdownMenuSeparator />
+                                        {DELETE_PERIODS.map((period) => (
+                                            <DropdownMenuItem
+                                                key={period.value}
+                                                onClick={() => openBulkDelete(period.value)}
+                                                className="flex-col items-start gap-0.5 !py-2.5"
+                                            >
+                                                <span className="text-sm font-medium">{period.label}</span>
+                                                <span className={cn('text-xs leading-snug', isDark ? 'text-slate-400' : 'text-slate-500')}>{period.description}</span>
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <div className={cn('flex items-center gap-1 rounded-xl border p-0.5', isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50')}>
+                                    <button
+                                        onClick={() => goToPage(page - 1)}
+                                        disabled={page <= 1 || loading}
+                                        className={cn('rounded-lg p-1.5 transition', isDark ? 'text-slate-400 hover:bg-slate-700 disabled:opacity-30' : 'text-slate-500 hover:bg-white disabled:opacity-30')}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </button>
+                                    <span className={cn('min-w-[60px] text-center text-xs font-medium', isDark ? 'text-slate-300' : 'text-slate-600')}>
+                                        {page} / {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => goToPage(page + 1)}
+                                        disabled={page >= totalPages || loading}
+                                        className={cn('rounded-lg p-1.5 transition', isDark ? 'text-slate-400 hover:bg-slate-700 disabled:opacity-30' : 'text-slate-500 hover:bg-white disabled:opacity-30')}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         {/* Desktop table */}
                         <div className="hidden overflow-x-auto md:block">
-                            <table className={cn('w-full', isDark ? 'bg-slate-900' : 'bg-white')}>
+                            <table className={cn('w-full', isDark ? 'bg-slate-900/80' : 'bg-white')}>
                                 <thead>
-                                    <tr className={cn('border-b', isDark ? 'border-slate-800' : 'border-slate-200')}>
+                                    <tr className={cn('border-b', isDark ? 'border-slate-800' : 'border-slate-100')}>
                                         {['Time', 'Actor', 'Action', 'Category', 'Target', 'Severity', 'Result', 'Details'].map((h) => (
-                                            <th key={h} className={cn('px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wider', isDark ? 'text-slate-400' : 'text-slate-500')}>
+                                            <th key={h} className={cn('px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>
                                                 {h}
                                             </th>
                                         ))}
@@ -721,17 +1027,73 @@ function AuditLog() {
                     </div>
 
                     {/* Mobile pagination */}
-                    <div className="mt-4 flex items-center justify-between md:hidden">
-                        <Button variant="outline" size="sm" onClick={() => goToPage(page - 1)} disabled={page <= 1 || loading} className={isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}>
-                            <ChevronLeft className="h-4 w-4" /> Previous
+                    <div className={cn('mt-4 flex items-center justify-between rounded-2xl border px-4 py-3 md:hidden', isDark ? 'border-slate-800 bg-slate-900/80' : 'border-slate-200 bg-white')}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => goToPage(page - 1)}
+                            disabled={page <= 1 || loading}
+                            className={cn('gap-1.5 rounded-xl', isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}
+                        >
+                            <ChevronLeft className="h-4 w-4" /> Prev
                         </Button>
-                        <span className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>Page {page} of {totalPages}</span>
-                        <Button variant="outline" size="sm" onClick={() => goToPage(page + 1)} disabled={page >= totalPages || loading} className={isDark ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}>
+                        <span className={cn('text-xs font-medium', isDark ? 'text-slate-400' : 'text-slate-500')}>
+                            {page} of {totalPages}
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => goToPage(page + 1)}
+                            disabled={page >= totalPages || loading}
+                            className={cn('gap-1.5 rounded-xl', isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50')}
+                        >
                             Next <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
                 </main>
             </div>
+
+            {/* Bulk delete confirmation */}
+            <Dialog open={bulkDeleteOpen} onOpenChange={(open) => {
+                if (!bulkDeleting) {
+                    setBulkDeleteOpen(open)
+                    if (!open) setBulkDeletePeriod(null)
+                }
+            }}>
+                <DialogContent showCloseButton={!bulkDeleting}>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                            {activeDeletePeriod?.label || 'Delete audit logs'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            <p className={cn('text-sm', isDark ? 'text-slate-300' : 'text-slate-600')}>
+                                This will {activeDeletePeriod?.description?.toLowerCase() || 'permanently delete audit records.'}
+                            </p>
+                            <p className="mt-2 flex items-start gap-1.5 text-xs text-red-500">
+                                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                This action is permanent and cannot be undone. Delete only if you're certain these records are no longer needed for audit or compliance purposes.
+                            </p>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {bulkDeleteError && (
+                        <div className={cn('rounded-lg border p-3 text-sm', isDark ? 'border-red-500/30 text-red-300' : 'border-red-200 text-red-600')}>
+                            {bulkDeleteError}
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setBulkDeleteOpen(false)} disabled={bulkDeleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={confirmBulkDelete} disabled={bulkDeleting}>
+                            {bulkDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {bulkDeleting ? 'Deleting...' : 'Yes, delete permanently'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Details drawer */}
             <AnimatePresence>

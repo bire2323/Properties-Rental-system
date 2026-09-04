@@ -92,6 +92,13 @@ export async function deleteAuditLog(eventId) {
     })
 }
 
+export async function bulkDeleteAuditLogs(period) {
+    return request('/api/audit/admin/audit-logs/delete/', {
+        method: 'DELETE',
+        body: JSON.stringify({ period }),
+    })
+}
+
 export async function getAuditLogSummary() {
     try {
         return await request('/api/audit/admin/audit-logs/summary/', {

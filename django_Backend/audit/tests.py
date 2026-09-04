@@ -11,10 +11,11 @@ Covers:
 - Integration: booking lifecycle generates BOOKING_* audit events.
 - Integration: verified payment -> PAYMENT_VERIFIED and admin notification rules.
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import Notification, User
@@ -218,6 +219,165 @@ class AuditLogAdminApiTests(TestCase):
         response = self.admin_client.delete("/api/audit/admin/audit-logs/999999/")
 
         self.assertEqual(response.status_code, 404)
+
+    def test_bulk_delete_requires_admin(self):
+        client = APIClient()
+        client.force_authenticate(user=self.tenant)
+        response = client.delete(
+            "/api/audit/admin/audit-logs/delete/",
+            data={"period": "today"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_bulk_delete_rejects_invalid_period(self):
+        response = self.admin_client.delete(
+            "/api/audit/admin/audit-logs/delete/",
+            data={"period": "bogus"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_bulk_delete_today_deletes_only_today(self):
+        event = audit_event(
+            actor=self.tenant,
+            action="TODAYS_EVENT",
+            category=AuditLog.Category.SYSTEM,
+        )
+        # Backdate an event to yesterday (outside today's window).
+        old_event = audit_event(
+            actor=self.tenant,
+            action="YESTERDAYS_EVENT",
+            category=AuditLog.Category.SYSTEM,
+        )
+        AuditLog.objects.filter(pk=old_event.pk).update(
+            created_at=timezone.now() - timedelta(days=1)
+        )
+
+        response = self.admin_client.delete(
+            "/api/audit/admin/audit-logs/delete/",
+            data={"period": "today"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["deleted_count"], 1)
+        self.assertEqual(response.data["period"], "today")
+        self.assertFalse(AuditLog.objects.filter(pk=event.pk).exists())
+        self.assertTrue(AuditLog.objects.filter(pk=old_event.pk).exists())
+
+    def test_bulk_delete_last_7_days(self):
+        audit_event(
+            actor=self.tenant,
+            action="IN_RANGE",
+            category=AuditLog.Category.SYSTEM,
+        )
+        old_event = audit_event(
+            actor=self.tenant,
+            action="OUT_OF_RANGE",
+            category=AuditLog.Category.SYSTEM,
+        )
+        AuditLog.objects.filter(pk=old_event.pk).update(
+            created_at=timezone.now() - timedelta(days=20)
+        )
+
+        response = self.admin_client.delete(
+            "/api/audit/admin/audit-logs/delete/",
+            data={"period": "7d"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["deleted_count"], 1)
+        self.assertFalse(AuditLog.objects.filter(action="IN_RANGE").exists())
+        self.assertTrue(AuditLog.objects.filter(pk=old_event.pk).exists())
+
+    def test_bulk_delete_last_week_uses_completed_week(self):
+        today = timezone.localdate()
+        # Force a created_at inside the previous completed calendar week.
+        monday_this_week = today - timedelta(days=today.weekday())
+        last_week_friday = monday_this_week - timedelta(days=2)
+
+        event = audit_event(
+            actor=self.tenant,
+            action="LAST_WEEK_EVENT",
+            category=AuditLog.Category.SYSTEM,
+        )
+        AuditLog.objects.filter(pk=event.pk).update(
+            created_at=timezone.make_aware(
+                datetime.combine(last_week_friday, datetime.min.time())
+            )
+        )
+
+        outside = audit_event(
+            actor=self.tenant,
+            action="THIS_WEEK_EVENT",
+            category=AuditLog.Category.SYSTEM,
+        )
+        AuditLog.objects.filter(pk=outside.pk).update(
+            created_at=timezone.make_aware(
+                datetime.combine(monday_this_week, datetime.min.time())
+            )
+        )
+
+        response = self.admin_client.delete(
+            "/api/audit/admin/audit-logs/delete/",
+            data={"period": "last_week"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["deleted_count"], 1)
+        self.assertFalse(AuditLog.objects.filter(action="LAST_WEEK_EVENT").exists())
+        self.assertTrue(AuditLog.objects.filter(action="THIS_WEEK_EVENT").exists())
+
+    def test_bulk_delete_last_month_uses_completed_month(self):
+        today = timezone.localdate()
+        first_current_month = today.replace(day=1)
+        last_prev_month = first_current_month - timedelta(days=1)
+        # A date clearly inside the previous completed month (its 15th).
+        last_month_date = last_prev_month.replace(day=min(15, last_prev_month.day))
+
+        event = audit_event(
+            actor=self.tenant,
+            action="LAST_MONTH_EVENT",
+            category=AuditLog.Category.SYSTEM,
+        )
+        AuditLog.objects.filter(pk=event.pk).update(
+            created_at=timezone.make_aware(
+                datetime.combine(last_month_date, datetime.min.time())
+            )
+        )
+
+        response = self.admin_client.delete(
+            "/api/audit/admin/audit-logs/delete/",
+            data={"period": "last_month"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["deleted_count"], 1)
+        self.assertFalse(AuditLog.objects.filter(action="LAST_MONTH_EVENT").exists())
+
+    def test_bulk_delete_audits_its_own_deletion_outside_queryset(self):
+        audit_event(
+            actor=self.tenant,
+            action="PURGE_ME",
+            category=AuditLog.Category.SYSTEM,
+        )
+
+        response = self.admin_client.delete(
+            "/api/audit/admin/audit-logs/delete/",
+            data={"period": "today"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        # The audit record of the deletion itself must survive the purge.
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="AUDIT_LOGS_BULK_DELETED", category=AuditLog.Category.ADMIN
+            ).exists()
+        )
 
     def test_search_filters_events(self):
         user = _make_user("search@example.com", User.Role.TENANT)
