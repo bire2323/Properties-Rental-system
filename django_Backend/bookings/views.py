@@ -170,7 +170,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         booking = self.get_object()
-        if request.user.role == User.Role.ADMIN:
+        if request.user.role == User.Role.ADMIN or _user_manages_property(request.user, booking.property):
             with transaction.atomic():
                 with connection.cursor() as schema_cursor:
                     notification_columns = {
