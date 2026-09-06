@@ -75,6 +75,20 @@ function buildHttpError(response, payload) {
                 detailMessage = Array.isArray(value) ? value[0] : normalizeScalar(value)
             } else if (key === 'non_field_errors') {
                 nonFieldErrors.push(...(Array.isArray(value) ? value : [value]).map(normalizeScalar).filter(Boolean))
+            } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+                // Nested objects (e.g. applicant_details) carry field errors.
+                // Flatten them as `key.fieldName` so the form can map them back.
+                for (const [subKey, subValue] of Object.entries(value)) {
+                    if (Array.isArray(subValue) || typeof subValue === 'string' || typeof subValue === 'number' || typeof subValue === 'boolean') {
+                        const flatKey = `${key}.${subKey}`
+                        const messages = (Array.isArray(subValue) ? subValue : [subValue]).map(normalizeScalar).filter(Boolean)
+                        if (messages.length) fieldErrors[flatKey] = messages
+                    } else if (subValue && typeof subValue === 'object') {
+                        // Nested-in-nested e.g. applicant_details.non_field_errors
+                        const messages = Array.isArray(subValue) ? subValue : [subValue]
+                        fieldErrors[`${key}.${subKey}`] = messages.map(normalizeScalar).filter(Boolean)
+                    }
+                }
             } else if (Array.isArray(value) || typeof value === 'string' || typeof value === 'number') {
                 fieldErrors[key] = (Array.isArray(value) ? value : [value]).map(normalizeScalar).filter(Boolean)
             }
@@ -131,17 +145,23 @@ function normalizeScalar(value) {
  * The renter is automatically set to the authenticated user.
  * Financial fields are calculated by the backend.
  * 
- * @param {Object} data - Booking request data
+ * Accepts either a plain JSON object or a FormData instance (when identity
+ * documents are being uploaded). The fetch helper auto-detects FormData and
+ * sets the multipart boundary.
+ * 
+ * @param {Object|FormData} data - Booking request data (JSON or FormData)
  * @param {number} data.property - Property ID
- * @param {string} data.rental_type - 'fixed_term' or 'month_to_month' (optional, auto-resolved by backend)
+ * @param {string} data.rental_type - 'fixed_term' or 'month_to_month'
  * @param {string} data.start_date - Start date (YYYY-MM-DD)
  * @param {string} data.end_date - End date (YYYY-MM-DD) or null for month-to-month
+ * @param {Object} data.applicant_details - Nested applicant information
  * @returns {Promise<Object>} Created booking with full financial snapshot
  */
 export async function createBooking(data) {
+    const body = data instanceof FormData ? data : JSON.stringify(data)
     return request('/api/bookings/', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body,
     })
 }
 

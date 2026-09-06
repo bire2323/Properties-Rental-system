@@ -6,14 +6,15 @@ import {
   Building2 as BuildingGlyph,
   CalendarDays,
   Car,
-  CheckCircle2,
   ChevronRight,
   DollarSign as DollarIcon,
   FileClock,
+  FileText,
   Home,
   Loader2,
   Percent as PercentIcon,
   CreditCard,
+  Paperclip,
   Receipt,
   RefreshCw,
   RotateCcw,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react'
 import { listBookings, cancelBooking } from '../../api/bookingApi'
 import BookingStatusBadge from '../../components/booking/BookingStatusBadge'
+import { toast } from '../../components/ui/toaster'
 import {
   canRenterCancel,
   formatAmount,
@@ -71,6 +73,59 @@ function DetailsRow({ icon: Icon, label, value }) {
   )
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+function DocumentsSection({ booking }) {
+  const app = booking?.applicant_details || null
+  const documents = app && Array.isArray(app.documents) ? app.documents : []
+
+  if (documents.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center dark:border-slate-700">
+        <Paperclip className="mx-auto h-6 w-6 text-slate-300 dark:text-slate-600" />
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          No identity documents were uploaded with this booking.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+        <FileText className="h-4 w-4 text-[#c99b43]" />
+        Your documents
+      </h3>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Identity documents you submitted for this booking.
+      </p>
+      <div className="mt-3 space-y-2">
+        {documents.map((doc) => (
+          <div
+            key={doc.id}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-700"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                {doc.original_filename || `Document ${doc.id}`}
+              </p>
+              <p className="text-xs text-slate-400">{doc.document_type || 'identity'}</p>
+            </div>
+            <a
+              href={`${API_BASE_URL}${doc.document_url}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/10 px-2.5 py-1.5 text-xs font-semibold text-[#b98227] transition hover:bg-[#c99b43]/20 dark:text-[#f3c96d]"
+            >
+              View
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function MyBookings() {
   const reduceMotion = useReducedMotion()
   const navigate = useNavigate()
@@ -80,7 +135,6 @@ export default function MyBookings() {
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [cancellingId, setCancellingId] = useState(null)
-  const [feedback, setFeedback] = useState(null)
 
   const loadBookings = useCallback(async () => {
     setLoading(true)
@@ -118,7 +172,6 @@ export default function MyBookings() {
     if (!window.confirm(`Cancel booking ${booking.booking_reference}? This cannot be undone.`)) return
 
     setCancellingId(booking.id)
-    setFeedback(null)
     try {
       await cancelBooking(booking.id)
       // DELETE returns 204 and sets the booking to CANCELLED on the backend.
@@ -128,9 +181,9 @@ export default function MyBookings() {
       if (selected?.id === booking.id) {
         setSelected((prev) => (prev ? { ...prev, status: 'cancelled' } : prev))
       }
-      setFeedback({ type: 'success', message: 'Booking cancelled.' })
+      toast.success(`Booking ${booking.booking_reference} cancelled.`)
     } catch (err) {
-      setFeedback({ type: 'error', message: err.message || 'Unable to cancel booking.' })
+      toast.error(err.message || 'Unable to cancel booking.')
     } finally {
       setCancellingId(null)
     }
@@ -180,30 +233,6 @@ export default function MyBookings() {
           </div>
         )}
       </section>
-
-      {feedback && (
-        <div
-          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${feedback.type === 'success'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200'
-            : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300'
-            }`}
-        >
-          {feedback.type === 'success' ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* Status filters */}
       {!loading && !error && bookings.length > 0 && (
@@ -509,6 +538,8 @@ export default function MyBookings() {
                     <DetailsRow icon={User} label="Recipient type" value={formatRentalType(selected.rental_type)} />
                   )}
                 </div>
+
+                <DocumentsSection booking={selected} />
 
                 {canRenterCancel(selected.status) && (
                   <button

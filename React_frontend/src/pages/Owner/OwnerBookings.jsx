@@ -4,7 +4,6 @@ import {
   AlertCircle,
   CalendarDays,
   Car,
-  CheckCircle2,
   ChevronRight,
   FileClock,
   Home,
@@ -19,6 +18,7 @@ import {
 } from 'lucide-react'
 import { listBookings, rejectBooking, approveBooking } from '../../api/bookingApi'
 import BookingStatusBadge from '../../components/booking/BookingStatusBadge'
+import { toast } from '../../components/ui/toaster'
 import {
   canOwnerReview,
   formatAmount,
@@ -60,6 +60,114 @@ function DetailRow({ label, value }) {
   )
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+function maskIdNumber(value) {
+  const str = String(value || '')
+  if (str.length <= 4) return str
+  return '*'.repeat(str.length - 4) + str.slice(-4)
+}
+
+function ApplicantDetailsSection({ booking }) {
+  const [revealId, setRevealId] = useState(false)
+  const app = booking?.applicant_details || null
+
+  if (!app) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        Applicant information unavailable for this booking.
+      </div>
+    )
+  }
+
+  const isCar = booking.listing_type === 'car'
+
+  const Section = ({ title, children }) => (
+    <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#b98227] dark:text-[#f3c96d]">{title}</h3>
+      <div className="space-y-2.5">{children}</div>
+    </div>
+  )
+
+  const documents = Array.isArray(app.documents) ? app.documents : []
+
+  return (
+    <div className="space-y-4">
+      <Section title="Applicant &amp; Contact">
+        <DetailRow label="Full name" value={app.contact_name} />
+        <DetailRow label="Phone" value={app.contact_phone} />
+        <DetailRow label="Email" value={app.contact_email} />
+        <DetailRow label="Date of birth" value={app.date_of_birth || '—'} />
+        <DetailRow label="Gender" value={app.gender ? app.gender.charAt(0).toUpperCase() + app.gender.slice(1) : ''} />
+        <DetailRow label="Number of tenants" value={app.number_of_tenants != null ? app.number_of_tenants : '—'} />
+      </Section>
+
+      <Section title="Identity Verification">
+        <DetailRow label="ID type" value={app.id_type ? app.id_type.replace(/_/g, ' ').toUpperCase() : ''} />
+        <div className="flex items-start justify-between gap-4">
+          <span className="text-sm text-slate-500 dark:text-slate-400">ID number</span>
+          <span className="text-right text-sm font-medium text-slate-900 dark:text-white">
+            {revealId ? app.id_number : maskIdNumber(app.id_number)}
+          </span>
+        </div>
+        {app.id_number && (
+          <button
+            type="button"
+            onClick={() => setRevealId((v) => !v)}
+            className="text-xs font-semibold text-[#c99b43] hover:underline"
+          >
+            {revealId ? 'Hide ID number' : 'Reveal ID number'}
+          </button>
+        )}
+        {documents.length > 0 && (
+          <div className="mt-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Documents ({documents.length})</p>
+            <div className="space-y-2">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-700">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                      {doc.original_filename || `Document ${doc.id}`}
+                    </p>
+                    <p className="text-xs text-slate-400">{doc.document_type || 'identity'}</p>
+                  </div>
+                  <a
+                    href={`${API_BASE_URL}${doc.document_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/10 px-2.5 py-1.5 text-xs font-semibold text-[#b98227] transition hover:bg-[#c99b43]/20 dark:text-[#f3c96d]"
+                  >
+                    View
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Section>
+
+      <Section title="Emergency Contact">
+        <DetailRow label="Name" value={app.emergency_name} />
+        <DetailRow label="Phone" value={app.emergency_phone} />
+        <DetailRow label="Relationship" value={app.emergency_relationship} />
+      </Section>
+
+      {isCar && (
+        <Section title="Vehicle Rental Information">
+          <DetailRow label="Pickup time" value={app.pickup_time} />
+          <DetailRow label="Return time" value={app.return_time} />
+          <DetailRow label="Rental purpose" value={app.pickup_purpose} />
+        </Section>
+      )}
+
+      <Section title="Consent &amp; Terms">
+        <DetailRow label="Information confirmed" value={app.information_confirmed ? 'Yes' : 'No'} />
+        <DetailRow label="Terms accepted" value={app.terms_accepted ? 'Yes' : 'No'} />
+      </Section>
+    </div>
+  )
+}
+
 export default function OwnerBookings() {
   const reduceMotion = useReducedMotion()
   const [bookings, setBookings] = useState([])
@@ -68,7 +176,6 @@ export default function OwnerBookings() {
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [actionId, setActionId] = useState(null)
-  const [feedback, setFeedback] = useState(null)
 
   const loadBookings = useCallback(async () => {
     setLoading(true)
@@ -104,13 +211,12 @@ export default function OwnerBookings() {
     if (!canOwnerReview(booking.status)) return
     if (!window.confirm(`Reject booking ${booking.booking_reference}?`)) return
     setActionId(booking.id)
-    setFeedback(null)
     try {
       const updated = await rejectBooking(booking.id)
       applyUpdate(updated)
-      setFeedback({ type: 'success', message: 'Booking rejected.' })
+      toast.success(`Booking ${booking.booking_reference} rejected.`)
     } catch (err) {
-      setFeedback({ type: 'error', message: err.message || 'Unable to reject booking.' })
+      toast.error(err.message || 'Unable to reject booking.')
     } finally {
       setActionId(null)
     }
@@ -119,13 +225,12 @@ export default function OwnerBookings() {
   const handleApprove = async (booking) => {
     if (!canOwnerReview(booking.status)) return
     setActionId(booking.id)
-    setFeedback(null)
     try {
       const updated = await approveBooking(booking.id)
       applyUpdate(updated)
-      setFeedback({ type: 'success', message: 'Booking approved.' })
+      toast.success(`Booking ${booking.booking_reference} approved.`)
     } catch (err) {
-      setFeedback({ type: 'error', message: err.message || 'Unable to approve booking.' })
+      toast.error(err.message || 'Unable to approve booking.')
     } finally {
       setActionId(null)
     }
@@ -162,30 +267,6 @@ export default function OwnerBookings() {
           </button>
         )}
       </section>
-
-      {feedback && (
-        <div
-          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${feedback.type === 'success'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200'
-            : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300'
-            }`}
-        >
-          {feedback.type === 'success' ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* Status filters */}
       {!loading && !error && bookings.length > 0 && (
@@ -567,6 +648,8 @@ export default function OwnerBookings() {
                     </p>
                   </div>
                 </div>
+
+                <ApplicantDetailsSection booking={selected} />
 
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Price &amp; earnings</h3>

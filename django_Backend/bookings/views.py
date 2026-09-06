@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from django.db import connection, transaction
 from django.db.models import Q, Count, OuterRef, Subquery, Sum
 
+import mimetypes
+
 from accounts.models import User
 from properties.models import Property
 
@@ -150,9 +152,33 @@ class BookingViewSet(viewsets.ModelViewSet):
         return BookingSerializer
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        # Support both JSON and multipart/form-data (for identity documents).
+        raw = request.data
+        is_multipart = hasattr(raw, "getlist")
+
+        data = dict(raw.lists()) if is_multipart else dict(raw)
+
+        if is_multipart:
+            data = _nest_multipart_data(data)
+
+        files = request.FILES or {}
+
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        booking = serializer.save()
+
+        applicant_documents_files = _collect_applicant_documents(files, post=raw)
+        applicant_documents = _build_applicant_document_entries(applicant_documents_files)
+
+        try:
+            booking = serializer.save(
+                applicant_documents=applicant_documents,
+            )
+        except Exception as exc:
+            return Response(
+                {"applicant_details": {"documents": [str(exc)]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         output = BookingSerializer(booking, context={"request": request})
         return Response(output.data, status=status.HTTP_201_CREATED)
 
@@ -308,6 +334,47 @@ class BookingViewSet(viewsets.ModelViewSet):
             _notify_and_email_completed(booking)
         return Response({"detail": "Booking marked as completed.", "status": booking.status})
 
+    @action(detail=False, methods=["get"], url_path="documents/(?P<doc_pk>[0-9]+)")
+    def booking_document(self, request, *args, **kwargs):
+        """Serve an identity document ONLY to an authorized user (renter,
+        property owner/manager, or admin). Not publicly accessible."""
+        from .models import BookingApplicantDocument
+
+        doc_pk = kwargs.get("doc_pk")
+        try:
+            document = BookingApplicantDocument.objects.select_related(
+                "applicant_details__booking__property"
+            ).get(pk=doc_pk)
+        except BookingApplicantDocument.DoesNotExist:
+            return Response(
+                {"detail": "Document not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return _serve_applicant_document(request, document)
+
+    @action(detail=True, methods=["get"], url_path="documents")
+    def list_documents(self, request, *args, **kwargs):
+        """List the applicant's identity documents for an authorized requester."""
+        from .models import BookingApplicantDocument
+
+        booking = self.get_object()
+        user = request.user
+        if (
+            user.role != User.Role.ADMIN
+            and booking.renter_id != user.pk
+            and not _user_manages_property(user, booking.property)
+        ):
+            return Response(
+                {"detail": "You do not have permission to view these documents."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        docs = BookingApplicantDocument.objects.filter(
+            applicant_details__booking_id=booking.pk
+        )
+        from .serializers import BookingApplicantDocumentSerializer
+
+        return Response(BookingApplicantDocumentSerializer(docs, many=True, context={"request": request}).data)
+
     @action(detail=True, methods=["get"])
     def audit(self, request, *args, **kwargs):
         booking = self.get_object()
@@ -399,6 +466,143 @@ def _to_number(value):
     if value is None:
         return 0.0
     return float(value)
+
+
+def _nest_multipart_data(data):
+    """Convert flat multipart keys into nested dicts for the create serializer.
+
+    Django's QueryDict.dict() flattens bracket notation into a single-level
+    dictionary (e.g. 'applicant_details[contact_name]'). DRF's nested
+    serializer does not accept that shape, so we rebuild the nested object.
+    """
+    nested = {}
+
+    def set_path(root, path, value):
+        node = root
+        for part in path[:-1]:
+            node = node.setdefault(part, {})
+        node[path[-1]] = value
+
+    for key, values in data.items():
+        if not values:
+            continue
+        value = values[0] if isinstance(values, (list, tuple)) and len(values) == 1 else values
+
+        if "[" in key and key.endswith("]"):
+            base = key.split("[", 1)[0]
+            inner = key[len(base) + 1:-1]
+            if inner:
+                parts = [p for p in inner.split("][") if p]
+                set_path(nested.setdefault(base, {}), parts, value)
+        else:
+            nested[key] = value
+
+    return nested
+
+
+def _collect_applicant_documents(files, post=None):
+    """Collect identity document File objects from a multipart request.
+
+    Supports either a single 'documents' key (list/multi) or keys shaped like
+    'documents[0].document', 'documents[0].document_type',
+    'documents[0].original_filename'.
+
+    ``files`` is ``request.FILES`` (file uploads only); ``post`` is the raw
+    multipart QueryDict (or dict) holding the non-file fields such as
+    ``document_type`` and ``original_filename``.
+    """
+    from collections import OrderedDict
+
+    post = post or {}
+
+    docs = []
+    plain = files.getlist("documents") or (files.get("documents") and [files.get("documents")] or [])
+    for f in plain:
+        docs.append(OrderedDict([("document", f)]))
+
+    prefix = "documents["
+    suffixes = [".document", ".document_type", ".original_filename"]
+    for key, value in files.items():
+        if not key.startswith(prefix):
+            continue
+        inner = key[len(prefix):]
+        idx_str = inner.split("]", 1)[0]
+        try:
+            idx = int(idx_str)
+        except ValueError:
+            continue
+        for suffix in suffixes:
+            if key.endswith(suffix):
+                while len(docs) <= idx:
+                    docs.append(OrderedDict())
+                field = suffix[1:]
+                docs[idx][field] = value
+                break
+
+    # Pair each file with its non-file metadata coming from the POST body
+    # (document_type / original_filename are text fields, not uploads).
+    merged = []
+    for i, doc in enumerate(docs):
+        if not doc.get("document"):
+            continue
+        doc.setdefault("document_type", _first_value(post, f"documents[{i}].document_type"))
+        doc.setdefault("original_filename", _first_value(post, f"documents[{i}].original_filename"))
+        merged.append(doc)
+    return merged
+
+
+def _first_value(source, key):
+    value = source.get(key)
+    if isinstance(value, (list, tuple)):
+        return value[0] if value else ""
+    return value or ""
+
+
+def _build_applicant_document_entries(app_docs):
+    """Normalize raw collected documents into (file, type, filename) tuples."""
+    entries = []
+    for raw in app_docs:
+        if isinstance(raw, tuple):
+            doc, dtype, fname = raw
+            entries.append((doc, dtype, fname))
+        elif isinstance(raw, dict):
+            entries.append((raw.get("document"), raw.get("document_type", ""), raw.get("original_filename", "")))
+    return [e for e in entries if e[0]]
+
+
+def _serve_applicant_document(request, document):
+    """Return the identity document to a permitted user via FileResponse."""
+    from django.http import FileResponse, Http404, HttpResponse
+    from django.db.models import Q
+
+    booking = document.applicant_details.booking
+    user = request.user
+
+    if user.role == User.Role.ADMIN:
+        allowed = True
+    elif booking.renter_id == user.pk:
+        allowed = True
+    elif _user_manages_property(user, booking.property):
+        allowed = True
+    else:
+        allowed = False
+
+    if not allowed or not document.document:
+        raise Http404
+
+    try:
+        file_obj = document.document.open("rb")
+    except Exception:
+        raise Http404
+
+    content_type = mimetypes.guess_type(document.original_filename or document.document.name)[0] or "application/octet-stream"
+    response = FileResponse(
+        file_obj,
+        content_type=content_type,
+        as_attachment=False,
+    )
+    response["Content-Disposition"] = f'inline; filename="{document.original_filename or "document"}"'
+    return response
 
 
 def _record_admin_audit(booking, action, actor, previous_status, new_status, reason):

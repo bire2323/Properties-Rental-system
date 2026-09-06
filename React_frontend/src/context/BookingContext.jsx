@@ -3,6 +3,8 @@ import { createBooking as apiCreateBooking, getBooking as apiGetBooking } from '
 import {
   calculateBookingPricing,
   mapPropertyForBooking,
+  buildBookingPayload,
+  buildBookingFormData,
 } from '../lib/bookingUtils'
 
 const BookingContext = createContext(null)
@@ -126,17 +128,37 @@ export function BookingProvider({ children }) {
   /**
    * Submit a booking to the backend.
    * This creates the actual booking and returns the backend response with pricing.
+   *
+   * Accepts either specific args ((propertyId, rentalType, startDate, endDate))
+   * for backwards compatibility, or a pre-built full payload (object or FormData).
    */
-  const submitBooking = useCallback(async (propertyId, rentalType, startDate, endDate) => {
+  const submitBooking = useCallback(async (propertyIdOrPayload, rentalType, startDate, endDate) => {
     try {
       setIsLoading(true)
       setError(null)
 
-      const bookingData = {
-        property: propertyId,
-        start_date: startDate,
-        ...(endDate && { end_date: endDate }),
-        ...(rentalType && { rental_type: rentalType }),
+      let bookingData
+
+      // Pre-built payload (object containing applicant_details, or FormData
+      // when identity documents are attached).
+      if (propertyIdOrPayload && typeof propertyIdOrPayload === 'object') {
+        if (propertyIdOrPayload instanceof FormData) {
+          bookingData = propertyIdOrPayload
+        } else if (propertyIdOrPayload.applicant_details || propertyIdOrPayload.property) {
+          bookingData = propertyIdOrPayload
+        }
+      }
+
+      // Legacy positional-arg form: build the payload from current context.
+      if (!bookingData) {
+        const propertyId = propertyIdOrPayload
+        const base = {
+          property: propertyId,
+          start_date: startDate,
+          ...(endDate && { end_date: endDate }),
+          ...(rentalType && { rental_type: rentalType }),
+        }
+        bookingData = base
       }
 
       const response = await apiCreateBooking(bookingData)

@@ -1,3 +1,4 @@
+import os
 from decimal import Decimal
 import uuid
 
@@ -8,8 +9,16 @@ from django.db import models
 from django.db.models import F, Q
 
 
+def applicant_document_upload_path(instance, filename):
+    """Organize identity documents by booking + upload date."""
+    booking_ref = instance.applicant_details.booking.booking_reference if instance.applicant_details_id else "unknown"
+    base, ext = os.path.splitext(filename)
+    slug = f"{booking_ref}-{instance.pk or uuid.uuid4().hex[:8]}{ext.lower()}"
+    return f"booking_documents/{booking_ref}/{slug}"
+
+
 class Booking(models.Model):
-    """A renter's rental agreement and its financial snapshot."""
+   
 
     class BookingStatus(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -170,3 +179,83 @@ class BookingAuditEvent(models.Model):
 
     def __str__(self):
         return f"{self.booking_reference} {self.action} ({self.previous_status}->{self.new_status})"
+
+
+class BookingApplicantDetails(models.Model):
+  
+
+    class Gender(models.TextChoices):
+        MALE = "male", "Male"
+        FEMALE = "female", "Female"
+        OTHER = "other", "Other"
+
+    booking = models.OneToOneField(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="applicant_details",
+        help_text="The booking this applicant information belongs to.",
+    )
+
+    contact_name = models.CharField(max_length=255)
+    contact_phone = models.CharField(max_length=50)
+    contact_email = models.EmailField()
+
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=50, blank=True, choices=Gender.choices)
+
+    id_type = models.CharField(max_length=50)
+    id_number = models.CharField(max_length=255)
+
+    emergency_name = models.CharField(max_length=255, blank=True)
+    emergency_phone = models.CharField(max_length=50, blank=True)
+    emergency_relationship = models.CharField(max_length=100, blank=True)
+
+    number_of_tenants = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text="Number of tenants / guests. 1..100.",
+    )
+
+    pickup_time = models.TimeField(null=True, blank=True)
+    return_time = models.TimeField(null=True, blank=True)
+    pickup_purpose = models.TextField(blank=True)
+
+    information_confirmed = models.BooleanField(default=False)
+    terms_accepted = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["booking"]),
+            models.Index(fields=["contact_email"]),
+        ]
+
+    def __str__(self):
+        return f"Applicant details for {self.booking.booking_reference}"
+
+
+class BookingApplicantDocument(models.Model):
+   
+
+    applicant_details = models.ForeignKey(
+        BookingApplicantDetails,
+        on_delete=models.CASCADE,
+        related_name="documents",
+    )
+
+    document = models.FileField(upload_to=applicant_document_upload_path)
+    document_type = models.CharField(max_length=50, blank=True)
+    original_filename = models.CharField(max_length=255, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at", "id"]
+        indexes = [
+            models.Index(fields=["applicant_details", "uploaded_at"]),
+        ]
+
+    def __str__(self):
+        return f"Document for {self.applicant_details} ({self.document_type or 'misc'})"

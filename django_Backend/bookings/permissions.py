@@ -28,7 +28,7 @@ class BookingPermission(permissions.BasePermission):
             return True
 
         # Audit trail should be visible to anyone who can see the booking itself.
-        if view.action == "audit":
+        if view.action in ("audit", "list_documents"):
             if obj.renter_id == user.pk:
                 return True
             return _user_manages_property(user, obj.property)

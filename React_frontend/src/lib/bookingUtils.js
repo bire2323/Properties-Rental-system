@@ -74,30 +74,106 @@ export function buildBookingPayload({ property, form }) {
 
   const listingType = property.listingType || property.propertyType || 'house'
 
+  let base = {}
+
   if (listingType === 'car') {
-    return {
+    base = {
       property: Number(property.id),
       rental_type: RENTAL_TYPES.FIXED_TERM,
       start_date: form.checkIn || '',
       end_date: form.checkOut || null,
     }
+  } else {
+    const startDate = form.moveInDate || ''
+    const rentalType = form.rentalType === RENTAL_TYPES.MONTH_TO_MONTH
+      ? RENTAL_TYPES.MONTH_TO_MONTH
+      : RENTAL_TYPES.FIXED_TERM
+    const endDate = rentalType === RENTAL_TYPES.FIXED_TERM
+      ? calculateHouseEndDate(startDate, form.rentalDuration, form.durationUnit)
+      : null
+
+    base = {
+      property: Number(property.id),
+      rental_type: rentalType,
+      start_date: startDate,
+      end_date: rentalType === RENTAL_TYPES.MONTH_TO_MONTH ? null : endDate,
+    }
   }
 
-  const startDate = form.moveInDate || ''
-  const rentalType = form.rentalType === RENTAL_TYPES.MONTH_TO_MONTH
-    ? RENTAL_TYPES.MONTH_TO_MONTH
-    : RENTAL_TYPES.FIXED_TERM
-
-  const endDate = rentalType === RENTAL_TYPES.FIXED_TERM
-    ? calculateHouseEndDate(startDate, form.rentalDuration, form.durationUnit)
-    : null
+  const applicant = buildApplicantDetails(form, listingType)
 
   return {
-    property: Number(property.id),
-    rental_type: rentalType,
-    start_date: startDate,
-    end_date: rentalType === RENTAL_TYPES.MONTH_TO_MONTH ? null : endDate,
+    ...base,
+    ...(applicant ? { applicant_details: applicant } : {}),
   }
+}
+
+/**
+ * Build the applicant_details object from the form state.
+ * Returns null when the applicant section is intentionally absent.
+ */
+export function buildApplicantDetails(form, listingType = 'house') {
+  if (!form) return null
+
+  const isCar = listingType === 'car'
+
+  return {
+    contact_name: (form.contactName || '').trim(),
+    contact_phone: (form.contactPhone || '').trim(),
+    contact_email: (form.contactEmail || '').trim(),
+    date_of_birth: form.dateOfBirth || null,
+    gender: (form.gender || '').toLowerCase(),
+    id_type: (form.idType || '').trim(),
+    id_number: (form.idNumber || '').trim(),
+    emergency_name: (form.emergencyName || '').trim(),
+    emergency_phone: (form.emergencyPhone || '').trim(),
+    emergency_relationship: (form.emergencyRelationship || '').trim(),
+    number_of_tenants: Number(form.numberOfTenants) || 1,
+    pickup_time: isCar ? (form.pickupTime || null) : null,
+    return_time: isCar ? (form.returnTime || null) : null,
+    pickup_purpose: isCar ? (form.pickupPurpose || '') : '',
+    information_confirmed: !!form.informationConfirmed,
+    terms_accepted: !!form.termsAccepted,
+  }
+}
+
+/**
+ * Build a multipart FormData payload that includes the booking fields, the
+ * nested applicant details, and any uploaded identity document files.
+ * Returns null when there are no identity documents (callers may fall back to
+ * the plain JSON payload in that case).
+ */
+export function buildBookingFormData({ property, form }) {
+  const payload = buildBookingPayload({ property, form })
+  if (!payload) return null
+
+  const docs = Array.isArray(form.idDocuments) ? form.idDocuments : []
+  if (docs.length === 0) return null
+
+  const fd = new FormData()
+  fd.append('property', String(payload.property))
+  fd.append('rental_type', payload.rental_type || 'fixed_term')
+  fd.append('start_date', payload.start_date || '')
+  if (payload.end_date != null && payload.end_date !== '') {
+    fd.append('end_date', payload.end_date)
+  }
+
+  if (payload.applicant_details) {
+    const app = payload.applicant_details
+    Object.entries(app).forEach(([key, value]) => {
+      if (value != null && value !== '') {
+        fd.append(`applicant_details[${key}]`, value)
+      }
+    })
+  }
+
+  docs.forEach((file, index) => {
+    fd.append(`documents[${index}].document`, file)
+    fd.append(`documents[${index}].document_type`, 'identity')
+    fd.append(`documents[${index}].original_filename`, file.name || '')
+  })
+
+  return fd
 }
 
 export function parseDateValue(value) {

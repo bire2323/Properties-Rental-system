@@ -4,10 +4,12 @@ import {
     AlertCircle,
     CalendarDays,
     ChevronRight,
+    FileText,
     Filter,
     History,
     Inbox,
     Loader2,
+    Paperclip,
     Receipt,
     RefreshCw,
     RotateCcw,
@@ -71,6 +73,8 @@ const LISTING_OPTIONS = [
     { value: 'house', label: 'House' },
     { value: 'car', label: 'Vehicle' },
 ]
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 export function paymentStatusLabel(status) {
     return PAYMENT_STATUS_OPTIONS.find((o) => o.value === status)?.label || status || 'No payment'
@@ -208,6 +212,34 @@ function AdminBookingDrawer({
         )
     }
 
+    const renderDocuments = () => {
+        const app = booking?.applicant_details || null
+        const docs = app && Array.isArray(app.documents) ? app.documents : []
+        if (docs.length === 0) {
+            return (
+                <p className="text-sm text-slate-500 dark:text-slate-400">No documents uploaded with this booking.</p>
+            )
+        }
+        return docs.map((doc) => (
+            <div key={doc.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-700">
+                <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {doc.original_filename || `Document ${doc.id}`}
+                    </p>
+                    <p className="text-xs text-slate-400">{doc.document_type || 'identity'}</p>
+                </div>
+                <a
+                    href={`${API_BASE_URL}${doc.document_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/10 px-2.5 py-1.5 text-xs font-semibold text-[#b98227] transition hover:bg-[#c99b43]/20 dark:text-[#f3c96d]"
+                >
+                    View
+                </a>
+            </div>
+        ))
+    }
+
     return (
         <AnimatePresence>
             {booking && (
@@ -279,6 +311,17 @@ function AdminBookingDrawer({
                                 <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Renter</h4>
                                 <DetailRow label="Name" value={booking.renter_name || '—'} />
                                 <DetailRow label="Email" value={booking.renter_email || '—'} />
+                            </div>
+
+                            {/* Documents */}
+                            <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                                <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                                    <FileText className="h-4 w-4 text-[#c99b43]" />
+                                    Applicant documents
+                                </h4>
+                                <div className="mt-3 space-y-2">
+                                    {renderDocuments(booking)}
+                                </div>
                             </div>
 
                             {/* Owner / recipient */}

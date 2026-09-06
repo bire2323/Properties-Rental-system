@@ -305,8 +305,15 @@ def confirm_booking_from_payment(payment_transaction):
     return booking
 
 
-def create_booking(*, renter, property_id, rental_type, start_date, end_date):
-    """Create a booking while serializing availability against concurrent requests."""
+def create_booking(*, renter, property_id, rental_type, start_date, end_date, applicant_data=None, applicant_documents=None):
+    """Create a booking while serializing availability against concurrent requests.
+
+    The booking, its applicant details, and any identity documents are created
+    atomically inside a single transaction. If anything fails, the whole
+    operation rolls back and no partial booking is left behind.
+    """
+    from .models import BookingApplicantDetails, BookingApplicantDocument
+
     with transaction.atomic():
         property_obj = (
             Property.objects.select_for_update()
@@ -336,6 +343,17 @@ def create_booking(*, renter, property_id, rental_type, start_date, end_date):
         )
         booking.full_clean()
         booking.save()
+
+        # Persist applicant details (and identity documents) if provided.
+        if applicant_data:
+            applicant_serializer_data = _normalize_applicant_data(applicant_data)
+            applicant = BookingApplicantDetails.objects.create(
+                booking=booking,
+                **applicant_serializer_data,
+            )
+            if applicant_documents:
+                _save_applicant_documents(applicant, property_obj, applicant_documents)
+
         record_audit_event(
             booking=booking,
             action="created",
@@ -349,6 +367,44 @@ def create_booking(*, renter, property_id, rental_type, start_date, end_date):
 
         send_booking_created_email(booking)
         return booking
+
+
+def _normalize_applicant_data(data):
+    """Coerce the applicant payload into BookingApplicantDetails model fields."""
+    if isinstance(data, dict):
+        return data
+    raise ValueError("Applicant details must be a dictionary.")
+
+
+def _save_applicant_documents(applicant, property_obj, applicant_documents):
+    """Persist uploaded identity document files for a booking applicant."""
+    from .models import BookingApplicantDocument
+    from django.core.files.uploadedfile import UploadedFile
+
+    for entry in applicant_documents or []:
+        doc = None
+        document_type = ""
+        original_filename = ""
+
+        if isinstance(entry, tuple):
+            doc, document_type, original_filename = entry
+        elif isinstance(entry, dict):
+            doc = entry.get("document")
+            document_type = entry.get("document_type", "") or ""
+            original_filename = entry.get("original_filename", "") or ""
+
+        if doc is None:
+            continue
+
+        if not original_filename:
+            original_filename = getattr(doc, "name", "") or ""
+
+        BookingApplicantDocument.objects.create(
+            applicant_details=applicant,
+            document=doc,
+            document_type=document_type or "",
+            original_filename=original_filename or "",
+        )
 
 
 def record_audit_event(*, booking, action, actor, previous_status, new_status, reason="", metadata=None):

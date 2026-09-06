@@ -15,6 +15,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useBooking } from '../../context/BookingContext'
 import {
   buildBookingPayload,
+  buildBookingFormData,
   formatCurrency,
   getMaxDateOfBirth,
   isAdultDateOfBirth,
@@ -40,6 +41,27 @@ function mapBackendErrorsToFields(err, listingType) {
   const isCar = listingType === 'car'
   const result = {}
 
+  // Backend applicant_details field key -> BookingForm field key.
+  const applicantFieldMap = {
+    contact_name: 'contactName',
+    contact_phone: 'contactPhone',
+    contact_email: 'contactEmail',
+    date_of_birth: 'dateOfBirth',
+    gender: 'gender',
+    id_type: 'idType',
+    id_number: 'idNumber',
+    emergency_name: 'emergencyName',
+    emergency_phone: 'emergencyPhone',
+    emergency_relationship: 'emergencyRelationship',
+    number_of_tenants: 'numberOfTenants',
+    pickup_time: 'pickupTime',
+    return_time: 'returnTime',
+    pickup_purpose: 'pickupPurpose',
+    information_confirmed: 'informationConfirmed',
+    terms_accepted: 'termsAccepted',
+    documents: 'idDocuments',
+  }
+
   const fieldKeyFor = (backendKey) => {
     if (backendKey === 'start_date') return isCar ? 'checkIn' : 'moveInDate'
     if (backendKey === 'end_date') return isCar ? 'checkOut' : null
@@ -60,6 +82,19 @@ function mapBackendErrorsToFields(err, listingType) {
   for (const [backendKey, messages] of Object.entries(fieldErrors)) {
     const message = firstMessage(messages)
     if (!message) continue
+
+    // Nested applicant errors are keyed like `applicant_details.contact_name`.
+    if (backendKey.startsWith('applicant_details.')) {
+      const inner = backendKey.slice('applicant_details.'.length)
+      const mappedApplicantKey = applicantFieldMap[inner]
+      if (mappedApplicantKey) {
+        result[mappedApplicantKey] = message
+      } else {
+        result.general = result.general || message
+      }
+      continue
+    }
+
     const mappedKey = fieldKeyFor(backendKey)
     if (mappedKey) {
       result[mappedKey] = message
@@ -288,12 +323,13 @@ export default function BookingCheckout() {
       setSubmitting(true)
       setErrors({})
 
-      const booking = await submitBooking(
-        payload.property,
-        payload.rental_type,
-        payload.start_date,
-        payload.end_date,
-      )
+      // When identity documents are attached, submit via multipart so the
+      // files travel with the booking request. Otherwise a JSON payload is
+      // sufficient (applicant details are still included).
+      const formData = buildBookingFormData({ property, form })
+      const bookingPayload = formData || payload
+
+      const booking = await submitBooking(bookingPayload)
 
       navigate(`/properties/${id}/book/confirmation`, { state: { booking } })
     } catch (err) {

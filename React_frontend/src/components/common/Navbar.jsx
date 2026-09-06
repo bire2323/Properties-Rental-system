@@ -305,7 +305,7 @@ function Navbar() {
       <header className="sticky top-0 z-50 border-b border-[#c99b43]/25 bg-white/90 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-[#c99b43]/35 dark:bg-[linear-gradient(90deg,#03172f_0%,#04254a_55%,#03172f_100%)] dark:text-white dark:shadow-[0_18px_50px_rgba(3,12,26,0.35)]">
         <div className="relative mx-auto flex max-w-screen-2xl lg:mx-10 flex-col px-4 sm:px-6 lg:px-8">
           {/* ─── Top row ─────────────────────────────────────────────── */}
-          <div className="relative flex min-h-20 items-center justify-between">
+          <div className="relative z-[60] flex min-h-20 items-center justify-between">
             {/* Left: mobile menu + logo */}
             <div className="flex items-center gap-2">
               <button
@@ -397,14 +397,14 @@ function Navbar() {
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
                               transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
-                              className="absolute left-0 top-full z-[60] mt-3 w-60"
+                              className="absolute left-0 top-full z-1000 mt-3 w-60"
                               onMouseLeave={() => setPropertyDropdownOpen(false)}
                             >
                               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95">
                                 <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
-                                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[#b98227] dark:text-[#f3c96d]">
+                                  {/* <span className="text-[11px] font-semibold uppercase tracking-widest text-[#b98227] dark:text-[#f3c96d]">
                                     Browse Properties
-                                  </span>
+                                  </span> */}
                                 </div>
                                 <div className="max-h-96 overflow-y-auto p-2">
                                   <button
@@ -484,14 +484,14 @@ function Navbar() {
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
                               transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
-                              className="absolute left-0 top-full z-[60] mt-3 w-60"
+                              className="absolute left-0 top-full z-1000 mt-3 w-60"
                               onMouseLeave={() => setVehicleDropdownOpen(false)}
                             >
                               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95">
                                 <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
-                                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[#b98227] dark:text-[#f3c96d]">
+                                  {/* <span className="text-[11px] font-semibold uppercase tracking-widest text-[#b98227] dark:text-[#f3c96d]">
                                     Browse Vehicles
-                                  </span>
+                                  </span> */}
                                 </div>
                                 <div className="max-h-96 overflow-y-auto p-2">
                                   <button
@@ -736,7 +736,7 @@ function Navbar() {
                 animate={prefersReducedMotion ? { opacity: 1 } : { height: 'auto', opacity: 1 }}
                 exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
+                className="relative z-[50] overflow-hidden"
               >
                 <form
                   onSubmit={handleSearchSubmit}
