@@ -2,7 +2,6 @@
 import { MapPin, Heart, Bed, Bath, Maximize2, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
-import { Card } from '../../components/ui/card'
 import { motion } from 'framer-motion'
 
 export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layout = 'grid' }) {
@@ -10,9 +9,7 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
     const isGrid = layout === 'grid'
 
     return (
-        <Card
-            as={motion.div}
-            whileTap={{ scale: 0.98 }}
+        <motion.div
             className={`group overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:ring-slate-200 dark:border-slate-800/60 dark:bg-slate-900 dark:ring-slate-800/40 dark:hover:ring-slate-700/60 ${isGrid ? 'flex flex-col' : 'flex flex-col sm:flex-row'
                 }`}
         >
@@ -139,6 +136,6 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
                     </Button>
                 </div>
             </div>
-        </Card>
+        </motion.div>
     )
 }

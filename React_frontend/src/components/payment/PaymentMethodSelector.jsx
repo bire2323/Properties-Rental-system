@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from 'framer-motion'
 import { Building2, CreditCard, Smartphone, Clock } from 'lucide-react'
 
 export const PAYMENT_METHODS = [
@@ -29,8 +28,6 @@ export const PAYMENT_METHODS = [
 ]
 
 export default function PaymentMethodSelector({ selectedMethod, onSelect }) {
-  const reduceMotion = useReducedMotion()
-
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {PAYMENT_METHODS.map((method) => {
@@ -38,25 +35,22 @@ export default function PaymentMethodSelector({ selectedMethod, onSelect }) {
         const isSelected = selectedMethod === method.id
 
         return (
-          <motion.button
+          <button
             key={method.id}
             type="button"
-            whileTap={reduceMotion ? undefined : { scale: 0.98 }}
             onClick={() => onSelect(method.id)}
-            className={`rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c99b43]/40 ${
-              isSelected
+            className={`rounded-2xl border p-4 text-left transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c99b43]/40 active:scale-[0.98] ${isSelected
                 ? 'border-[#c99b43] bg-[#fff7e8] shadow-sm dark:border-[#c99b43]/60 dark:bg-[#1e1a11]'
                 : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700'
-            }`}
+              }`}
             aria-pressed={isSelected}
           >
             <div className="flex items-start gap-3">
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                  isSelected
+                className={`flex h-10 w-10 items-center justify-center rounded-xl ${isSelected
                     ? 'bg-[#c99b43] text-white'
                     : 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300'
-                }`}
+                  }`}
               >
                 <Icon className="h-5 w-5" />
               </div>
@@ -65,7 +59,7 @@ export default function PaymentMethodSelector({ selectedMethod, onSelect }) {
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{method.description}</p>
               </div>
             </div>
-          </motion.button>
+          </button>
         )
       })}
     </div>
