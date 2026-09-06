@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Car,
   ChevronRight,
+  Clock,
   DollarSign as DollarIcon,
   FileClock,
   FileText,
@@ -33,7 +34,9 @@ import {
   formatListingType,
   formatRentalType,
   getStatusMeta,
+  getStatusNextStep,
   resolveBookingImage,
+  resolveDocumentUrl,
 } from '../../lib/bookingDisplay'
 
 const FILTERS = [
@@ -61,6 +64,22 @@ function BookingCardSkeleton() {
   )
 }
 
+function nextStepTone(status) {
+  switch (status) {
+    case 'pending':
+      return 'text-amber-700 dark:text-amber-300'
+    case 'approved':
+      return 'text-[#b98227] dark:text-[#f3c96d]'
+    case 'confirmed':
+    case 'completed':
+      return 'text-emerald-700 dark:text-emerald-300'
+    case 'rejected':
+      return 'text-red-600 dark:text-red-400'
+    default:
+      return 'text-slate-500 dark:text-slate-400'
+  }
+}
+
 function DetailsRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start justify-between gap-4">
@@ -72,8 +91,6 @@ function DetailsRow({ icon: Icon, label, value }) {
     </div>
   )
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 function DocumentsSection({ booking }) {
   const app = booking?.applicant_details || null
@@ -112,7 +129,7 @@ function DocumentsSection({ booking }) {
               <p className="text-xs text-slate-400">{doc.document_type || 'identity'}</p>
             </div>
             <a
-              href={`${API_BASE_URL}${doc.document_url}`}
+              href={resolveDocumentUrl(doc.document_url)}
               target="_blank"
               rel="noopener noreferrer"
               className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/10 px-2.5 py-1.5 text-xs font-semibold text-[#b98227] transition hover:bg-[#c99b43]/20 dark:text-[#f3c96d]"
@@ -383,6 +400,10 @@ export default function MyBookings() {
                     </span>
                   </div>
 
+                  <p className={`mt-2 text-xs font-medium ${nextStepTone(booking.status)}`}>
+                    {getStatusNextStep(booking.status)}
+                  </p>
+
                   <div className="mt-3 flex items-center justify-between gap-3 text-sm">
                     <span className="font-semibold text-slate-900 dark:text-white">
                       {formatAmount(booking.total_amount, booking.currency)}
@@ -409,8 +430,8 @@ export default function MyBookings() {
                     onClick={() => navigate(`/bookings/${booking.id}/payment`)}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#c99b43] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#b08838]"
                   >
-                    <CreditCard className="h-4 w-4" />
-                    Pay
+<CreditCard className="h-4 w-4" />
+                    Pay Now
                   </button>
                 )}
                 {canRenterCancel(booking.status) && (
@@ -495,6 +516,24 @@ export default function MyBookings() {
                   </div>
                   <BookingStatusBadge status={selected.status} size="sm" />
                 </div>
+
+                {selected.status === 'approved' && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/bookings/${selected.id}/payment`)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Pay securely with Chapa
+                  </button>
+                )}
+
+                {selected.status === 'pending' && (
+                  <div className="flex items-start gap-2 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>Payment unlocks once the owner approves your request. No payment is required yet.</p>
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <DetailsRow icon={CalendarDays} label="Rental type" value={formatRentalType(selected.rental_type)} />

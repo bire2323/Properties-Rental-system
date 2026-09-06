@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertCircle, Loader2, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Clock, Loader2, RefreshCw, ShieldCheck } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
@@ -125,30 +125,35 @@ export default function PaymentResult() {
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/40">
-                <AlertCircle className="h-7 w-7 text-red-500" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#c99b43]/10">
+                <Clock className="h-7 w-7 text-[#b98227] dark:text-[#f3c96d]" />
               </div>
-              <h1 className="mt-5 text-xl font-semibold text-slate-900 dark:text-white">Unable to identify payment</h1>
+              <h1 className="mt-5 text-xl font-semibold text-slate-900 dark:text-white">
+                Payment still processing
+              </h1>
               <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                We could not match this payment attempt to a booking.
-                {errorMessage ? ` ${errorMessage}` : ''}
+                We haven't been able to confirm this payment yet — it may still be processing with our
+                gateway.{errorMessage ? ` ${errorMessage}` : ''}
+              </p>
+              <p className="mt-3 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                Check My Bookings before attempting another payment, so you don't pay twice.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button
                   type="button"
-                  onClick={handleTryAgain}
+                  onClick={() => navigate('/tenant/bookings')}
                   className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] text-white hover:bg-[#b08838]"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  Try again
+                  Check My Bookings
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/tenant/bookings')}
+                  onClick={handleTryAgain}
                   className="rounded-2xl"
                 >
-                  Go to My Bookings
+                  <RefreshCw className="h-4 w-4" />
+                  Try again
                 </Button>
               </div>
             </div>

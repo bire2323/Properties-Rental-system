@@ -24,7 +24,7 @@ export default function TenantLayout() {
                     </main>
                 </div>
             </div>
-            <Footer />
+            {/* <Footer /> */}
         </div>
     )
 }

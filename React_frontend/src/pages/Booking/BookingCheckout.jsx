@@ -402,6 +402,52 @@ export default function BookingCheckout() {
     return getFormReadinessErrors().length === 0
   }
 
+  // Map the single-page form's actual completion into the 5-step progress
+  // indicator (Customer -> Identification -> Rental Details -> Review -> Confirm)
+  // so the indicator always reflects the page's real stage instead of a fixed
+  // placeholder number.
+  const hasCustomerSection = !!(
+    form.contactName?.trim() &&
+    form.contactPhone?.trim() &&
+    form.contactEmail?.trim()
+  )
+  const hasIdentificationSection = !!(
+    form.dateOfBirth &&
+    form.gender &&
+    form.idType &&
+    form.idNumber?.trim() &&
+    form.idDocuments.length >= 2
+  )
+  const rentalSectionComplete = property?.listingType === 'car'
+    ? !!(
+        form.checkIn &&
+        form.checkOut &&
+        form.pickupTime &&
+        form.returnTime &&
+        form.pickupPurpose
+      )
+    : !!(
+        form.moveInDate &&
+        Number(form.rentalDuration) >= 1 &&
+        Number(form.numberOfTenants) >= 1 &&
+        form.rentalType
+      )
+  const hasReviewSection = !!(
+    form.emergencyName?.trim() &&
+    form.emergencyPhone?.trim() &&
+    form.emergencyRelationship?.trim()
+  )
+  const confirmationsComplete = !!(form.informationConfirmed && form.termsAccepted)
+  const formStep = !hasCustomerSection
+    ? 1
+    : !hasIdentificationSection
+      ? 2
+      : !rentalSectionComplete
+        ? 3
+        : !hasReviewSection || !confirmationsComplete
+          ? 4
+          : 5
+
   const continueButton = (() => {
     const readinessErrors = getFormReadinessErrors()
     const isPricingValid = pricing && pricing.total > 0
@@ -497,7 +543,7 @@ export default function BookingCheckout() {
               Review the selected {property.listingType === 'car' ? 'vehicle rental' : 'home rental'} details before confirming.
             </p>
           </div>
-          <BookingProgress currentStep={1} />
+          <BookingProgress currentStep={formStep} />
 
           {/* Pricing validation */}
           {pricing && pricing.total <= 0 && (

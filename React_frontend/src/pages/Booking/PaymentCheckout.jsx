@@ -4,21 +4,25 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   AlertCircle,
   ArrowLeft,
+  Ban,
   CalendarDays,
+  CalendarX,
   Car,
   CheckCircle2,
-  Clock,
   CreditCard,
   Home,
+  Hourglass,
   Loader2,
   Lock,
   RefreshCw,
   Receipt,
   ShieldCheck,
   Wallet,
+  XCircle,
 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
+import BookingLifecycle from '../../components/booking/BookingLifecycle'
 import BookingStatusBadge from '../../components/booking/BookingStatusBadge'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -30,6 +34,8 @@ import {
   formatDisplayDate,
   formatListingType,
   formatRentalType,
+  getStatusMeta,
+  getStatusNextStep,
   resolveBookingImage,
 } from '../../lib/bookingDisplay'
 
@@ -270,13 +276,14 @@ export default function PaymentCheckout() {
   }
 
   const isConfirmed = booking.status === 'confirmed'
+  const isPending = booking.status === 'pending'
+  const isTerminal = ['rejected', 'cancelled', 'expired', 'completed'].includes(booking.status)
   const latestPayment = booking.latest_payment_status || null
   const hasPendingPayment = latestPayment === 'initiated' || latestPayment === 'pending'
   const isFailed = latestPayment === 'failed'
 
   const showConfirming = confirming || (booking.status === 'approved' && hasPendingPayment)
   const canPay = booking.status === 'approved' && !hasPendingPayment
-  const awaitingApproval = booking.status === 'pending'
 
   const totalRow = [
     { label: base.isCar ? 'Rental' : 'Rent', value: formatAmount(booking.base_price, booking.currency) },
@@ -311,14 +318,24 @@ export default function PaymentCheckout() {
       >
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-            {isConfirmed ? 'Payment complete' : 'Secure checkout'}
+            {isConfirmed
+              ? 'Payment complete'
+              : isPending
+                ? 'Awaiting owner approval'
+                : isTerminal
+                  ? getStatusMeta(booking.status).label
+                  : 'Complete your payment'}
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             {confirming || showConfirming
               ? 'We are confirming your payment with our secure gateway…'
               : isConfirmed
                 ? 'Your booking is confirmed. Thank you for your payment.'
-                : 'Review your booking and complete payment securely.'}
+                : isPending
+                  ? 'No payment is required yet. You can return here once the owner approves your request.'
+                  : isTerminal
+                    ? getStatusNextStep(booking.status)
+                    : 'Your booking has been approved — complete your payment securely to confirm it.'}
           </p>
         </div>
 
@@ -344,6 +361,24 @@ export default function PaymentCheckout() {
                 onGoHome={() => navigate('/')}
               />
             </motion.div>
+          ) : isPending ? (
+            <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <PendingApprovalCard
+                booking={booking}
+                reduceMotion={reduceMotion}
+                onRetry={() => loadBooking(true)}
+                onViewBookings={() => navigate('/tenant/bookings')}
+              />
+            </motion.div>
+          ) : isTerminal ? (
+            <motion.div key="terminal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <TerminalStatusCard
+                booking={booking}
+                reduceMotion={reduceMotion}
+                onViewBookings={() => navigate('/tenant/bookings')}
+                onGoHome={() => navigate('/')}
+              />
+            </motion.div>
           ) : (
             <motion.div
               key="pay"
@@ -353,7 +388,7 @@ export default function PaymentCheckout() {
               className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]"
             >
               <div className="space-y-6">
-                <BookingOverviewCard booking={booking} base={base} waitingApproval={awaitingApproval} />
+                <BookingOverviewCard booking={booking} base={base} />
                 <Card className="border-slate-200/70 bg-white/95 p-5 dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
                   <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
                     <Receipt className="h-5 w-5 text-[#c99b43]" />
@@ -393,7 +428,6 @@ export default function PaymentCheckout() {
                   )}
 
                   <PayButton
-                    awaitingApproval={awaitingApproval}
                     canPay={canPay}
                     isFailed={isFailed}
                     startingPayment={startingPayment}
@@ -439,7 +473,7 @@ export default function PaymentCheckout() {
         </AnimatePresence>
       </motion.main>
 
-      {!isConfirmed && !showConfirming && (
+      {!isConfirmed && !showConfirming && !isPending && !isTerminal && (
         <>
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:hidden">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
@@ -450,7 +484,6 @@ export default function PaymentCheckout() {
                 </p>
               </div>
               <PayButton
-                awaitingApproval={awaitingApproval}
                 canPay={canPay}
                 isFailed={isFailed}
                 startingPayment={startingPayment}
@@ -469,14 +502,12 @@ export default function PaymentCheckout() {
   )
 }
 
-function PayButton({ awaitingApproval, canPay, isFailed, startingPayment, booking, onPay, className }) {
-  const label = awaitingApproval
-    ? 'Awaiting owner approval'
-    : isFailed
-      ? 'Try Payment Again'
-      : startingPayment
-        ? 'Redirecting to secure payment…'
-        : `Pay ${formatAmount(booking.total_amount, booking.currency)}`
+function PayButton({ canPay, isFailed, startingPayment, booking, onPay, className }) {
+  const label = isFailed
+    ? 'Try Payment Again'
+    : startingPayment
+      ? 'Redirecting to secure payment…'
+      : `Pay ${formatAmount(booking.total_amount, booking.currency)} securely`
 
   return (
     <Button
@@ -491,7 +522,7 @@ function PayButton({ awaitingApproval, canPay, isFailed, startingPayment, bookin
   )
 }
 
-function BookingOverviewCard({ booking, base, waitingApproval }) {
+function BookingOverviewCard({ booking, base }) {
   const locationParts = [booking.property_city, booking.property_region].filter(Boolean).join(', ')
   const locationText = locationParts || booking.property_address || 'Location not specified'
 
@@ -520,16 +551,6 @@ function BookingOverviewCard({ booking, base, waitingApproval }) {
               value={booking.end_date ? formatDisplayDate(booking.end_date) : 'Ongoing'}
             />
           </div>
-
-          {waitingApproval && (
-            <div className="mt-4 flex items-start gap-2 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-              <Clock className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>
-                Payment is not available yet. This booking is waiting for the owner to approve it. Once approved, you
-                can pay here.
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </Card>
@@ -624,6 +645,146 @@ function SuccessCard({ booking, base, reduceMotion, onViewBookings, onGoHome }) 
           <InfoRow icon={CalendarDays} label="Dates" value={`${formatDisplayDate(booking.start_date)} → ${booking.end_date ? formatDisplayDate(booking.end_date) : 'Ongoing'}`} />
           <InfoRow icon={Wallet} label="Amount paid" value={formatAmount(booking.total_amount, booking.currency)} />
         </div>
+      </div>
+
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <Button
+          onClick={onViewBookings}
+          className="h-12 flex-1 rounded-2xl bg-[#c99b43] text-white hover:bg-[#b88a35] sm:max-w-[16rem]"
+        >
+          View My Bookings
+        </Button>
+        <Button variant="outline" onClick={onGoHome} className="h-12 flex-1 rounded-2xl sm:max-w-[12rem]">
+          Back to Home
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+/**
+ * PENDING bookings get a distinct "awaiting owner approval" experience instead
+ * of the payment form. There is deliberately NO pay button here — payment is
+ * only possible once the owner approves the request.
+ */
+function PendingApprovalCard({ booking, reduceMotion, onRetry, onViewBookings }) {
+  return (
+    <Card className="relative overflow-hidden border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95 sm:p-10">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#c99b43] via-[#f3c96d] to-[#c99b43]" />
+
+      <motion.div
+        initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: reduceMotion ? 0 : 0.1 }}
+        className="mx-auto flex flex-col items-center text-center"
+      >
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#c99b43]/10">
+          <Hourglass className="h-9 w-9 text-[#b98227] dark:text-[#f3c96d]" />
+        </div>
+
+        <h2 className="mt-5 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+          Awaiting owner approval
+        </h2>
+        <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600 dark:text-slate-400">
+          Payment is locked until the owner approves your request. We'll let you know as soon as it's
+          approved — then you can complete your payment here.
+        </p>
+
+        <div className="mt-5 inline-flex justify-center">
+          <BookingStatusBadge status={booking.status} />
+        </div>
+      </motion.div>
+
+      <div className="mx-auto mt-8 max-w-lg">
+        <BookingLifecycle status={booking.status} />
+      </div>
+
+      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <Button
+          onClick={onViewBookings}
+          variant="outline"
+          className="inline-flex items-center gap-2 rounded-2xl"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          View My Bookings
+        </Button>
+        <Button
+          onClick={onRetry}
+          className="inline-flex items-center gap-2 rounded-2xl bg-[#c99b43] text-white hover:bg-[#b08838]"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh booking status
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+/**
+ * REJECTED / CANCELLED / EXPIRED / COMPLETED bookings are terminal — no payment
+ * form, no pay button, just a clear explanation and an escape hatch.
+ */
+const TERMINAL_STATUS_CONFIG = {
+  rejected: {
+    icon: Ban,
+    title: 'Request declined',
+    body: 'The owner was unable to approve this booking request. No payment was taken. If you still need this listing, please submit a new booking request.',
+  },
+  cancelled: {
+    icon: XCircle,
+    title: 'Booking cancelled',
+    body: 'This booking was cancelled, so it is no longer active. No payment was taken.',
+  },
+  expired: {
+    icon: CalendarX,
+    title: 'Request expired',
+    body: 'This booking request expired before it was approved. No payment was taken. Please submit a new request if you are still interested.',
+  },
+  completed: {
+    icon: CheckCircle2,
+    title: 'Booking completed',
+    body: 'This booking has been completed. If there is anything you need, please contact the owner.',
+  },
+}
+
+function TerminalStatusCard({ booking, reduceMotion, onViewBookings, onGoHome }) {
+  const config = TERMINAL_STATUS_CONFIG[booking.status] || {
+    icon: AlertCircle,
+    title: getStatusMeta(booking.status).label,
+    body: getStatusNextStep(booking.status),
+  }
+  const Icon = config.icon
+
+  const toneClass = booking.status === 'rejected'
+    ? 'bg-red-100 text-red-600 dark:bg-red-950/40'
+    : booking.status === 'completed'
+      ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/40'
+      : 'bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-400'
+
+  return (
+    <Card className="relative overflow-hidden border-slate-200/70 bg-white/95 p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95 sm:p-10">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800" />
+
+      <motion.div
+        initial={{ scale: reduceMotion ? 1 : 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: reduceMotion ? 0 : 0.15, type: 'spring', stiffness: 220, damping: 18 }}
+        className="mx-auto flex h-20 w-20 items-center justify-center rounded-full"
+      >
+        <div className={`flex h-20 w-20 items-center justify-center rounded-full ${toneClass}`}>
+          <Icon className="h-9 w-9" />
+        </div>
+      </motion.div>
+
+      <h2 className="mt-6 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
+        {config.title}
+      </h2>
+      <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600 dark:text-slate-400">
+        {config.body}
+      </p>
+
+      <div className="mt-6 inline-flex justify-center">
+        <BookingStatusBadge status={booking.status} />
       </div>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">

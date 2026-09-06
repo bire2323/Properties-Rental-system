@@ -13,32 +13,35 @@ export const BOOKING_STATUS = Object.freeze({
 /**
  * Shared presentation metadata for each booking status.
  * Badge + lifecycle helper text used across owner and tenant dashboards.
+ *
+ * Colour semantics: amber/gold = waiting or requires an action, green =
+ * approved/confirmed/success, red = rejected, neutral = cancelled/expired.
  */
 export const BOOKING_STATUS_META = Object.freeze({
   [BOOKING_STATUS.PENDING]: {
     label: 'Pending',
-    text: 'Waiting for owner approval',
+    text: 'Awaiting owner approval',
     dot: 'bg-amber-400',
     badge:
       'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200',
   },
   [BOOKING_STATUS.APPROVED]: {
     label: 'Approved',
-    text: 'Approved — awaiting payment',
-    dot: 'bg-sky-400',
+    text: 'Approved — payment required',
+    dot: 'bg-[#c99b43]',
     badge:
-      'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-200',
+      'bg-[#c99b43]/10 text-[#b98227] dark:bg-[#c99b43]/15 dark:text-[#f3c96d]',
   },
   [BOOKING_STATUS.CONFIRMED]: {
     label: 'Confirmed',
-    text: 'Booking approved — payment/next step available',
+    text: 'Payment verified — booking confirmed',
     dot: 'bg-emerald-400',
     badge:
       'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200',
   },
   [BOOKING_STATUS.REJECTED]: {
     label: 'Rejected',
-    text: 'Booking was rejected',
+    text: 'Request declined by owner',
     dot: 'bg-red-400',
     badge: 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200',
   },
@@ -58,10 +61,10 @@ export const BOOKING_STATUS_META = Object.freeze({
   },
   [BOOKING_STATUS.EXPIRED]: {
     label: 'Expired',
-    text: 'Booking expired',
-    dot: 'bg-orange-400',
+    text: 'Request expired before approval',
+    dot: 'bg-slate-400',
     badge:
-      'bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-200',
+      'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300',
   },
 })
 
@@ -74,6 +77,23 @@ export function getStatusMeta(status) {
       badge: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300',
     }
   )
+}
+
+/**
+ * The single source of truth for the renter's "next step" copy shown next to
+ * each booking status (My Bookings cards, payment page, booking summary).
+ */
+export function getStatusNextStep(status) {
+  const steps = {
+    [BOOKING_STATUS.PENDING]: 'No payment required yet — awaiting owner approval.',
+    [BOOKING_STATUS.APPROVED]: 'Payment required — complete your secure payment.',
+    [BOOKING_STATUS.CONFIRMED]: 'Payment verified — your booking is confirmed.',
+    [BOOKING_STATUS.REJECTED]: 'The owner was unable to approve this request.',
+    [BOOKING_STATUS.CANCELLED]: 'This booking was cancelled.',
+    [BOOKING_STATUS.COMPLETED]: 'This booking has been completed.',
+    [BOOKING_STATUS.EXPIRED]: 'This request expired before it was approved.',
+  }
+  return steps[status] || `Status: ${String(status || 'Unknown').toUpperCase()}`
 }
 
 /**
@@ -130,6 +150,21 @@ export function formatAmount(value, currency = 'ETB') {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}`
+}
+
+const DEFAULT_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+/**
+ * Resolve an identity-document URL returned by the booking serializer.
+ * The serializer builds document_url as an ABSOLUTE URL when a request
+ * context is present (request.build_absolute_uri), so it is rendered as-is.
+ * Only when a relative path slips through (requests serialized without a
+ * request context) is the API base prepended.
+ */
+export function resolveDocumentUrl(value) {
+  if (!value) return ''
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return value
+  return `${DEFAULT_API_BASE_URL}${value}`
 }
 
 /**

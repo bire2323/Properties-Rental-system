@@ -1,7 +1,17 @@
-import { MapPin, CalendarDays, Users, Car, Fuel, Gauge } from 'lucide-react'
+import { CheckCircle2, Clock, CreditCard, Lock, MapPin, CalendarDays, Users, Car, Fuel, Gauge, XCircle } from 'lucide-react'
 import { Card } from '../ui/card'
 import PriceBreakdown from './PriceBreakdown'
 import { formatCurrency, formatDisplayDate } from '../../lib/bookingUtils'
+
+const PAYMENT_STATUS_INDICATORS = {
+  pending: { icon: Lock, label: 'Payment locked', sub: 'Awaiting owner approval', chip: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200' },
+  approved: { icon: CreditCard, label: 'Ready to complete', sub: 'Payment required — pay securely with Chapa', chip: 'bg-[#c99b43]/10 text-[#b98227] dark:bg-[#c99b43]/15 dark:text-[#f3c96d]' },
+  confirmed: { icon: CheckCircle2, label: 'Payment confirmed', sub: 'Booking verified', chip: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' },
+  completed: { icon: CheckCircle2, label: 'Booking completed', sub: 'Rental period finished', chip: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200' },
+  rejected: { icon: XCircle, label: 'Request declined', sub: 'The owner was unable to approve this request', chip: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200' },
+  cancelled: { icon: XCircle, label: 'Booking cancelled', sub: 'This request was cancelled', chip: 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300' },
+  expired: { icon: Clock, label: 'Request expired', sub: 'This request expired before it was approved', chip: 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300' },
+}
 
 export default function BookingSummary({
   property,
@@ -10,9 +20,12 @@ export default function BookingSummary({
   action,
   sticky = true,
   compact = false,
+  status = null,
 }) {
   if (!property) return null
   const isCar = property.listingType === 'car'
+  const indicator = status ? PAYMENT_STATUS_INDICATORS[status] : null
+  const Icon = indicator?.icon
 
   return (
     <Card
@@ -25,6 +38,16 @@ export default function BookingSummary({
         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
           Booking Summary
         </h3>
+
+        {indicator && (
+          <div className={`mt-4 flex items-start gap-3 rounded-2xl p-3 text-sm ${indicator.chip}`}>
+            <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="flex items-center gap-1.5 font-semibold">{indicator.label}</p>
+              {indicator.sub && <p className="mt-0.5 text-xs">{indicator.sub}</p>}
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
           <img

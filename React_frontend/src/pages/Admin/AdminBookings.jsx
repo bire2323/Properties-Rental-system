@@ -38,6 +38,7 @@ import {
     formatDisplayDate,
     formatListingType,
     formatRentalType,
+    resolveDocumentUrl,
 } from '../../lib/bookingDisplay'
 
 const STATUS_OPTIONS = [
@@ -73,8 +74,6 @@ const LISTING_OPTIONS = [
     { value: 'house', label: 'House' },
     { value: 'car', label: 'Vehicle' },
 ]
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 export function paymentStatusLabel(status) {
     return PAYMENT_STATUS_OPTIONS.find((o) => o.value === status)?.label || status || 'No payment'
@@ -229,7 +228,7 @@ function AdminBookingDrawer({
                     <p className="text-xs text-slate-400">{doc.document_type || 'identity'}</p>
                 </div>
                 <a
-                    href={`${API_BASE_URL}${doc.document_url}`}
+                    href={resolveDocumentUrl(doc.document_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/10 px-2.5 py-1.5 text-xs font-semibold text-[#b98227] transition hover:bg-[#c99b43]/20 dark:text-[#f3c96d]"
