@@ -296,7 +296,7 @@ class ProfileAPIView(APIView):
         """Return the current user with nested profile data."""
         # Ensure Profile exists (create if missing)
         Profile.objects.get_or_create(user=request.user)
-        data = UserSerializer(request.user).data
+        data = UserSerializer(request.user, context={"request": request}).data
         if request.user.role == User.Role.ADMIN:
             data["session_timeout_minutes"] = getattr(SiteSettings.objects.filter(pk=1).first(), "session_timeout_minutes", 30)
         return Response(data, status=status.HTTP_200_OK)
@@ -354,7 +354,8 @@ class ProfileAPIView(APIView):
         )
 
         # Return full user data with updated profile
-        user_serializer = UserSerializer(user)
+        user.refresh_from_db()
+        user_serializer = UserSerializer(user, context={"request": request})
         return Response(
             {
                 "user": user_serializer.data,
@@ -393,14 +394,20 @@ class ProfileAPIView(APIView):
             request=request,
         )
 
-        user_serializer = UserSerializer(user)
-        return Response(
+        user.refresh_from_db()
+        user_serializer = UserSerializer(user, context={"request": request})
+        had_password_change = bool(request.data.get("new_password"))
+        response = Response(
             {
                 "user": user_serializer.data,
-                "message": "Profile updated successfully.",
+                "message": "Password changed successfully." if had_password_change else "Profile updated successfully.",
             },
             status=status.HTTP_200_OK,
         )
+        if had_password_change:
+            tokens = create_tokens(user)
+            set_auth_cookies(response, tokens["access"], tokens["refresh"])
+        return response
 
 class BecomeOwnerAPIView(APIView):
     authentication_classes = [CookieJWTAuthentication]

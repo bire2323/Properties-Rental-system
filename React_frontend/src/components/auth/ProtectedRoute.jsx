@@ -7,7 +7,14 @@ export default function ProtectedRoute({ children }) {
     const location = useLocation();
 
     if (loading) {
-        return null;
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#c99b43] border-t-transparent shadow-md" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Loading account...</p>
+                </div>
+            </div>
+        );
     }
 
     if (!isAuthenticated) {

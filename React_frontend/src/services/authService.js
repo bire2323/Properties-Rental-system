@@ -18,6 +18,18 @@ export function getDashboardRoute(role) {
     }
 }
 
+export function getProfileRoute(role) {
+    switch (role) {
+        case 'admin':
+            return '/admin-dashboard/profile'
+        case 'owner':
+            return '/owner/settings'
+        case 'tenant':
+        default:
+            return '/tenant/profile'
+    }
+}
+
 export function normalizeErrorMessage(error) {
     if (error?.message) {
         return error.message

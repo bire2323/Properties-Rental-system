@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getDashboardRoute } from '@/services/authService'
+import { getDashboardRoute, getProfileRoute } from '@/services/authService'
 import { getImageUrl } from '@/lib/utils'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
@@ -586,12 +586,24 @@ function Navbar() {
 
               <button
                 type="button"
-                onClick={() => navigate('/')}
-                className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:bg-[#c99b43]/10 hover:text-[#c99b43] hover:scale-105 sm:flex lg:flex dark:text-slate-100 dark:hover:bg-[#c99b43]/10 dark:hover:text-[#f3c96d]"
+                onClick={() => {
+                  if (!user) {
+                    navigateTo('/login')
+                  } else if (user.role === 'owner') {
+                    navigateTo('/owner/favorites')
+                  } else {
+                    navigateTo('/tenant/favorites')
+                  }
+                }}
+                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 hover:scale-105 ${
+                  location.pathname.includes('favorites')
+                    ? 'bg-[#c99b43]/15 text-[#c99b43] dark:bg-[#c99b43]/20 dark:text-[#f3c96d]'
+                    : 'text-slate-700 hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-100 dark:hover:bg-[#c99b43]/10 dark:hover:text-[#f3c96d]'
+                }`}
                 aria-label="Favorites"
                 title="Favorites"
               >
-                <Heart size={16} />
+                <Heart size={16} className={location.pathname.includes('favorites') ? 'fill-[#c99b43]' : ''} />
               </button>
 
               {loading ? (
@@ -635,36 +647,96 @@ function Navbar() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
                         transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
-                        className="absolute right-0 top-full mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95"
+                        className="absolute right-0 top-full mt-3 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/95"
                       >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAuthDropdownOpen(false)
-                            const dashboardRoute = getDashboardRoute(user?.role)
-                            navigate(dashboardRoute)
-                          }}
-                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                        >
-                          <User size={15} />
-                          <span>Profile</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAuthDropdownOpen(false)}
-                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                        >
-                          <Settings size={15} />
-                          <span>Settings</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleLogout}
-                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
-                        >
-                          <LogOut size={15} />
-                          <span>Log out</span>
-                        </button>
+                        {/* Profile Header */}
+                        <div className="border-b border-slate-200/80 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/50">
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] text-sm font-semibold text-slate-950 shadow-sm ring-2 ring-[#c99b43]/30">
+                              {profileImageUrl ? (
+                                <img
+                                  src={profileImageUrl}
+                                  alt={profileLabel}
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none'
+                                    e.target.parentElement.textContent = userInitial
+                                  }}
+                                />
+                              ) : (
+                                userInitial
+                              )}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                                {profileLabel}
+                              </p>
+                              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                {user?.email || ''}
+                              </p>
+                              <span className="mt-1 inline-flex items-center rounded-full bg-[#c99b43]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#b27a23] dark:text-[#f3c96d]">
+                                {user?.role || 'Tenant'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Dropdown Menu Items */}
+                        <div className="p-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthDropdownOpen(false)
+                              navigate(getProfileRoute(user?.role))
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                          >
+                            <User size={16} className="text-[#c99b43]" />
+                            <span>Profile</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthDropdownOpen(false)
+                              navigate(getDashboardRoute(user?.role))
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                          >
+                            <Building2 size={16} className="text-[#c99b43]" />
+                            <span>Dashboard</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthDropdownOpen(false)
+                              navigate(user?.role === 'owner' ? '/owner/favorites' : '/tenant/favorites')
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                          >
+                            <Heart size={16} className="text-[#c99b43]" />
+                            <span>Favorites</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthDropdownOpen(false)
+                              navigate(user?.role === 'owner' ? '/owner/settings' : user?.role === 'admin' ? '/admin-dashboard/settings' : '/tenant/settings')
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                          >
+                            <Settings size={16} className="text-[#c99b43]" />
+                            <span>Settings</span>
+                          </button>
+                          <div className="my-1 border-t border-slate-200/80 dark:border-slate-800" />
+                          <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                          >
+                            <LogOut size={16} />
+                            <span>Log out</span>
+                          </button>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -935,7 +1007,7 @@ function Navbar() {
                 {user && (
                   <div className="mb-5 space-y-1">
                     <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b27a23]">Account</p>
-                    <button type="button" onClick={() => navigateTo(getDashboardRoute(user.role))} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><User className="h-4 w-4 text-[#c99b43]" />Profile</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
+                    <button type="button" onClick={() => navigateTo(getProfileRoute(user.role))} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><User className="h-4 w-4 text-[#c99b43]" />Profile</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
                     <button type="button" onClick={() => navigateTo(user.role === 'owner' ? '/owner/favorites' : '/tenant/favorites')} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><Heart className="h-4 w-4 text-[#c99b43]" />Favorite</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
                     <button type="button" onClick={() => navigateTo(user.role === 'owner' ? '/owner/settings' : user.role === 'admin' ? '/admin-dashboard/settings' : '/tenant/settings')} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><Settings className="h-4 w-4 text-[#c99b43]" />Setting</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>
                     <button type="button" onClick={() => navigateTo(getDashboardRoute(user.role))} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"><span className="flex items-center gap-3"><Building2 className="h-4 w-4 text-[#c99b43]" />Dashboard</span><ChevronRight className="h-4 w-4 text-slate-400" /></button>

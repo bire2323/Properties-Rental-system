@@ -173,6 +173,17 @@ class Profile(models.Model):
         null=True
     )
 
+
+    share_phone_with_hosts = models.BooleanField(
+        default=True,
+        help_text="When True, phone & email visible. When False, hidden from other tenants."
+    )
+
+    hide_email_on_reviews = models.BooleanField(
+        default=True,
+        help_text="When True, hides direct email on public ratings and reviews."
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )

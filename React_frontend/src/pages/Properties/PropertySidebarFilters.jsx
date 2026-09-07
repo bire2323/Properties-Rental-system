@@ -18,10 +18,18 @@ function FilterSection({ title, children }) {
     );
 }
 
-export function PropertySidebarFilters({ filters, setFilters, onClearAll, className = '' }) {
+export function PropertySidebarFilters({ filters, setFilters, onClearAll, onFilterSelect, className = '' }) {
     const [availableFeatures, setAvailableFeatures] = useState([]);
     const [categories, setCategories] = useState([]);
     const [showAllFeatures, setShowAllFeatures] = useState(false);
+
+    const triggerFilterSelect = () => {
+        if (onFilterSelect) {
+            setTimeout(() => {
+                onFilterSelect();
+            }, 180);
+        }
+    };
 
     const {
         regions,
@@ -62,18 +70,23 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
 
     const handleFilterChange = (key, value) => {
         setFilters((prev) => ({ ...prev, [key]: value }));
+        if (key !== 'search') {
+            triggerFilterSelect();
+        }
     };
 
     const handleRegionChange = (e) => {
         const id = e.target.value ? Number(e.target.value) : null;
         setRegionId(id);
         setFilters((prev) => ({ ...prev, region_id: id || '', city_id: '' }));
+        triggerFilterSelect();
     };
 
     const handleCityChange = (e) => {
         const id = e.target.value ? Number(e.target.value) : null;
         setCityId(id);
         setFilters((prev) => ({ ...prev, city_id: id || '' }));
+        triggerFilterSelect();
     };
 
     const toggleFeature = (featureId) => {
@@ -86,6 +99,7 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
                     : [...cur, featureId],
             };
         });
+        triggerFilterSelect();
     };
 
     const PillButton = ({ active, onClick, children }) => (
@@ -108,7 +122,10 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
             <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Filters</h2>
                 <button
-                    onClick={onClearAll}
+                    onClick={() => {
+                        onClearAll?.();
+                        triggerFilterSelect();
+                    }}
                     className="rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-[#c99b43] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#f3c96d] transition-colors duration-200"
                 >
                     Clear All
@@ -122,6 +139,12 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
                         placeholder="Search by name or address..."
                         value={filters.search || ''}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.target.blur();
+                                triggerFilterSelect();
+                            }
+                        }}
                         className="w-full pl-9 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 transition-colors"
                     />
                 </div>
@@ -181,6 +204,7 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
                         value={[filters.min_price || 0, filters.max_price || 200000]}
                         onValueChange={(val) => {
                             setFilters((prev) => ({ ...prev, min_price: val[0], max_price: val[1] }));
+                            triggerFilterSelect();
                         }}
                     />
                 </div>

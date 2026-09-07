@@ -5,7 +5,8 @@ import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { getAllProperties, getPropertyById } from '../../api/property/propertyApi'
+import { getAllProperties, getPropertyById, rateProperty } from '../../api/property/propertyApi'
+import { useAuth } from '../../hooks/useAuth'
 
 const featureIcons = {
   'Air Conditioning': Wind,
@@ -43,18 +44,90 @@ function mapSimilarVehicle(property) {
   }
 }
 
+function mapPropertyToVehicle(property) {
+  const detail = property.car_detail || {}
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  const images = (property.images || [])
+    .map((image) => typeof image === 'string' ? image : image?.image)
+    .filter(Boolean)
+    .map((image) => image.startsWith('http') ? image : `${apiBaseUrl}${image.startsWith('/') ? '' : '/'}${image}`)
+
+  const ratingSummary = property.rating_summary || { average_rating: 4.5, rating_count: 0, user_rating: null }
+  const avg = ratingSummary.average_rating ? Number(ratingSummary.average_rating).toFixed(1) : (property.rating_summary?.average_rating || 4.5)
+
+  return {
+    id: property.id,
+    images: images.length ? images : ['https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1200'],
+    name: property.property_name || `${detail.brand || 'Vehicle'} ${detail.model || ''}`,
+    type: 'car',
+    category: property.category || null,
+    location: [property.city_name, property.region_name, property.kebele].filter(Boolean).join(', ') || 'Location Unspecified',
+    address: property.address || 'Address unavailable',
+    description: property.description || 'No description available.',
+    price: Number(property.price || 0).toLocaleString('en-US'),
+    rentalUnit: property.rental_unit || 'daily',
+    isAvailable: property.is_available && property.status === 'active',
+    seats: detail.seating_capacity || '-',
+    fuel: detail.fuel_type || '-',
+    rating_summary: ratingSummary,
+    rating: avg,
+    transmission: detail.transmission || 'Not specified',
+    year: detail.year || '-',
+    color: detail.color || 'Not specified',
+    plateNumber: detail.plate_number || 'Not specified',
+    mileage: detail.mileage || '-',
+    vehicleId: `NX-V-${String(property.id).padStart(4, '0')}`,
+    datePosted: property.created_at ? new Date(property.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recently',
+    features: (property.features || []).map((feature) => typeof feature === 'string' ? feature : feature?.name).filter(Boolean),
+  }
+}
+
 function VehicleDetails() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const { user } = useAuth()
   const [vehicle, setVehicle] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [hoverRating, setHoverRating] = useState(0)
+  const [isRatingLoading, setIsRatingLoading] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
   const [zoomOrigin, setZoomOrigin] = useState('50% 50%')
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [similarVehicles, setSimilarVehicles] = useState([])
   const [similarVehiclesLoading, setSimilarVehiclesLoading] = useState(false)
+
+  const handleRating = async (ratingValue) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    if (isRatingLoading) return
+
+    try {
+      setIsRatingLoading(true)
+
+      setVehicle((prev) => ({
+        ...prev,
+        rating_summary: {
+          ...prev.rating_summary,
+          user_rating: ratingValue,
+        },
+      }))
+
+      await rateProperty(vehicle.id, ratingValue)
+
+      const updated = await getPropertyById(vehicle.id)
+      if (updated) {
+        setVehicle(mapPropertyToVehicle(updated))
+      }
+    } catch (err) {
+      console.error('Failed to rate vehicle', err)
+    } finally {
+      setIsRatingLoading(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -74,37 +147,7 @@ function VehicleDetails() {
           return
         }
 
-        const detail = property.car_detail || {}
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-        const images = (property.images || [])
-          .map((image) => typeof image === 'string' ? image : image?.image)
-          .filter(Boolean)
-          .map((image) => image.startsWith('http') ? image : `${apiBaseUrl}${image.startsWith('/') ? '' : '/'}${image}`)
-
-        setVehicle({
-          id: property.id,
-          images: images.length ? images : ['https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1200'],
-          name: property.property_name || `${detail.brand || 'Vehicle'} ${detail.model || ''}`,
-          type: 'car',
-          category: property.category || null,
-          location: [property.city_name, property.region_name, property.kebele].filter(Boolean).join(', ') || 'Location Unspecified',
-          address: property.address || 'Address unavailable',
-          description: property.description || 'No description available.',
-          price: Number(property.price || 0).toLocaleString('en-US'),
-          rentalUnit: property.rental_unit || 'daily',
-          isAvailable: property.is_available && property.status === 'active',
-          seats: detail.seating_capacity || '-',
-          fuel: detail.fuel_type || '-',
-          rating: property.rating_summary?.average_rating || 'New',
-          transmission: detail.transmission || 'Not specified',
-          year: detail.year || '-',
-          color: detail.color || 'Not specified',
-          plateNumber: detail.plate_number || 'Not specified',
-          mileage: detail.mileage || '-',
-          vehicleId: `NX-V-${String(property.id).padStart(4, '0')}`,
-          datePosted: property.created_at ? new Date(property.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recently',
-          features: (property.features || []).map((feature) => typeof feature === 'string' ? feature : feature?.name).filter(Boolean),
-        })
+        setVehicle(mapPropertyToVehicle(property))
       } catch (err) {
         if (active) setError(err.message || 'Failed to load vehicle details.')
       } finally {
@@ -306,11 +349,33 @@ function VehicleDetails() {
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">{vehicle.address}</p>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 justify-end">
                       <Star className="h-5 w-5 fill-[#c99b43] text-[#c99b43]" />
-                      <span className="text-lg font-semibold text-slate-900 dark:text-white">{vehicle.rating}</span>
+                      <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                        {vehicle.rating}
+                      </span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Excellent</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                      {vehicle.rating_summary?.rating_count || 0} ratings
+                    </p>
+                    <div className="flex flex-col items-end">
+                      <p className="text-xs text-slate-500 mb-1">
+                        {vehicle.rating_summary?.user_rating ? 'Your rating:' : 'Rate this:'}
+                      </p>
+                      <div className="flex items-center gap-0.5" onMouseLeave={() => setHoverRating(0)}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`h-4 w-4 cursor-pointer transition-colors ${(hoverRating || vehicle.rating_summary?.user_rating) >= star
+                              ? 'fill-[#c99b43] text-[#c99b43]'
+                              : 'text-slate-300 dark:text-slate-600'
+                              }`}
+                            onMouseEnter={() => setHoverRating(star)}
+                            onClick={() => handleRating(star)}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

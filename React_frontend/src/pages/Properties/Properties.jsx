@@ -137,6 +137,23 @@ function Properties() {
     };
   }, [filters]);
 
+  // Prevent background scrolling and handle Escape when mobile filter drawer is open
+  useEffect(() => {
+    if (!isFilterOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsFilterOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFilterOpen])
+
   useEffect(() => {
     if (user) {
       fetchFavorites()
@@ -310,7 +327,7 @@ function Properties() {
               <Button
                 variant="outline"
                 onClick={() => setIsFilterOpen(true)}
-                className="h-9 rounded-lg border-slate-200 bg-white/80 px-3 text-xs font-medium text-slate-600 hover:border-[#c99b43]/40 hover:bg-[#c99b43]/5 hover:text-[#c99b43] dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:border-[#c99b43]/30"
+                className="lg:hidden h-9 rounded-lg border-slate-200 bg-white/80 px-3 text-xs font-medium text-slate-600 hover:border-[#c99b43]/40 hover:bg-[#c99b43]/5 hover:text-[#c99b43] dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:border-[#c99b43]/30"
               >
                 <Filter className="mr-1.5 h-3.5 w-3.5" />
                 Filters
@@ -456,7 +473,7 @@ function Properties() {
         </div>
       </section>
 
-      {/* Mobile/Tablet Drawer */}
+      {/* Mobile/Tablet Left-side Filter Drawer */}
       <AnimatePresence>
         {isFilterOpen && (
           <>
@@ -465,40 +482,68 @@ function Properties() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsFilterOpen(false)}
-              className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-[65] bg-slate-950/60 backdrop-blur-sm lg:hidden"
             />
-            <motion.div
+            <motion.aside
+              role="dialog"
+              aria-modal="true"
+              aria-label="Property Filters"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-[min(88vw,22rem)] max-w-full flex-col rounded-r-3xl bg-white shadow-2xl dark:bg-slate-900 lg:hidden"
+              className="fixed inset-y-0 left-0 z-[70] flex w-[min(88vw,22rem)] max-w-full flex-col border-r border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 lg:hidden"
             >
-              <div className="flex items-center justify-between border-b border-slate-200/80 px-6 py-4 dark:border-slate-800/80">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Filters</h2>
+              <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-800/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#c99b43]/10 text-[#c99b43]">
+                    <Filter className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">Filters</h2>
+                    {activeFilterCount > 0 && (
+                      <p className="text-[11px] font-medium text-[#c99b43]">{activeFilterCount} active filter{activeFilterCount > 1 ? 's' : ''}</p>
+                    )}
+                  </div>
+                </div>
                 <button
                   onClick={() => setIsFilterOpen(false)}
                   className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors"
+                  aria-label="Close filters"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-scroll px-6 py-6 no-scrollbar">
+
+              <div className="flex-1 overflow-y-auto px-5 py-5 no-scrollbar">
                 <PropertySidebarFilters
                   filters={filters}
                   setFilters={setFilters}
                   onClearAll={handleClearAll}
+                  onFilterSelect={() => setIsFilterOpen(false)}
                 />
-                <div className="mt-6">
+              </div>
+
+              <div className="border-t border-slate-200/80 bg-slate-50/80 p-4 backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/90">
+                <div className="flex gap-2">
+                  {activeFilterCount > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleClearAll}
+                      className="rounded-xl border-slate-200 text-xs font-semibold hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
+                    >
+                      Reset
+                    </Button>
+                  )}
                   <Button
-                    className="w-full rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] py-2.5 text-sm font-semibold text-slate-950 shadow-sm"
+                    className="flex-1 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] py-2.5 text-sm font-semibold text-slate-950 shadow-sm hover:opacity-95"
                     onClick={() => setIsFilterOpen(false)}
                   >
                     Show Results ({sortedProperties.length})
                   </Button>
                 </div>
               </div>
-            </motion.div>
+            </motion.aside>
           </>
         )}
       </AnimatePresence>

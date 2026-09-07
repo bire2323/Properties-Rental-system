@@ -24,6 +24,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "country",
+            "share_phone_with_hosts",
+            "hide_email_on_reviews",
         )
 
 
@@ -94,10 +96,17 @@ class UserSerializer(serializers.ModelSerializer):
     """
 
     # Flatten Profile fields to maintain backward compatibility
-    phone_number = serializers.CharField(
-        source="profile.phone_number",
+    email = serializers.SerializerMethodField()
+    phone_number = serializers.SerializerMethodField()
+    share_phone_with_hosts = serializers.BooleanField(
+        source="profile.share_phone_with_hosts",
         read_only=True,
-        default=None
+        default=True
+    )
+    hide_email_on_reviews = serializers.BooleanField(
+        source="profile.hide_email_on_reviews",
+        read_only=True,
+        default=True
     )
     profile_image = serializers.ImageField(
         source="profile.profile_image",
@@ -131,6 +140,39 @@ class UserSerializer(serializers.ModelSerializer):
     # Owner profile data
     owner_profile = OwnerProfileSerializer(read_only=True)
 
+    def _can_view_contact(self, obj):
+        profile = getattr(obj, "profile", None)
+        can_share = getattr(profile, "share_phone_with_hosts", True) if profile else True
+        if can_share:
+            return True
+
+        request = self.context.get("request")
+        viewer = getattr(request, "user", None)
+        if viewer is None and hasattr(request, "_force_auth_user"):
+            viewer = getattr(request, "_force_auth_user", None)
+
+        if viewer and getattr(viewer, "is_authenticated", False):
+            if viewer.pk == obj.pk:
+                return True
+            if getattr(viewer, "is_staff", False) or getattr(viewer, "role", "") in [User.Role.ADMIN, User.Role.OWNER]:
+                return True
+
+        return False
+
+    def get_email(self, obj):
+        if self._can_view_contact(obj):
+            return obj.email
+        return None
+
+    def get_phone_number(self, obj):
+        profile = getattr(obj, "profile", None)
+        raw_phone = getattr(profile, "phone_number", None) if profile else None
+        if not raw_phone:
+            return None
+        if self._can_view_contact(obj):
+            return raw_phone
+        return None
+
     class Meta:
         model = User
         fields = (
@@ -148,9 +190,14 @@ class UserSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "country",
+            "share_phone_with_hosts",
+            "hide_email_on_reviews",
             # Nested objects
             "profile",
             "owner_profile",
+            # Timestamps
+            "created_at",
+            "date_joined",
         )
 
 
@@ -444,6 +491,8 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
     current_password = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
     new_password = serializers.CharField(write_only=True, required=False)
     confirm_password = serializers.CharField(write_only=True, required=False)
+    share_phone_with_hosts = serializers.BooleanField(required=False)
+    hide_email_on_reviews = serializers.BooleanField(required=False)
 
     class Meta:
         model = Profile
@@ -460,7 +509,15 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "country",
+            "share_phone_with_hosts",
+            "hide_email_on_reviews",
         )
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, "copy") else dict(data)
+        if data.get("date_of_birth") == "":
+            data["date_of_birth"] = None
+        return super().to_internal_value(data)
 
     def validate_email(self, value):
         user = self.context["request"].user

@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { Home, Bookmark, Calendar, CreditCard, MessageSquare, User, Settings, LogOut, Menu, X } from 'lucide-react'
+import { Home, Bookmark, Calendar, CreditCard, MessageSquare, User, Settings, LogOut, Menu, X, ChevronRight, Building2 } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
-import { cn } from '@/lib/utils'
+import { cn, getImageUrl } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import logo from '../../../assets/logo.jpg'
 import { getSiteSettings, resolveSiteMediaUrl } from '../../../api/siteSettingsApi'
@@ -41,8 +41,12 @@ function BrandFallback({ label = 'Home' }) {
     )
 }
 export default function TenantSidebar({ isOpen, onClose }) {
-    const { logout } = useAuth()
+    const { logout, user } = useAuth()
     const navigate = useNavigate()
+
+    const profileImageUrl = user?.profile_image ? getImageUrl(user.profile_image) : null
+    const userInitial = user?.first_name ? user.first_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'T'
+    const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')[0] || 'Tenant'
 
     const [siteSettings, setSiteSettings] = useState(null)
     const [siteSettingsStatus, setSiteSettingsStatus] = useState('loading')
@@ -131,14 +135,52 @@ export default function TenantSidebar({ isOpen, onClose }) {
                 </div>
             </nav>
 
-            <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800">
+            <div className="border-t border-slate-200 p-3 dark:border-slate-800">
+                {/* User Profile Card */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        navigate('/tenant/profile')
+                        if (onClose) onClose()
+                    }}
+                    className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-2.5 text-left shadow-sm transition hover:border-[#c99b43]/40 hover:bg-slate-50 hover:shadow dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-[#c99b43]/40 dark:hover:bg-slate-900"
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] text-sm font-semibold text-slate-950 shadow-sm ring-2 ring-[#c99b43]/30">
+                        {profileImageUrl ? (
+                            <img
+                                src={profileImageUrl}
+                                alt={fullName}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                    e.target.style.display = 'none'
+                                    e.target.parentElement.textContent = userInitial
+                                }}
+                            />
+                        ) : (
+                            userInitial
+                        )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900 transition group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d]">
+                            {fullName}
+                        </p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                            {user?.email || ''}
+                        </p>
+                        <span className="mt-0.5 inline-flex items-center rounded-full bg-[#c99b43]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#b27a23] dark:text-[#f3c96d]">
+                            {user?.role || 'Tenant'}
+                        </span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[#c99b43]" />
+                </button>
+
                 <button
                     onClick={async () => {
                         await logout()
                     }}
-                    className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                    className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                 >
-                    <LogOut className="h-5 w-5" />
+                    <LogOut className="h-4 w-4" />
                     Logout
                 </button>
             </div>

@@ -19,10 +19,18 @@ function FilterSection({ title, children }) {
     );
 }
 
-export function VehicleSidebarFilters({ filters, setFilters, onClearAll, className = '' }) {
+export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilterSelect, className = '' }) {
     const [brands, setBrands] = useState([]);
     const [fuelTypes, setFuelTypes] = useState([]);
     const [categories, setCategories] = useState([]);
+
+    const triggerFilterSelect = () => {
+        if (onFilterSelect) {
+            setTimeout(() => {
+                onFilterSelect();
+            }, 180);
+        }
+    };
 
     const {
         regions,
@@ -77,18 +85,23 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
             ...prev,
             [key]: value,
         }));
+        if (key !== 'search') {
+            triggerFilterSelect();
+        }
     };
 
     const handleRegionChange = (e) => {
         const id = e.target.value ? Number(e.target.value) : null;
         setRegionId(id);
         setFilters((prev) => ({ ...prev, region_id: id || '', city_id: '' }));
+        triggerFilterSelect();
     };
 
     const handleCityChange = (e) => {
         const id = e.target.value ? Number(e.target.value) : null;
         setCityId(id);
         setFilters((prev) => ({ ...prev, city_id: id || '' }));
+        triggerFilterSelect();
     };
 
     const PillButton = ({ active, onClick, children }) => (
@@ -109,7 +122,10 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Filters</h2>
                 <button
-                    onClick={onClearAll}
+                    onClick={() => {
+                        onClearAll?.();
+                        triggerFilterSelect();
+                    }}
                     className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white underline"
                 >
                     Clear All
@@ -123,6 +139,12 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
                         placeholder="Search vehicles..."
                         value={filters.search || ''}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.target.blur();
+                                triggerFilterSelect();
+                            }
+                        }}
                         className="w-full pl-9 bg-slate-50 dark:bg-slate-800/50"
                     />
                 </div>
@@ -202,6 +224,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
                         value={[filters.min_price || 0, filters.max_price || 200000]}
                         onValueChange={(val) => {
                             setFilters(prev => ({ ...prev, min_price: val[0], max_price: val[1] }));
+                            triggerFilterSelect();
                         }}
                     />
                 </div>

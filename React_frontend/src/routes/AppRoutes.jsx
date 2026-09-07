@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import AdminRoute from '../components/auth/AdminRoute'
@@ -61,8 +62,21 @@ import PendingApproval from '@/pages/Owner/PendingApproval'
 import Categories from '@/pages/Admin/Categories'
 import AboutUs from '../pages/aboutUs'
 
+function ProfileRedirect() {
+    const { user } = useAuth()
+    const role = user?.role
+    if (role === 'owner') return <Navigate to="/owner/settings" replace />
+    if (role === 'admin') return <Navigate to="/admin-dashboard/profile" replace />
+    return <Navigate to="/tenant/profile" replace />
+}
 
-
+function SettingsRedirect() {
+    const { user } = useAuth()
+    const role = user?.role
+    if (role === 'owner') return <Navigate to="/owner/settings" replace />
+    if (role === 'admin') return <Navigate to="/admin-dashboard/settings" replace />
+    return <Navigate to="/tenant/settings" replace />
+}
 
 function AppRoutes() {
     return (
@@ -74,6 +88,8 @@ function AppRoutes() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/about" element={<AboutUs />} />
+                <Route path="/profile" element={<ProtectedRoute><ProfileRedirect /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><SettingsRedirect /></ProtectedRoute>} />
 
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id" element={<PropertyDetails />} />
