@@ -336,6 +336,7 @@ class PropertySerializer(serializers.ModelSerializer):
 
     house_detail = HouseDetailSerializer(read_only=True)
     car_detail = CarDetailSerializer(read_only=True)
+    category = CategoryAdminSerializer(read_only=True)
 
     # Nested location objects
     city = CitySerializer(read_only=True)
@@ -355,6 +356,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'property_name',
             'description',
             'listing_type',
+            'category',
             'price',
             'rental_unit',
             'security_deposit',
@@ -455,8 +457,8 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
     )
     category = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
-        required=False,
-        allow_null=True,
+        required=True,
+        allow_null=False,
     )
 
     house_detail = serializers.JSONField(write_only=True, required=False, allow_null=True)
@@ -582,6 +584,8 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
 
         # Validate that category matches the listing_type
         category = data.get('category') or (self.instance.category if self.instance else None)
+        if not category and not self.instance:
+            raise serializers.ValidationError({'category': 'A category is required for every listing.'})
         if category and listing_type and category.listing_type != listing_type:
             raise serializers.ValidationError(
                 {'category': f'Category "{category.name}" is for {category.get_listing_type_display()} listings and cannot be used for a {listing_type} listing.'}

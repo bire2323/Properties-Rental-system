@@ -6,7 +6,7 @@ import {
     Upload, ImagePlus, CheckCircle2, AlertCircle,
     Sofa, BedDouble, Bath, House, MapPin
 } from 'lucide-react'
-import { createProperty, getMyManagedCompanies } from '../../api/property/propertyApi'
+import { createProperty, getCategories, getMyManagedCompanies } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -31,6 +31,7 @@ const INITIAL_STATE = {
     property_name: '',
     description: '',
     listing_type: 'house',
+    category: '',
     // Step 2
     price: '',
     rental_unit: 'monthly',
@@ -245,7 +246,7 @@ function StepProgress({ currentStep }) {
 
 // ─── Step 1: Basic Info ──────────────────────────────────────────────────────
 
-function Step1({ form, onChange, errors }) {
+function Step1({ form, onChange, errors, categories, categoriesLoading }) {
     return (
         <div className="space-y-5">
             <div>
@@ -308,6 +309,20 @@ function Step1({ form, onChange, errors }) {
                     ))}
                 </div>
             </div>
+
+            <FormField label="Property Category" required error={errors.category}>
+                <select
+                    value={form.category}
+                    onChange={(e) => onChange('category', e.target.value)}
+                    className={`${selectClass} ${errors.category ? 'border-red-500' : ''}`}
+                    disabled={categoriesLoading}
+                >
+                    <option value="">{categoriesLoading ? 'Loading categories...' : 'Select a category'}</option>
+                    {categories.map((category) => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                </select>
+            </FormField>
         </div>
     )
 }
@@ -682,42 +697,46 @@ function Step4({ form, onChange, errors }) {
                     </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={form.house_detail.bedrooms}
-                        onChange={(e) => {
-                            const value = e.target.value
+                    <FormField label="Bedrooms" required error={errors['house_detail.bedrooms']}>
+                        <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={form.house_detail.bedrooms}
+                            onChange={(e) => {
+                                const value = e.target.value
 
-                            if (value === '' || /^\d+$/.test(value)) {
-                                onChange('house_detail', {
-                                    ...form.house_detail,
-                                    bedrooms: value,
-                                })
-                            }
-                        }}
-                        placeholder="3"
-                        className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''}
-                    />
-                    <Input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={form.house_detail.bathrooms}
-                        onChange={(e) => {
-                            const value = e.target.value
+                                if (value === '' || /^\d+$/.test(value)) {
+                                    onChange('house_detail', {
+                                        ...form.house_detail,
+                                        bedrooms: value,
+                                    })
+                                }
+                            }}
+                            placeholder="3"
+                            className={errors['house_detail.bedrooms'] ? 'border-red-500' : ''}
+                        />
+                    </FormField>
+                    <FormField label="Bathrooms" required error={errors['house_detail.bathrooms']}>
+                        <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={form.house_detail.bathrooms}
+                            onChange={(e) => {
+                                const value = e.target.value
 
-                            if (value === '' || /^\d+$/.test(value)) {
-                                onChange('house_detail', {
-                                    ...form.house_detail,
-                                    bathrooms: value,
-                                })
-                            }
-                        }}
-                        placeholder="2"
-                        className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''}
-                    />
+                                if (value === '' || /^\d+$/.test(value)) {
+                                    onChange('house_detail', {
+                                        ...form.house_detail,
+                                        bathrooms: value,
+                                    })
+                                }
+                            }}
+                            placeholder="2"
+                            className={errors['house_detail.bathrooms'] ? 'border-red-500' : ''}
+                        />
+                    </FormField>
                     <FormField label="Area (sqft)" required error={errors['house_detail.area_sqft']}>
                         <Input
                             type="number" min="0"
@@ -1303,6 +1322,8 @@ function validateStep(step, form) {
         } else if (form.description.trim().length < 30) {
             errors.description = 'Description must be at least 30 characters.'
         }
+
+        if (!form.category) errors.category = 'Please select a property category.'
     }
     if (step === 2) {
         if (!form.price || parseFloat(form.price) <= 0) errors.price = 'Enter a valid price greater than 0.'
@@ -1390,6 +1411,7 @@ function buildPayload(form) {
     fd.append('property_name', form.property_name.trim())
     fd.append('description', form.description.trim())
     fd.append('listing_type', form.listing_type)
+    fd.append('category', form.category)
     fd.append('price', parseFloat(form.price).toFixed(2))
     fd.append('rental_unit', form.rental_unit)
     if (form.security_deposit) fd.append('security_deposit', parseFloat(form.security_deposit).toFixed(2))
@@ -1447,6 +1469,8 @@ export default function AddProperty() {
     const [loading, setLoading] = useState(false)
     const [companies, setCompanies] = useState([])
     const [companiesLoading, setCompaniesLoading] = useState(false)
+    const [categories, setCategories] = useState([])
+    const [categoriesLoading, setCategoriesLoading] = useState(false)
     const [draftRecovery, setDraftRecovery] = useState(null)
     const [draftChecked, setDraftChecked] = useState(false)
 
@@ -1528,6 +1552,24 @@ export default function AddProperty() {
     )
 
     // Fetch companies when step 2 becomes active
+    useEffect(() => {
+        let active = true
+        setCategoriesLoading(true)
+        getCategories(form.listing_type)
+            .then((data) => {
+                if (active) setCategories(Array.isArray(data) ? data : data.results || [])
+            })
+            .catch(() => { if (active) setCategories([]) })
+            .finally(() => { if (active) setCategoriesLoading(false) })
+        return () => { active = false }
+    }, [form.listing_type])
+
+    useEffect(() => {
+        if (!categories.some((category) => String(category.id) === String(form.category))) {
+            setForm((prev) => ({ ...prev, category: '' }))
+        }
+    }, [categories])
+
     useEffect(() => {
         if (currentStep === 2) {
             setCompaniesLoading(true)
@@ -1693,7 +1735,7 @@ export default function AddProperty() {
                         className="mt-6"
                     >
                         {currentStep === 1 && (
-                            <Step1 form={form} onChange={onChange} errors={errors} />
+                            <Step1 form={form} onChange={onChange} errors={errors} categories={categories} categoriesLoading={categoriesLoading} />
                         )}
                         {currentStep === 2 && (
                             <Step2

@@ -104,6 +104,7 @@ function Properties() {
     search: '',
     location: '',
     type: 'house',
+    category: '',
     min_price: 0,
     max_price: 200000,
     bedrooms: 'any',
@@ -149,6 +150,10 @@ function Properties() {
     const typeParam = searchParams.get('type')
     if (typeParam && ['house', 'car', 'all'].includes(typeParam.toLowerCase())) {
       setFilters(prev => ({ ...prev, type: typeParam.toLowerCase() }))
+    }
+    const categoryParam = searchParams.get('category')
+    if (categoryParam !== null) {
+      setFilters(prev => ({ ...prev, category: categoryParam || '' }))
     }
     const searchParam = searchParams.get('search')
     if (searchParam !== null) {
@@ -249,6 +254,7 @@ function Properties() {
     (filters.min_price > 0 || filters.max_price < 200000 ? 1 : 0) +
     (filters.bedrooms !== 'any' ? 1 : 0) +
     (filters.is_available !== '' ? 1 : 0) +
+    (filters.category ? 1 : 0) +
     (filters.features?.length || 0);
 
   const getPageTitle = () => {
@@ -372,7 +378,7 @@ function Properties() {
             {/* Content Area */}
             <main className="flex-1 min-w-0">
               {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 xl:grid-cols-4" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <PropertyCardSkeleton key={i} />
                   ))}
@@ -401,7 +407,7 @@ function Properties() {
               )}
 
               {!loading && !error && sortedProperties.length > 0 && (
-                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 xl:grid-cols-4' : 'flex flex-col gap-4'}>
+                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-4'}>
                   {sortedProperties.map((property, index) => (
                     <motion.div
                       key={property.id}

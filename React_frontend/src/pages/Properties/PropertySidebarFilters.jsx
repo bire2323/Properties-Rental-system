@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { PriceRangeSlider } from './PriceRangeSlider';
-import { getFeatures } from '../../api/property/propertyApi';
+import { getCategories, getFeatures } from '../../api/property/propertyApi';
 import { useLocationSelector } from '../../hooks/useLocationSelector';
 
 const selectCls = 'w-full h-10 appearance-none rounded-xl border border-slate-200 bg-slate-50/80 pl-3 pr-9 text-sm font-medium transition-all duration-200 hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700/60 dark:bg-slate-800/40 dark:text-white dark:hover:border-slate-600 dark:focus:border-[#c99b43] dark:focus:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -20,6 +20,7 @@ function FilterSection({ title, children }) {
 
 export function PropertySidebarFilters({ filters, setFilters, onClearAll, className = '' }) {
     const [availableFeatures, setAvailableFeatures] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [showAllFeatures, setShowAllFeatures] = useState(false);
 
     const {
@@ -47,7 +48,15 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
         let mounted = true;
         getFeatures()
             .then((data) => { if (mounted && Array.isArray(data)) setAvailableFeatures(data); })
-            .catch(() => {});
+            .catch(() => { });
+        return () => { mounted = false; };
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        getCategories('house')
+            .then((data) => { if (mounted) setCategories(Array.isArray(data) ? data : data.results || []); })
+            .catch(() => { });
         return () => { mounted = false; };
     }, []);
 
@@ -83,11 +92,10 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
         <button
             type="button"
             onClick={onClick}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
-                active
-                    ? 'bg-[#c99b43] text-white shadow-sm shadow-[#c99b43]/25'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700'
-            }`}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${active
+                ? 'bg-[#c99b43] text-white shadow-sm shadow-[#c99b43]/25'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
         >
             {children}
         </button>
@@ -157,11 +165,13 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
                 </div>
             </FilterSection>
 
-            <FilterSection title="Property Type">
-                <div className="flex flex-wrap gap-2">
-                    <PillButton active={!filters.type || filters.type === 'all'} onClick={() => handleFilterChange('type', 'all')}>All</PillButton>
-                    <PillButton active={filters.type === 'house'} onClick={() => handleFilterChange('type', 'house')}>House</PillButton>
-                    <PillButton active={filters.type === 'car'} onClick={() => handleFilterChange('type', 'car')}>Car</PillButton>
+            <FilterSection title="Category">
+                <div className="relative">
+                    <select value={filters.category || ''} onChange={(e) => handleFilterChange('category', e.target.value)} className={selectCls}>
+                        <option value="">All Categories</option>
+                        {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 </div>
             </FilterSection>
 
@@ -209,11 +219,10 @@ export function PropertySidebarFilters({ filters, setFilters, onClearAll, classN
                                 <button
                                     key={feature.id}
                                     onClick={() => toggleFeature(feature.id)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
-                                        isActive
-                                            ? 'bg-[#c99b43]/10 border-[#c99b43] text-[#c99b43] shadow-sm shadow-[#c99b43]/10'
-                                            : 'bg-transparent border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600'
-                                    }`}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${isActive
+                                        ? 'bg-[#c99b43]/10 border-[#c99b43] text-[#c99b43] shadow-sm shadow-[#c99b43]/10'
+                                        : 'bg-transparent border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600'
+                                        }`}
                                 >
                                     {feature.name}
                                 </button>

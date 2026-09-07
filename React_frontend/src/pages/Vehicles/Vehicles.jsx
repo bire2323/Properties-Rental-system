@@ -82,6 +82,7 @@ function Vehicles() {
   const defaultFilters = {
     search: '',
     location: '',
+    category: '',
     brand: '',
     fuel_type: '',
     seating_capacity: 'any',
@@ -122,6 +123,13 @@ function Vehicles() {
       setFavorites([])
     }
   }, [user])
+
+  useEffect(() => {
+    const categoryParam = searchParams.get('category')
+    if (categoryParam !== null) {
+      setFilters((prev) => ({ ...prev, category: categoryParam || '' }))
+    }
+  }, [searchParams])
 
   async function fetchVehicles() {
     setLoading(true)
@@ -202,7 +210,8 @@ function Vehicles() {
     (filters.fuel_type ? 1 : 0) +
     (filters.seating_capacity !== 'any' ? 1 : 0) +
     (filters.min_price > 0 || filters.max_price < 200000 ? 1 : 0) +
-    (filters.is_available !== '' ? 1 : 0);
+    (filters.is_available !== '' ? 1 : 0) +
+    (filters.category ? 1 : 0);
 
   const sortedVehicles = [...vehicles].sort((a, b) => {
     switch (sortBy) {
@@ -319,7 +328,7 @@ function Vehicles() {
             {/* Content Area */}
             <main className="flex-1 min-w-0">
               {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <VehicleCardSkeleton key={i} />
                   ))}
@@ -348,7 +357,7 @@ function Vehicles() {
               )}
 
               {!loading && !error && sortedVehicles.length > 0 && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
                   {sortedVehicles.map((vehicle, index) => (
                     <motion.div
                       key={vehicle.id}
@@ -361,7 +370,7 @@ function Vehicles() {
                           }`}
                       >
                         {/* Image Container */}
-                        <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-2/5 sm:w-1/3 shrink-0 h-full' : 'h-28 sm:h-48 lg:h-44'}`}>
+                        <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-2/5 sm:w-1/3 shrink-0 h-full' : 'h-28 sm:h-44 xl:h-52'}`}>
                           <img
                             src={vehicle.image}
                             alt={vehicle.name}

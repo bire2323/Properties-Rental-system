@@ -166,7 +166,7 @@ function Navbar() {
         const transformCategories = (data) => {
           return Array.isArray(data)
             ? data.map((item) => ({
-              value: item.name,
+              value: item.id,
               label: item.name.charAt(0).toUpperCase() + item.name.slice(1),
               listing_type: item.listing_type,
             }))
@@ -259,21 +259,21 @@ function Navbar() {
     setBrandLogoFailed(false)
   }, [siteSettings?.logo])
 
-  const handlePropertyTypeClick = (value) => {
+  const handlePropertyTypeClick = (categoryId) => {
     setPropertyDropdownOpen(false)
     setMobileMenuOpen(false)
-    if (value) {
-      navigateTo(`/properties?type=${value}`)
+    if (categoryId) {
+      navigateTo(`/properties?category=${encodeURIComponent(categoryId)}`)
     } else {
       navigateTo('/properties')
     }
   }
 
-  const handleVehicleTypeClick = (value) => {
+  const handleVehicleTypeClick = (categoryId) => {
     setVehicleDropdownOpen(false)
     setMobileMenuOpen(false)
-    if (value) {
-      navigateTo(`/vehicles?type=${value}`)
+    if (categoryId) {
+      navigateTo(`/vehicles?category=${encodeURIComponent(categoryId)}`)
     } else {
       navigateTo('/vehicles')
     }
@@ -425,7 +425,7 @@ function Navbar() {
                                     <button
                                       key={type.value}
                                       type="button"
-                                      onClick={() => handlePropertyTypeClick(type.listing_type)}
+                                      onClick={() => handlePropertyTypeClick(type.value)}
                                       className="block w-full truncate rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                                     >
                                       {type.label}
@@ -512,7 +512,7 @@ function Navbar() {
                                     <button
                                       key={type.value}
                                       type="button"
-                                      onClick={() => handleVehicleTypeClick(type.listing_type)}
+                                      onClick={() => handleVehicleTypeClick(type.value)}
                                       className="block w-full truncate rounded-xl px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                                     >
                                       {type.label}
@@ -1000,7 +1000,7 @@ function Navbar() {
                               <button
                                 key={`mobile-prop-${type.value}`}
                                 type="button"
-                                onClick={() => handlePropertyTypeClick(type.listing_type)}
+                                onClick={() => handlePropertyTypeClick(type.value)}
                                 className="w-full rounded-xl px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
                               >
                                 {type.label}
@@ -1061,7 +1061,7 @@ function Navbar() {
                               <button
                                 key={`mobile-veh-${type.value}`}
                                 type="button"
-                                onClick={() => handleVehicleTypeClick(type.listing_type)}
+                                onClick={() => handleVehicleTypeClick(type.value)}
                                 className="w-full rounded-xl px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
                               >
                                 {type.label}

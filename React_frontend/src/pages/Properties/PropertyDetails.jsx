@@ -11,7 +11,7 @@ import { getImageUrl } from '../../lib/utils'
 import { getFeatureIcon } from '../../lib/featureIcons'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { getPropertyById, addFavorite, removeFavorite, rateProperty } from '../../api/property/propertyApi'
+import { getAllProperties, getPropertyById, addFavorite, removeFavorite, rateProperty } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 import ShareButton from '../../components/common/ShareButton'
 
@@ -19,7 +19,7 @@ import ShareButton from '../../components/common/ShareButton'
 function mapPropertyToCard(property) {
   const images = property.images || []
   const mainImageUrl = images.length > 0
-    ? (images[0].image || getImageUrl(images[0].image_url) || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800')
+    ? (getImageUrl(images[0]) || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800')
     : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
 
   const isHouse = property.listing_type === 'house'
@@ -43,7 +43,7 @@ function mapPropertyToCard(property) {
 
   return {
     id: property.id,
-    images: images.map(img => img.image || img.image_url),
+    images: images.map((img) => getImageUrl(img)).filter(Boolean),
     mainImage: mainImageUrl,
     title: property.property_name,
     location: locationDisplay,
@@ -82,6 +82,7 @@ function mapPropertyToCard(property) {
     },
     detail: detail,
     listing_type: property.listing_type,
+    category: property.category || null,
     // Car specific fields
     brand: detail.brand || '',
     model: detail.model || '',
@@ -89,6 +90,24 @@ function mapPropertyToCard(property) {
     mileage: detail.mileage || '',
     fuel_type: detail.fuel_type || '',
     seating_capacity: detail.seating_capacity || '',
+  }
+}
+
+function mapSimilarProperty(property) {
+  const image = property.main_image?.image || property.images?.[0]?.image || property.images?.[0]?.image_url
+  const detail = property.house_detail || {}
+  const price = Number(property.price || 0).toLocaleString('en-US')
+
+  return {
+    id: property.id,
+    image: image ? getImageUrl(image) : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800',
+    title: property.property_name || 'Property',
+    location: [property.city_name, property.region_name, property.kebele].filter(Boolean).join(', ') || 'Location Unspecified',
+    price,
+    rentalUnit: property.rental_unit || 'monthly',
+    beds: detail.bedrooms ?? '-',
+    baths: detail.bathrooms ?? '-',
+    area: detail.area_sqft ?? '-',
   }
 }
 
@@ -104,7 +123,10 @@ function PropertyDetails() {
   const [hoverRating, setHoverRating] = useState(0)
   const [isRatingLoading, setIsRatingLoading] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
+  const [zoomOrigin, setZoomOrigin] = useState('50% 50%')
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [similarProperties, setSimilarProperties] = useState([])
+  const [similarPropertiesLoading, setSimilarPropertiesLoading] = useState(false)
   const { user } = useAuth()
 
   // ─── Fetch Property ──────────────────────────────────────────────
@@ -139,6 +161,34 @@ function PropertyDetails() {
     fetchProperty()
   }, [id])
 
+  useEffect(() => {
+    if (!property?.listing_type || !property.category?.id) {
+      return
+    }
+
+    let active = true
+    getAllProperties({ type: property.listing_type, category: property.category.id })
+      .then((data) => {
+        if (!active) return
+        const results = Array.isArray(data) ? data : data.results || []
+        setSimilarProperties(
+          results
+            .filter((item) => (
+              String(item.id) !== String(property.id) &&
+              String(item.category?.id || item.category_id) === String(property.category.id)
+            ))
+            .slice(0, 4)
+            .map(mapSimilarProperty)
+        )
+      })
+      .catch((err) => console.error('Failed to load similar properties:', err))
+      .finally(() => {
+        if (active) setSimilarPropertiesLoading(false)
+      })
+
+    return () => { active = false }
+  }, [property])
+
   // ─── Image Navigation ─────────────────────────────────────────────
   const nextImage = () => {
     if (property?.images?.length) {
@@ -150,6 +200,13 @@ function PropertyDetails() {
     if (property?.images?.length) {
       setSelectedImage((prev) => (prev - 1 + property.images.length) % property.images.length)
     }
+  }
+
+  const handleImageMove = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100))
+    const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100))
+    setZoomOrigin(`${x}% ${y}%`)
   }
 
   // ─── Interaction Handlers ──────────────────────────────────────────
@@ -404,35 +461,38 @@ function PropertyDetails() {
         </div>
       </section> */}
 
-      <section className="bg-white py-8 dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="bg-slate-50/70 py-10 dark:bg-slate-950">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10">
           <div className="flex flex-col gap-4 lg:flex-row">
             {/* ─── Main Image ────────────────────────────────────────────── */}
-            <div className="relative flex-1 cursor-pointer overflow-hidden rounded-l-[28px] border border-slate-200/70 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 lg:flex-[2]">
+            <div
+              className="group relative flex-1 cursor-zoom-in overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.12)] transition-shadow duration-500 hover:shadow-[0_32px_100px_rgba(201,155,67,0.18)] dark:border-slate-800 dark:bg-slate-900 lg:flex-[2]"
+              onMouseMove={handleImageMove}
+              onMouseLeave={() => setZoomOrigin('50% 50%')}
+            >
               <img
                 src={property.images[selectedImage] || property.mainImage}
                 alt={property.title}
-                className="h-96 w-full object-cover md:h-[400px] lg:h-[400px]"
+                className="h-96 w-full object-cover transition-transform duration-[220ms] ease-out will-change-transform group-hover:scale-[1.80] md:h-[520px] lg:h-[560px]"
+                style={{ transformOrigin: zoomOrigin }}
                 onClick={() => setLightboxOpen(true)}
               />
-              {/* Gradient overlay */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/0 via-white/0 to-white/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%, rgba(201,155,67,0.08) 100%)' }} />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/65 via-slate-950/10 to-transparent" />
-              {/* Photo count badge */}
-              <div className="absolute bottom-5 left-5 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg backdrop-blur dark:bg-slate-900/80 dark:text-white">
+              <div className="absolute bottom-5 left-5 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg backdrop-blur transition-all duration-300 group-hover:scale-105 group-hover:bg-white dark:bg-slate-900/80 dark:text-white dark:group-hover:bg-slate-800">
                 {selectedImage + 1} / {property.images.length} Photos
               </div>
-              {/* Navigation arrows */}
               {property.images.length > 1 && (
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-lg hover:bg-white dark:bg-slate-900/90"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 translate-x-2 rounded-full bg-white/90 p-2 shadow-lg opacity-0 transition-all duration-300 ease-out hover:scale-110 hover:bg-white group-hover:translate-x-0 group-hover:opacity-100 dark:bg-slate-900/90 dark:hover:bg-slate-800"
                   >
                     <ChevronLeft className="h-6 w-6" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-lg hover:bg-white dark:bg-slate-900/90"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 -translate-x-2 rounded-full bg-white/90 p-2 shadow-lg opacity-0 transition-all duration-300 ease-out hover:scale-110 hover:bg-white group-hover:translate-x-0 group-hover:opacity-100 dark:bg-slate-900/90 dark:hover:bg-slate-800"
                   >
                     <ChevronRight className="h-6 w-6" />
                   </button>
@@ -442,28 +502,28 @@ function PropertyDetails() {
 
             {/* ─── Thumbnail Grid ────────────────────────────────────────── */}
             {property.images.length > 1 && (
-              <div className="grid flex-1 grid-cols-2 lg:flex-[1] rounded-r-xl border">
+              <div className="grid flex-1 grid-cols-2 gap-3 rounded-[2rem] lg:flex-[1]">
                 {property.images.slice(0, 4).map((img, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`relative overflow-hidden  border-2 transition-all ${selectedImage === index
-                      ? 'border-[#c99b43] shadow-lg shadow-[#c99b43]/20'
-                      : 'border-transparent hover:border-slate-300'
+                    className={`group/thumb relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${selectedImage === index
+                      ? 'border-[#c99b43] shadow-lg shadow-[#c99b43]/20 scale-[1.02]'
+                      : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                   >
                     <img
                       src={img}
                       alt={`View ${index + 1}`}
-                      className="h-28 w-full object-cover md:h-full lg:h-40"
+                      className="h-44 w-full object-cover transition-transform duration-500 ease-out group-hover/thumb:scale-110 md:h-full lg:h-[270px]"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image';
                       }}
                     />
-                    {/* If there are more than 4 images, show a "+N" overlay on the last thumbnail */}
+                    <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/thumb:bg-black/10" />
                     {index === 3 && property.images.length > 4 && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-lg font-bold text-white backdrop-blur-sm">
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-lg font-bold text-white backdrop-blur-sm transition-all duration-300 group-hover/thumb:bg-black/40">
                         +{property.images.length - 4}
                       </div>
                     )}
@@ -476,12 +536,12 @@ function PropertyDetails() {
       </section>
 
       {/* ─── Main Content ───────────────────────────────────────────── */}
-      <section className="py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-3">
+      <section className="bg-white py-12 dark:bg-slate-900">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10">
+          <div className="grid gap-10 lg:grid-cols-3">
             <div className="lg:col-span-2">
               {/* ─── Property Info Card ────────────────────────────── */}
-              <Card className="relative overflow-hidden border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95 md:p-8">
+              <Card className="relative overflow-hidden rounded-[2rem] border-slate-200/70 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 md:p-8">
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#c99b43] via-[#f3c96d] to-[#c99b43]" />
 
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -497,7 +557,7 @@ function PropertyDetails() {
                         {property.type}
                       </span>
                     </div>
-                    <h1 className="mt-4 text-3xl font-bold text-slate-900 dark:text-white md:text-4xl">
+                    <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white md:text-3xl">
                       {property.title}
                     </h1>
                     <p className="mt-2 flex items-center gap-2 text-slate-600 dark:text-slate-400">
@@ -522,11 +582,11 @@ function PropertyDetails() {
                       <p className="text-xs text-slate-500 mb-1">
                         {property.rating_summary?.user_rating ? 'Your rating:' : 'Rate this:'}
                       </p>
-                      <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(0)}>
+                      <div className="flex items-center gap-0.5" onMouseLeave={() => setHoverRating(0)}>
                         {[1, 2, 3, 4, 5].map((star) => (
                           <Star
                             key={star}
-                            className={`h-5 w-5 cursor-pointer transition-colors ${(hoverRating || property.rating_summary?.user_rating) >= star
+                            className={`h-4 w-4 cursor-pointer transition-colors ${(hoverRating || property.rating_summary?.user_rating) >= star
                               ? 'fill-[#c99b43] text-[#c99b43]'
                               : 'text-slate-300 dark:text-slate-600'
                               }`}
@@ -540,18 +600,18 @@ function PropertyDetails() {
                 </div>
 
                 {/* ─── Stats Grid ──────────────────────────────────── */}
-                <div className="mt-8 grid grid-cols-3 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                   {/* Price Card (always visible) */}
-                  <div className="rounded-2xl border border-[#c99b43]/20 bg-gradient-to-br from-[#fff7e8] to-white p-5 shadow-sm dark:border-[#c99b43]/20 dark:from-[#1e1a11] dark:to-slate-900">
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Price ({property.rental_unit})</p>
-                    <p className="mt-2 text-3xl font-bold text-[#c99b43]">{property.price}</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ETB / {property.rental_unit}</p>
+                  <div className="rounded-xl border border-[#c99b43]/20 bg-gradient-to-br from-[#fff7e8] to-white p-4 shadow-sm dark:border-[#c99b43]/20 dark:from-[#1e1a11] dark:to-slate-900">
+                    <p className="text-xs text-slate-600 dark:text-slate-400">Price ({property.rental_unit})</p>
+                    <p className="mt-1 text-2xl font-bold text-[#c99b43]">{property.price}</p>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">ETB / {property.rental_unit}</p>
                   </div>
 
                   {/* ─── House-specific stats ────────────────────── */}
                   {isHouse ? (
                     <>
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Bed className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -561,7 +621,7 @@ function PropertyDetails() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Bath className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -571,7 +631,7 @@ function PropertyDetails() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Maximize2 className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -581,7 +641,7 @@ function PropertyDetails() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Car className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -594,7 +654,7 @@ function PropertyDetails() {
                   ) : (
                     // ─── Car-specific stats ──────────────────────
                     <>
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Car className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -604,7 +664,7 @@ function PropertyDetails() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Settings2 className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -614,7 +674,7 @@ function PropertyDetails() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Calendar className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -624,7 +684,7 @@ function PropertyDetails() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <Gauge className="h-5 w-5 text-[#c99b43]" />
                           <div>
@@ -638,9 +698,9 @@ function PropertyDetails() {
                 </div>
 
                 {/* ─── Description ──────────────────────────────────── */}
-                <div className="mt-10">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{isHouse ? 'About the House' : 'About the Vehicle'}</h2>
-                  <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-950/40">
+                <div className="mt-8">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{isHouse ? 'About the House' : 'About the Vehicle'}</h2>
+                  <div className="mt-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-950/40">
                     <p className="leading-relaxed text-slate-600 dark:text-slate-400">
                       {property.description}
                     </p>
@@ -648,10 +708,10 @@ function PropertyDetails() {
                 </div>
 
                 {/* ─── Additional Info ────────────────────────────────── */}
-                <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-2">
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2">
                   {/* Show Furnished only for houses */}
                   {isHouse && (
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                       <CheckCircle className="h-5 w-5 text-emerald-500" />
                       <div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Furnished</p>
@@ -699,16 +759,16 @@ function PropertyDetails() {
                 </div>
 
                 {/* ─── Features ────────────────────────────────────── */}
-                <div className="mt-10">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{isHouse ? 'House Features & Amenities' : 'Vehicle Features & Amenities'}</h2>
+                <div className="mt-8">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{isHouse ? 'House Features & Amenities' : 'Vehicle Features & Amenities'}</h2>
                   {property.features?.length ? (
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                       {property.features.map((feature) => {
                         const Icon = getFeatureIcon(feature.name)
                         return (
                           <div
                             key={feature.id}
-                            className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#c99b43]/50 hover:shadow-sm dark:border-slate-800"
+                            className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-[#c99b43]/50 hover:shadow-sm dark:border-slate-800"
                           >
                             <Icon className="h-5 w-5 text-[#c99b43]" />
                             <span className="text-slate-700 dark:text-slate-300">{feature.name}</span>
@@ -725,8 +785,8 @@ function PropertyDetails() {
 
             {/* ─── Sidebar ───────────────────────────────────────────── */}
             <div className="lg:col-span-1">
-              <div className="sticky top-32 space-y-6">
-                <Card className="border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/95">
+              <div className="sticky top-28 space-y-6">
+                <Card className="rounded-[2rem] border-slate-200/70 bg-slate-50/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950/80">
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white">Property Snapshot</h3>
                   <div className="mt-5 space-y-4">
                     <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
@@ -757,8 +817,9 @@ function PropertyDetails() {
                 </Card>
 
                 {/* Booking Card */}
-                <div className="w-full rounded-xl border-2 border-[#c99b43] bg-white p-6 shadow-xl dark:bg-slate-900">
-                  <h2 className="text-2xl font-bold text-[#c99b43]">BOOKING CARD</h2>
+                <div className="w-full rounded-[2rem] border border-[#c99b43]/50 bg-gradient-to-br from-[#fff8eb] via-white to-[#fff1cc] p-7 shadow-[0_20px_55px_rgba(201,155,67,0.16)] dark:border-[#c99b43]/40 dark:from-[#241d10] dark:via-slate-900 dark:to-[#17120a]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b98227] dark:text-[#f3c96d]">Ready to move in?</p>
+                  <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Reserve this home</h2>
                   <p className="mt-2 text-slate-700 dark:text-slate-300">Rent ({property.rental_unit})</p>
                   <p className="mt-1 text-2xl font-bold text-[#c99b43]">
                     ETB {property.price}
@@ -784,6 +845,44 @@ function PropertyDetails() {
           </div>
         </div>
       </section>
+
+      {property.category?.id && (similarPropertiesLoading || similarProperties.length > 0) && (
+        <section className="border-t border-slate-200/80 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#c99b43]">More to explore</p>
+                <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Similar {property.type}s</h2>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/properties')}>View all</Button>
+            </div>
+            {similarPropertiesLoading ? (
+              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4].map((item) => <div key={item} className="h-72 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />)}
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {similarProperties.map((item) => (
+                  <Card key={item.id} className="group overflow-hidden border-slate-200/70 bg-white p-0 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(201,155,67,0.15)] dark:border-slate-800 dark:bg-slate-950">
+                    <div className="relative overflow-hidden">
+                      <img src={item.image} alt={item.title} className="h-44 w-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.15]" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="truncate font-semibold text-slate-900 transition-colors duration-300 group-hover:text-[#c99b43] dark:text-white">{item.title}</h3>
+                      <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{item.location}</p>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <p className="font-bold text-[#c99b43]">ETB {item.price}<span className="ml-1 text-xs font-normal text-slate-400">/ {item.rentalUnit}</span></p>
+                        <Button size="sm" onClick={() => navigate(`/properties/${item.id}`)} className="bg-[#c99b43] text-slate-950 transition-all duration-300 hover:scale-105 hover:bg-[#b88a35]">View</Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Lightbox */}
       {lightboxOpen && (

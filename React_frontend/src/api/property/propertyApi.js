@@ -108,6 +108,15 @@ export async function getRegions() {
     return request('/api/properties/regions/', { method: 'GET' })
 }
 
+/**
+ * GET /api/properties/categories/?listing_type=house|car
+ * Returns active categories created by an administrator.
+ */
+export async function getCategories(listingType) {
+    const query = listingType ? `?listing_type=${encodeURIComponent(listingType)}` : ''
+    return request(`/api/properties/categories/${query}`, { method: 'GET' })
+}
+
 // ─── Properties ─────────────────────────────────────────────────────────────
 
 /**

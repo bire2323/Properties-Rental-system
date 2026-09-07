@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { PriceRangeSlider } from '../Properties/PriceRangeSlider';
-import { getListingNavigationOptions } from '../../api/property/propertyApi';
+import { getCategories, getListingNavigationOptions } from '../../api/property/propertyApi';
 import { useLocationSelector } from '../../hooks/useLocationSelector';
 
 const selectCls = 'w-full h-10 appearance-none rounded-lg border border-slate-300 bg-slate-50 pl-3 pr-9 text-sm font-medium transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed'
@@ -22,6 +22,7 @@ function FilterSection({ title, children }) {
 export function VehicleSidebarFilters({ filters, setFilters, onClearAll, className = '' }) {
     const [brands, setBrands] = useState([]);
     const [fuelTypes, setFuelTypes] = useState([]);
+    const [categories, setCategories] = useState([]);
 
     const {
         regions,
@@ -63,6 +64,14 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
         };
     }, []);
 
+    useEffect(() => {
+        let mounted = true;
+        getCategories('car')
+            .then((data) => { if (mounted) setCategories(Array.isArray(data) ? data : data.results || []); })
+            .catch(() => { });
+        return () => { mounted = false; };
+    }, []);
+
     const handleFilterChange = (key, value) => {
         setFilters((prev) => ({
             ...prev,
@@ -86,11 +95,10 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
         <button
             type="button"
             onClick={onClick}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                active 
-                    ? 'bg-[#c99b43] text-white' 
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${active
+                    ? 'bg-[#c99b43] text-white'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-            }`}
+                }`}
         >
             {children}
         </button>
@@ -100,7 +108,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
         <div className={`space-y-4 ${className}`}>
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Filters</h2>
-                <button 
+                <button
                     onClick={onClearAll}
                     className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white underline"
                 >
@@ -117,6 +125,16 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
                         onChange={(e) => handleFilterChange('search', e.target.value)}
                         className="w-full pl-9 bg-slate-50 dark:bg-slate-800/50"
                     />
+                </div>
+            </FilterSection>
+
+            <FilterSection title="Category">
+                <div className="relative">
+                    <select value={filters.category || ''} onChange={(e) => handleFilterChange('category', e.target.value)} className={selectCls}>
+                        <option value="">All Categories</option>
+                        {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 </div>
             </FilterSection>
 
@@ -180,11 +198,11 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
 
             <FilterSection title="Price Range">
                 <div className="pt-2">
-                    <PriceRangeSlider 
-                        value={[filters.min_price || 0, filters.max_price || 200000]} 
+                    <PriceRangeSlider
+                        value={[filters.min_price || 0, filters.max_price || 200000]}
                         onValueChange={(val) => {
                             setFilters(prev => ({ ...prev, min_price: val[0], max_price: val[1] }));
-                        }} 
+                        }}
                     />
                 </div>
             </FilterSection>
@@ -192,16 +210,16 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
             {fuelTypes.length > 0 && (
                 <FilterSection title="Fuel Type">
                     <div className="flex flex-wrap gap-1.5">
-                        <PillButton 
-                            active={!filters.fuel_type} 
+                        <PillButton
+                            active={!filters.fuel_type}
                             onClick={() => handleFilterChange('fuel_type', '')}
                         >
                             Any
                         </PillButton>
                         {fuelTypes.map((ft) => (
-                            <PillButton 
+                            <PillButton
                                 key={ft.value}
-                                active={filters.fuel_type === ft.value} 
+                                active={filters.fuel_type === ft.value}
                                 onClick={() => handleFilterChange('fuel_type', ft.value)}
                             >
                                 {ft.label}
@@ -214,9 +232,9 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
             <FilterSection title="Seating Capacity">
                 <div className="flex flex-wrap gap-1.5">
                     {['any', '2', '4', '5', '7', '12'].map((val) => (
-                        <PillButton 
+                        <PillButton
                             key={`seat-${val}`}
-                            active={(filters.seating_capacity || 'any') === val} 
+                            active={(filters.seating_capacity || 'any') === val}
                             onClick={() => handleFilterChange('seating_capacity', val === 'any' ? '' : val)}
                         >
                             {val === 'any' ? 'Any' : `${val}+ Seats`}
@@ -227,20 +245,20 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, classNa
 
             <FilterSection title="Availability">
                 <div className="flex flex-wrap gap-1.5">
-                    <PillButton 
-                        active={filters.is_available === undefined || filters.is_available === ''} 
+                    <PillButton
+                        active={filters.is_available === undefined || filters.is_available === ''}
                         onClick={() => handleFilterChange('is_available', '')}
                     >
                         All
                     </PillButton>
-                    <PillButton 
-                        active={filters.is_available === 'true' || filters.is_available === true} 
+                    <PillButton
+                        active={filters.is_available === 'true' || filters.is_available === true}
                         onClick={() => handleFilterChange('is_available', 'true')}
                     >
                         Available Only
                     </PillButton>
-                    <PillButton 
-                        active={filters.is_available === 'false' || filters.is_available === false} 
+                    <PillButton
+                        active={filters.is_available === 'false' || filters.is_available === false}
                         onClick={() => handleFilterChange('is_available', 'false')}
                     >
                         Rented Only

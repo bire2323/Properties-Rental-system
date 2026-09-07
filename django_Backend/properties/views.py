@@ -471,6 +471,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
         if listing_type:
             queryset = queryset.filter(listing_type=listing_type)
 
+        category_id = self.request.query_params.get('category')
+        if category_id:
+            try:
+                queryset = queryset.filter(category_id=int(category_id))
+            except (ValueError, TypeError):
+                pass
+
         bedrooms = self.request.query_params.get('bedrooms')
         if bedrooms:
             queryset = queryset.filter(

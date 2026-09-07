@@ -110,11 +110,11 @@ export default function OwnerPropertyDetails() {
 
                 <>
                     {/* Image Gallery */}
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                        <div className="grid gap-2 p-2 lg:grid-cols-[1.7fr_1fr]">
+                    <div className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.12)] transition-shadow duration-500 hover:shadow-[0_32px_100px_rgba(201,155,67,0.15)] dark:border-slate-800 dark:bg-slate-950">
+                        <div className="grid gap-3 p-3 lg:grid-cols-[1.7fr_1fr]">
 
                             {/* Main Image */}
-                            <div className="overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
+                            <div className="group/main relative overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-900">
                                 {getImageUrl(imageUrl) ? (
                                     <button
                                         type="button"
@@ -125,8 +125,10 @@ export default function OwnerPropertyDetails() {
                                             src={getImageUrl(imageUrl)}
                                             alt={property.property_name}
                                             onError={handleImgError}
-                                            className="h-80 w-full object-cover transition duration-300 hover:scale-[1.02]"
+                                            className="h-80 w-full object-cover transition-all duration-700 ease-out group-hover/main:scale-[1.12] sm:h-[400px] lg:h-[500px]"
                                         />
+                                        <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover/main:opacity-100" style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 50%, rgba(201,155,67,0.08) 100%)' }} />
+                                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/50 via-slate-950/10 to-transparent" />
                                     </button>
                                 ) : (
                                     <div className="flex h-[320px] items-center justify-center bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 sm:h-[400px] lg:h-[500px]">
@@ -145,14 +147,15 @@ export default function OwnerPropertyDetails() {
                                             key={image.id}
                                             type="button"
                                             onClick={() => setPreviewImage(galleryImageUrl)}
-                                            className="group overflow-hidden rounded-lg cursor-zoom-in"
+                                            className="group/thumb relative overflow-hidden rounded-xl border-2 border-transparent transition-all duration-300 cursor-zoom-in hover:border-slate-300 dark:hover:border-slate-600"
                                         >
                                             <img
                                                 src={galleryImageUrl}
                                                 alt={property.property_name}
                                                 onError={handleImgError}
-                                                className="h-20 md:h-40 w-full object-cover transition duration-300 group-hover:scale-110"
+                                                className="h-20 md:h-40 w-full object-cover transition-all duration-500 ease-out group-hover/thumb:scale-110"
                                             />
+                                            <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/thumb:bg-black/10" />
                                         </button>
                                     )
                                 })}
