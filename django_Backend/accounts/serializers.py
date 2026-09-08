@@ -24,6 +24,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "country",
+            "national_id_number",
+            "id_front_image",
+            "id_back_image",
             "share_phone_with_hosts",
             "hide_email_on_reviews",
         )
@@ -133,6 +136,21 @@ class UserSerializer(serializers.ModelSerializer):
         read_only=True,
         default=None
     )
+    national_id_number = serializers.CharField(
+        source="profile.national_id_number",
+        read_only=True,
+        default=None
+    )
+    id_front_image = serializers.ImageField(
+        source="profile.id_front_image",
+        read_only=True,
+        default=None
+    )
+    id_back_image = serializers.ImageField(
+        source="profile.id_back_image",
+        read_only=True,
+        default=None
+    )
 
     # Include full profile object (optional, for detailed views)
     profile = ProfileSerializer(read_only=True)
@@ -190,6 +208,9 @@ class UserSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "country",
+            "national_id_number",
+            "id_front_image",
+            "id_back_image",
             "share_phone_with_hosts",
             "hide_email_on_reviews",
             # Nested objects
@@ -509,6 +530,9 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "country",
+            "national_id_number",
+            "id_front_image",
+            "id_back_image",
             "share_phone_with_hosts",
             "hide_email_on_reviews",
         )

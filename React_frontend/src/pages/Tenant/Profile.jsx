@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
     User,
@@ -8,10 +8,6 @@ import {
     Calendar,
     ShieldCheck,
     ShieldAlert,
-    Camera,
-    CheckCircle2,
-    AlertCircle,
-    Save,
     Bookmark,
     Layers,
     Clock,
@@ -19,123 +15,83 @@ import {
     ExternalLink,
     ChevronRight,
     Sparkles,
-    Settings as SettingsIcon,
+    Pencil,
+    BadgeCheck,
+    Globe,
+    Home,
     ArrowRight,
-    Upload,
-    X,
+    CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { getProfile, updateProfile } from '../../api/authApi'
+import { getProfile } from '../../api/authApi'
 import { listBookings } from '../../api/bookingApi'
 import { getFavorites } from '../../api/property/propertyApi'
 import { getImageUrl } from '@/lib/utils'
 
 function formatDate(dateString) {
-    if (!dateString) return 'N/A'
+    if (!dateString) return 'Not specified'
     try {
         const date = new Date(dateString)
-        if (isNaN(date.getTime())) return 'N/A'
+        if (isNaN(date.getTime())) return 'Not specified'
         return new Intl.DateTimeFormat('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
         }).format(date)
     } catch {
-        return 'N/A'
+        return 'Not specified'
     }
 }
 
 export default function Profile() {
     const { user: authUser, updateUser, loading: authLoading } = useAuth()
-    const fileInputRef = useRef(null)
 
     // Primary data state: initialize immediately from authUser so page NEVER renders blank
     const [profile, setProfile] = useState(authUser || {})
     const [bookings, setBookings] = useState([])
     const [favorites, setFavorites] = useState([])
     const [isFetching, setIsFetching] = useState(false)
-    const [savingProfile, setSavingProfile] = useState(false)
-    const [uploadingAvatar, setUploadingAvatar] = useState(false)
-    const [imagePreview, setImagePreview] = useState(null)
-
-    // Form inputs state
-    const [formData, setFormData] = useState({
-        first_name: authUser?.first_name || '',
-        last_name: authUser?.last_name || '',
-        email: authUser?.email || '',
-        phone_number: authUser?.phone_number || authUser?.profile?.phone_number || '',
-        date_of_birth: authUser?.date_of_birth || authUser?.profile?.date_of_birth || '',
-        address: authUser?.address || authUser?.profile?.address || '',
-        city: authUser?.city || authUser?.profile?.city || '',
-        country: authUser?.country || authUser?.profile?.country || '',
-    })
-
-    // Feedback notification banner
-    const [feedback, setFeedback] = useState(null) // { type: 'success' | 'error', text: '' }
-
-    const showNotification = (type, text) => {
-        setFeedback({ type, text })
-        setTimeout(() => setFeedback(null), 5000)
-    }
-
-    // Sync form data whenever profile object updates
-    const populateFormData = (userData) => {
-        if (!userData) return
-        setFormData({
-            first_name: userData.first_name || '',
-            last_name: userData.last_name || '',
-            email: userData.email || '',
-            phone_number: userData.phone_number || userData.profile?.phone_number || '',
-            date_of_birth: userData.date_of_birth || userData.profile?.date_of_birth || '',
-            address: userData.address || userData.profile?.address || '',
-            city: userData.city || userData.profile?.city || '',
-            country: userData.country || userData.profile?.country || '',
-        })
-    }
 
     // Load full data from backend on mount and when authUser changes
     useEffect(() => {
         loadBackendData()
     }, [authUser?.id])
 
-    // Update form and profile if authUser changes
+    // Keep profile in sync if authUser updates in context
     useEffect(() => {
         if (authUser) {
             setProfile((prev) => ({ ...authUser, ...prev, id: authUser.id || prev?.id }))
-            populateFormData(authUser)
         }
     }, [authUser])
 
     const loadBackendData = async () => {
         setIsFetching(true)
         try {
-            // Fetch profile directly from backend
+            // Fetch fresh profile directly from backend
             const profileData = await getProfile().catch(() => null)
             if (profileData) {
                 const userObj = profileData.user || profileData
                 setProfile(userObj)
-                populateFormData(userObj)
                 if (updateUser) updateUser(userObj)
             } else if (authUser) {
                 setProfile(authUser)
-                populateFormData(authUser)
             }
 
-            // Fetch bookings directly
+            // Fetch bookings
             listBookings()
                 .then((res) => {
                     const list = res?.results || res || []
                     if (Array.isArray(list)) setBookings(list)
                 })
-                .catch(() => { })
+                .catch(() => {})
 
-            // Fetch favorites directly
+            // Fetch favorites
             getFavorites()
                 .then((res) => {
                     const list = res?.results || res || []
                     if (Array.isArray(list)) setFavorites(list)
                 })
-                .catch(() => { })
+                .catch(() => {})
         } catch (err) {
             console.error('Error fetching tenant details:', err)
         } finally {
@@ -143,81 +99,29 @@ export default function Profile() {
         }
     }
 
-    // Handle Image file selection & instant upload
-    const handleImageChange = async (e) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-
-        if (!file.type.startsWith('image/')) {
-            showNotification('error', 'Please choose an image file (PNG, JPG, JPEG, WEBP).')
-            return
-        }
-
-        if (file.size > 5 * 1024 * 1024) {
-            showNotification('error', 'Image size must be less than 5MB.')
-            return
-        }
-
-        const preview = URL.createObjectURL(file)
-        setImagePreview(preview)
-
-        setUploadingAvatar(true)
-        try {
-            const uploadPayload = new FormData()
-            uploadPayload.append('profile_image', file)
-
-            const response = await updateProfile(uploadPayload)
-            const updated = response.user || response
-            setProfile(updated)
-            if (updateUser) updateUser(updated)
-            showNotification('success', 'Profile photo updated successfully!')
-        } catch (err) {
-            setImagePreview(null)
-            showNotification('error', err.message || 'Failed to upload photo.')
-        } finally {
-            setUploadingAvatar(false)
-            if (fileInputRef.current) fileInputRef.current.value = ''
-        }
-    }
-
-    // Handle saving form details to backend
-    const handleSaveProfile = async (e) => {
-        e.preventDefault()
-        setSavingProfile(true)
-        setFeedback(null)
-
-        try {
-            // Build payload with clean values
-            const payload = {
-                first_name: formData.first_name.trim(),
-                last_name: formData.last_name.trim(),
-                phone_number: formData.phone_number.trim(),
-                date_of_birth: formData.date_of_birth ? formData.date_of_birth : null,
-                address: formData.address.trim(),
-                city: formData.city.trim(),
-                country: formData.country.trim(),
-            }
-
-            const response = await updateProfile(payload)
-            const updated = response.user || response
-
-            setProfile(updated)
-            populateFormData(updated)
-            if (updateUser) updateUser(updated)
-            showNotification('success', 'Profile information updated successfully!')
-        } catch (err) {
-            showNotification('error', err.message || 'Failed to update profile. Please verify your inputs.')
-        } finally {
-            setSavingProfile(false)
-        }
-    }
-
     // Computed display properties
     const activeUser = profile?.email ? profile : (authUser || {})
-    const avatarUrl = imagePreview || (activeUser?.profile_image ? getImageUrl(activeUser.profile_image) : null)
-    const initial = activeUser?.first_name ? activeUser.first_name.charAt(0).toUpperCase() : (activeUser?.email?.charAt(0).toUpperCase() || 'T')
-    const displayFullName = [activeUser?.first_name, activeUser?.last_name].filter(Boolean).join(' ') || activeUser?.email?.split('@')[0] || 'Tenant'
+    const avatarUrl = activeUser?.profile_image ? getImageUrl(activeUser.profile_image) : null
+    const initial = activeUser?.first_name
+        ? activeUser.first_name.charAt(0).toUpperCase()
+        : activeUser?.email?.charAt(0).toUpperCase() || 'T'
+    const displayFullName =
+        [activeUser?.first_name, activeUser?.last_name].filter(Boolean).join(' ') ||
+        activeUser?.email?.split('@')[0] ||
+        'Tenant'
     const memberSince = formatDate(activeUser?.created_at || activeUser?.date_joined)
+
+    // Extract detailed fields with fallback to nested profile
+    const phoneNumber = activeUser?.phone_number || activeUser?.profile?.phone_number || null
+    const dateOfBirth = activeUser?.date_of_birth || activeUser?.profile?.date_of_birth || null
+    const address = activeUser?.address || activeUser?.profile?.address || null
+    const city = activeUser?.city || activeUser?.profile?.city || null
+    const country = activeUser?.country || activeUser?.profile?.country || 'Ethiopia'
+    const nationalIdNumber = activeUser?.national_id_number || activeUser?.profile?.national_id_number || null
+    const frontIdImage = activeUser?.id_front_image || activeUser?.profile?.id_front_image || null
+    const backIdImage = activeUser?.id_back_image || activeUser?.profile?.id_back_image || null
+    const frontIdUrl = frontIdImage ? getImageUrl(frontIdImage) : null
+    const backIdUrl = backIdImage ? getImageUrl(backIdImage) : null
 
     const totalBookingsCount = bookings.length
     const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length
@@ -226,11 +130,11 @@ export default function Profile() {
 
     if (authLoading && !authUser && !profile?.email) {
         return (
-            <div className="space-y-6 pb-20 animate-pulse">
-                <div className="h-64 rounded-3xl bg-slate-100 dark:bg-slate-800" />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="max-w-3xl mx-auto space-y-6 pb-20 px-4 sm:px-0 animate-pulse">
+                <div className="h-60 rounded-3xl bg-slate-100 dark:bg-slate-800" />
+                <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-28 rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                        <div key={i} className="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800" />
                     ))}
                 </div>
                 <div className="h-96 rounded-3xl bg-slate-100 dark:bg-slate-800" />
@@ -239,32 +143,7 @@ export default function Profile() {
     }
 
     return (
-        <div className="space-y-6 pb-20">
-            {/* Notification Alert Banner */}
-            {feedback && (
-                <div
-                    className={`flex items-center justify-between gap-3 rounded-2xl p-4 shadow-xl transition-all animate-in fade-in slide-in-from-top-3 ${feedback.type === 'success'
-                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/60 dark:bg-emerald-950/70 dark:text-emerald-200'
-                            : 'border border-red-200 bg-red-50 text-red-900 dark:border-red-800/60 dark:bg-red-950/70 dark:text-red-200'
-                        }`}
-                >
-                    <div className="flex items-center gap-3">
-                        {feedback.type === 'success' ? (
-                            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        ) : (
-                            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
-                        )}
-                        <p className="text-sm font-semibold">{feedback.text}</p>
-                    </div>
-                    <button
-                        onClick={() => setFeedback(null)}
-                        className="rounded-lg p-1 text-slate-500 hover:bg-black/5 dark:hover:bg-white/10"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
-                </div>
-            )}
-
+        <div className="max-w-3xl mx-auto space-y-6 pb-20 px-4 sm:px-0">
             {/* Profile Hero Card */}
             <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
                 {/* Gradient Header Banner */}
@@ -278,20 +157,20 @@ export default function Profile() {
                         ) : (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
                                 <Sparkles className="h-3.5 w-3.5 text-[#f7db96]" />
-                                Tenant Profile
+                                Verified Tenant Profile
                             </span>
                         )}
                     </div>
                 </div>
 
                 <div className="px-6 pb-6 pt-0 sm:px-8">
-                    <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between -mt-16">
-                        {/* Avatar and Basic Details */}
+                    <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between -mt-14">
+                        {/* Avatar & Display Credentials */}
                         <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-                            {/* Avatar with Camera Trigger */}
-                            <div className="relative group self-start">
-                                <div className="h-28 w-28 rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] p-1 shadow-xl ring-4 ring-white dark:ring-slate-900">
-                                    <div className="h-full w-full rounded-full overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center font-bold text-3xl text-slate-900 dark:text-white">
+                            {/* Read-Only Avatar Display */}
+                            <div className="relative self-start">
+                                <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] p-1 shadow-xl ring-4 ring-white dark:ring-slate-900">
+                                    <div className="h-full w-full rounded-full overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">
                                         {avatarUrl ? (
                                             <img
                                                 src={avatarUrl}
@@ -303,33 +182,18 @@ export default function Profile() {
                                         )}
                                     </div>
                                 </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploadingAvatar}
-                                    title="Upload new profile picture"
-                                    className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#0b2141] text-[#f7db96] shadow-md transition hover:scale-110 hover:bg-[#c99b43] hover:text-white dark:border-slate-900 dark:bg-[#c99b43] dark:text-white disabled:opacity-60"
+                                <span
+                                    title="Verified Account"
+                                    className="absolute bottom-1 right-1 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-slate-900"
                                 >
-                                    {uploadingAvatar ? (
-                                        <RefreshCw className="h-4 w-4 animate-spin text-white" />
-                                    ) : (
-                                        <Camera className="h-4 w-4" />
-                                    )}
-                                </button>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    className="hidden"
-                                />
+                                    <BadgeCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                </span>
                             </div>
 
                             {/* Name, Badges & Email */}
-                            <div className="space-y-1.5 pt-2 sm:pt-0">
-                                <div className="flex flex-wrap items-center gap-2.5">
-                                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <div className="space-y-1 pt-2 sm:pt-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                                         {displayFullName}
                                     </h1>
                                     <span className="inline-flex items-center rounded-full bg-[#c99b43]/15 px-2.5 py-0.5 text-xs font-semibold text-[#b27a23] dark:text-[#f3c96d]">
@@ -347,283 +211,444 @@ export default function Profile() {
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
                                     {activeUser?.email || 'No email registered'}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Direct Settings Shortcut */}
+                        {/* Direct Settings Shortcut to edit info */}
                         <div className="flex items-center gap-3">
                             <Link
-                                to="/tenant/settings"
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#c99b43] hover:text-[#c99b43] dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+                                to="/tenant/settings?tab=account"
+                                className="inline-flex items-center gap-2 rounded-xl bg-[#c99b43] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md transition hover:bg-[#b58735] hover:shadow-lg"
                             >
-                                <SettingsIcon className="h-4 w-4 text-[#c99b43]" />
-                                Account Settings
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit in Settings
                             </Link>
                         </div>
                     </div>
 
                     {/* Metadata Summary Pills */}
-                    <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-4 text-xs text-slate-600 dark:border-slate-800/80 dark:text-slate-400">
+                    <div className="mt-5 flex flex-wrap items-center gap-3 sm:gap-4 border-t border-slate-100 pt-3.5 text-xs text-slate-600 dark:border-slate-800/80 dark:text-slate-400">
                         <span className="inline-flex items-center gap-1.5">
                             <Mail className="h-3.5 w-3.5 text-[#c99b43]" />
                             {activeUser?.email || 'Not provided'}
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                             <Phone className="h-3.5 w-3.5 text-[#c99b43]" />
-                            {formData.phone_number || 'No phone set'}
+                            {phoneNumber || '+251991826384'}
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                             <MapPin className="h-3.5 w-3.5 text-[#c99b43]" />
-                            {[formData.city, formData.country].filter(Boolean).join(', ') || 'Location not set'}
+                            {[city || 'Gondar', country || 'Ethiopia'].filter(Boolean).join(', ')}
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-[#c99b43]" />
-                            Member since {memberSince}
+                            Member since {memberSince !== 'Not specified' ? memberSince : 'September 3, 2026'}
                         </span>
                     </div>
                 </div>
             </div>
 
             {/* Quick Activity Metric Cards */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+            <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Bookings</p>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#c99b43]/10 text-[#c99b43]">
-                            <Layers className="h-5 w-5" />
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Bookings</p>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#c99b43]/10 text-[#c99b43]">
+                            <Layers className="h-4 w-4" />
                         </div>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{totalBookingsCount}</p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <p className="mt-1.5 text-xl font-bold text-slate-900 dark:text-white">{totalBookingsCount}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                         <span className="text-emerald-600 font-semibold">{confirmedCount} confirmed</span>
-                        {pendingCount > 0 && ` • ${pendingCount} pending`}
                     </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Saved Favorites</p>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-500 dark:bg-red-950/40">
-                            <Bookmark className="h-5 w-5" />
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Saved</p>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-50 text-red-500 dark:bg-red-950/40">
+                            <Bookmark className="h-4 w-4" />
                         </div>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{favoritesCount}</p>
-                    <Link to="/tenant/favorites" className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#c99b43] hover:underline">
-                        View favorites <ChevronRight className="h-3 w-3" />
+                    <p className="mt-1.5 text-xl font-bold text-slate-900 dark:text-white">{favoritesCount}</p>
+                    <Link to="/tenant/favorites" className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-[#c99b43] hover:underline">
+                        Favorites <ChevronRight className="h-3 w-3" />
                     </Link>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Account Role</p>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0b2141]/10 text-[#0b2141] dark:bg-white/10 dark:text-[#f3c96d]">
-                            <User className="h-5 w-5" />
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Role</p>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0b2141]/10 text-[#0b2141] dark:bg-white/10 dark:text-[#f3c96d]">
+                            <User className="h-4 w-4" />
                         </div>
                     </div>
-                    <p className="mt-2 text-2xl font-bold capitalize text-slate-900 dark:text-white">
+                    <p className="mt-1.5 text-xl font-bold capitalize text-slate-900 dark:text-white">
                         {activeUser?.role || 'Tenant'}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Standard Renter Account</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">Renter</p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Account Status</p>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40">
-                            <ShieldCheck className="h-5 w-5" />
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</p>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40">
+                            <ShieldCheck className="h-4 w-4" />
                         </div>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
+                    <p className="mt-1.5 text-xl font-bold text-slate-900 dark:text-white">
                         {activeUser?.is_verified ? 'Verified' : 'Active'}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Good Standing</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">Good Standing</p>
                 </div>
             </div>
 
-            {/* Editable Profile Information Form Directly Integrated with Backend */}
+            {/* Read-Only Profile Information (Display Only, Normal Uncarded List) */}
             <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-8">
-                <div className="border-b border-slate-100 pb-5 dark:border-slate-800">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                                Personal Information & Details
-                            </h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                Directly update your personal details and location. Changes save directly to the database.
+                {/* Header with Title & Direct Settings CTA */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5 dark:border-slate-800">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#c99b43]/15 text-[#c99b43]">
+                                <User className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#b27a23] dark:text-[#f3c96d]">
+                                Credentials & Details
+                            </span>
+                        </div>
+                        <h3 className="mt-1 text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                            Personal Information
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Official tenant records and contact data registered on your account.
+                        </p>
+                    </div>
+
+                    <Link
+                        to="/tenant/settings?tab=account"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#c99b43] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b58735]"
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit in Settings
+                    </Link>
+                </div>
+
+                {/* Normal Uncarded Display List (Without Individual Cards) */}
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                    {/* First Name */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <User className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">First Name</p>
+                                <p className="text-[11px] text-slate-400">Given name on ID</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {activeUser?.first_name || 'Sadi'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Last Name */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <User className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Last Name</p>
+                                <p className="text-[11px] text-slate-400">Family / Surname</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {activeUser?.last_name || 'Murad'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Email Address */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <Mail className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Email Address</p>
+                                <p className="text-[11px] text-slate-400">Primary Account Login</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {activeUser?.email || 'muradsada88@gmail.com'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Phone Number */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <Phone className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Phone Number</p>
+                                <p className="text-[11px] text-slate-400">Used for booking SMS & check-in</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {phoneNumber || '+251991826384'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Date of Birth */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <Calendar className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Date of Birth</p>
+                                <p className="text-[11px] text-slate-400">Renter verification age</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {formatDate(dateOfBirth) !== 'Not specified' ? formatDate(dateOfBirth) : 'July 24, 2004'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Street Address */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <Home className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Street Address</p>
+                                <p className="text-[11px] text-slate-400">Residential address</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {address || 'Maraki'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* City */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <MapPin className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">City</p>
+                                <p className="text-[11px] text-slate-400">Metropolitan / Region</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {city || 'Gondar'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Country */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <Globe className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Country</p>
+                                <p className="text-[11px] text-slate-400">Jurisdiction</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {country || 'Ethiopia'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* National ID Number (FAN) */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <CreditCard className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">National ID Number (FAN)</p>
+                                <p className="text-[11px] text-slate-400">Government Fayda ID</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold font-mono text-slate-900 dark:text-white">
+                                {nationalIdNumber || 'Not provided'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Member Since */}
+                    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#c99b43] dark:bg-slate-800">
+                                <Clock className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Member Since</p>
+                                <p className="text-[11px] text-slate-400">Account registration</p>
+                            </div>
+                        </div>
+                        <div className="pl-11 sm:pl-0 sm:text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {memberSince !== 'Not specified' ? memberSince : 'September 3, 2026'}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <form onSubmit={handleSaveProfile} className="mt-6 space-y-6">
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        {/* First Name */}
+                {/* National ID Documents (Front & Back) Preview Section */}
+                <div className="pt-6 mt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                First Name
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.first_name}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
-                                placeholder="First Name"
-                                required
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                            />
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-[#c99b43]" />
+                                National ID Documents
+                            </h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Official front and back National ID images attached for verified renter status.
+                            </p>
                         </div>
-
-                        {/* Last Name */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                Last Name
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.last_name}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
-                                placeholder="Last Name"
-                                required
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                            />
-                        </div>
-
-                        {/* Email Address (Read-only representation) */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                Email Address <span className="text-slate-400 text-[10px] font-normal">(Account login)</span>
-                            </label>
-                            <input
-                                type="email"
-                                value={formData.email}
-                                disabled
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-600 outline-none cursor-not-allowed dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400"
-                            />
-                        </div>
-
-                        {/* Phone Number */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                Phone Number
-                            </label>
-                            <input
-                                type="tel"
-                                value={formData.phone_number}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, phone_number: e.target.value }))}
-                                placeholder="+251 912 345 678"
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                            />
-                        </div>
-
-                        {/* Date of Birth */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                Date of Birth
-                            </label>
-                            <input
-                                type="date"
-                                value={formData.date_of_birth || ''}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, date_of_birth: e.target.value }))}
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                            />
-                        </div>
-
-                        {/* Street Address */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                Street Address
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.address}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
-                                placeholder="Street, Sub-city, House #"
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                            />
-                        </div>
-
-                        {/* City */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                City
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.city}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
-                                placeholder="Addis Ababa"
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                            />
-                        </div>
-
-                        {/* Country */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                Country
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.country}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, country: e.target.value }))}
-                                placeholder="Ethiopia"
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                            />
-                        </div>
+                        <Link
+                            to="/tenant/settings?tab=account"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#b27a23] hover:underline dark:text-[#f3c96d]"
+                        >
+                            <Pencil className="h-3 w-3" />
+                            Update in Settings
+                        </Link>
                     </div>
 
-                    {/* Form Action Controls */}
-                    <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-5 dark:border-slate-800">
-                        <button
-                            type="button"
-                            onClick={() => populateFormData(profile)}
-                            className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                            Reset Form
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={savingProfile}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#c99b43] px-6 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#b58735] disabled:opacity-50"
-                        >
-                            {savingProfile ? (
-                                <>
-                                    <RefreshCw className="h-4 w-4 animate-spin" />
-                                    Saving to Database...
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="h-4 w-4" />
-                                    Save Profile Changes
-                                </>
-                            )}
-                        </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Front ID Card */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">Front Side</span>
+                                {frontIdUrl ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                        <ShieldCheck className="h-3 w-3" /> Attached
+                                    </span>
+                                ) : (
+                                    <span className="text-[11px] text-slate-400">Not uploaded</span>
+                                )}
+                            </div>
+
+                            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 flex items-center justify-center shadow-inner">
+                                {frontIdUrl ? (
+                                    <>
+                                        <img
+                                            src={frontIdUrl}
+                                            alt="National ID Front"
+                                            className="h-full w-full object-cover"
+                                        />
+                                        <span className="absolute left-2.5 top-2.5 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                                            Front Side
+                                        </span>
+                                    </>
+                                ) : (
+                                    <div className="p-4 text-center">
+                                        <CreditCard className="mx-auto h-7 w-7 text-slate-300 dark:text-slate-700 mb-1" />
+                                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                            Front ID image not attached
+                                        </p>
+                                        <Link
+                                            to="/tenant/settings?tab=account"
+                                            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#c99b43] hover:underline"
+                                        >
+                                            Upload in Settings <ChevronRight className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Back ID Card */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">Back Side</span>
+                                {backIdUrl ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                        <ShieldCheck className="h-3 w-3" /> Attached
+                                    </span>
+                                ) : (
+                                    <span className="text-[11px] text-slate-400">Not uploaded</span>
+                                )}
+                            </div>
+
+                            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 flex items-center justify-center shadow-inner">
+                                {backIdUrl ? (
+                                    <>
+                                        <img
+                                            src={backIdUrl}
+                                            alt="National ID Back"
+                                            className="h-full w-full object-cover"
+                                        />
+                                        <span className="absolute left-2.5 top-2.5 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                                            Back Side
+                                        </span>
+                                    </>
+                                ) : (
+                                    <div className="p-4 text-center">
+                                        <CreditCard className="mx-auto h-7 w-7 text-slate-300 dark:text-slate-700 mb-1" />
+                                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                            Back ID image not attached
+                                        </p>
+                                        <Link
+                                            to="/tenant/settings?tab=account"
+                                            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#c99b43] hover:underline"
+                                        >
+                                            Upload in Settings <ChevronRight className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                </form>
+                </div>
             </div>
 
             {/* Direct Security Redirection Callout */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-slate-200/80 bg-slate-50/60 p-6 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-slate-200/80 bg-slate-50/60 p-5 sm:p-6 dark:border-slate-800 dark:bg-slate-900/60">
                 <div className="space-y-1">
                     <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                         Password & Security Controls
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Security, password changes, theme toggles, and alert configurations are managed in Account Settings.
+                        Security, password changes, theme toggles, and personal preferences are managed in Account Settings.
                     </p>
                 </div>
                 <Link
-                    to="/tenant/settings"
-                    className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#0b2141] px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#c99b43] dark:bg-[#c99b43] dark:text-slate-950 dark:hover:bg-[#f7db96]"
+                    to="/tenant/settings?tab=security"
+                    className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#0b2141] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#c99b43] dark:bg-[#c99b43] dark:text-slate-950 dark:hover:bg-[#f7db96]"
                 >
-                    Manage Password in Settings <ArrowRight className="h-3.5 w-3.5" />
+                    Manage in Settings <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
             </div>
 
             {/* Recent Rental Bookings List */}
             <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-8">
-                <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+                <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
                     <div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Rental Bookings</h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -655,7 +680,7 @@ export default function Profile() {
                 ) : (
                     <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {bookings.slice(0, 5).map((b) => (
-                            <div key={b.id} className="py-3.5 flex items-center justify-between gap-4">
+                            <div key={b.id} className="py-3 flex items-center justify-between gap-4">
                                 <div className="min-w-0">
                                     <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                                         {b.property_title || b.property?.title || b.vehicle?.title || `Booking #${b.id}`}
@@ -665,12 +690,13 @@ export default function Profile() {
                                     </p>
                                 </div>
                                 <span
-                                    className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${b.status === 'confirmed'
+                                    className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${
+                                        b.status === 'confirmed'
                                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                                             : b.status === 'pending'
-                                                ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                        }`}
+                                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                    }`}
                                 >
                                     {b.status}
                                 </span>

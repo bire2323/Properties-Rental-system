@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import BookingProgress from '../../components/booking/BookingProgress'
@@ -11,8 +11,10 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { toast } from '../../components/ui/toaster'
 import { getPropertyById } from '../../api/property/propertyApi'
+import { getProfile } from '../../api/authApi'
 import { useAuth } from '../../hooks/useAuth'
 import { useBooking } from '../../context/BookingContext'
+import { getImageUrl } from '@/lib/utils'
 import {
   buildBookingPayload,
   buildBookingFormData,
@@ -23,6 +25,25 @@ import {
   RENTAL_TYPES,
   validateBookingDetails,
 } from '../../lib/bookingUtils'
+
+/**
+ * Convert a remote image URL to a File object for multipart form upload.
+ */
+async function urlToFile(url, fileName) {
+  if (!url) return null
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const mimeType = blob.type || (fileName.endsWith('.png') ? 'image/png' : 'image/jpeg')
+    const file = new File([blob], fileName, { type: mimeType })
+    file.isSavedFayda = true
+    return file
+  } catch (err) {
+    console.warn('Could not load saved Fayda image as file:', err)
+    return null
+  }
+}
 
 /**
  * Convert a Django REST Framework booking error into form field keys the
@@ -168,6 +189,17 @@ export default function BookingCheckout() {
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
 
+  const [savedFaydaDocs, setSavedFaydaDocs] = useState({ front: null, back: null })
+  const [isProfileAutoFilled, setIsProfileAutoFilled] = useState(false)
+  const profileLoadedRef = useRef(false)
+
+  const hasValidDocuments = Boolean(
+    (form.idDocuments && form.idDocuments.length >= 2) ||
+    (form.idDocuments && form.idDocuments.length >= 1 && (savedFaydaDocs.front || savedFaydaDocs.back)) ||
+    (savedFaydaDocs.front && savedFaydaDocs.back) ||
+    (user?.profile?.id_front_image && user?.profile?.id_back_image)
+  )
+
   useEffect(() => {
     if (authLoading) return
     if (!isAuthenticated) {
@@ -176,14 +208,88 @@ export default function BookingCheckout() {
   }, [authLoading, isAuthenticated, navigate, id])
 
   useEffect(() => {
-    if (user && !form.contactEmail) {
-      updateForm({
-        contactName: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-        contactEmail: user.email || '',
-        contactPhone: user.phone_number || '',
-      })
+    if (!user || profileLoadedRef.current) return
+    profileLoadedRef.current = true
+
+    async function loadTenantSavedInformation() {
+      try {
+        const res = await getProfile().catch(() => null)
+        const profileData = res?.user || res || user
+        const profileObj = profileData?.profile || user?.profile || {}
+
+        const firstName = profileData.first_name || user.first_name || ''
+        const lastName = profileData.last_name || user.last_name || ''
+        const fullName = [firstName, lastName].filter(Boolean).join(' ')
+        const email = profileData.email || user.email || ''
+        const phone = profileData.phone_number || profileObj.phone_number || user.phone_number || ''
+        const dob = profileData.date_of_birth || profileObj.date_of_birth || user.date_of_birth || ''
+        const nationalId = profileData.national_id_number || profileObj.national_id_number || user.national_id_number || ''
+
+        const rawFront = profileData.id_front_image || profileObj.id_front_image || user.id_front_image
+        const rawBack = profileData.id_back_image || profileObj.id_back_image || user.id_back_image
+        const frontUrl = rawFront ? getImageUrl(rawFront) : null
+        const backUrl = rawBack ? getImageUrl(rawBack) : null
+
+        const savedEmergency = (() => {
+          try {
+            return JSON.parse(localStorage.getItem('tenant_emergency_contact') || '{}')
+          } catch {
+            return {}
+          }
+        })()
+        const savedGender = localStorage.getItem('tenant_gender') || ''
+
+        const updates = {}
+        if (fullName) updates.contactName = fullName
+        if (email) updates.contactEmail = email
+        if (phone) updates.contactPhone = phone
+        if (dob) updates.dateOfBirth = typeof dob === 'string' ? dob.split('T')[0] : ''
+        if (nationalId) {
+          updates.idNumber = nationalId
+          updates.idType = 'national_id'
+        }
+        if (savedGender && !form.gender) updates.gender = savedGender
+        if (savedEmergency?.name && !form.emergencyName) updates.emergencyName = savedEmergency.name
+        if (savedEmergency?.phone && !form.emergencyPhone) updates.emergencyPhone = savedEmergency.phone
+        if (savedEmergency?.relationship && !form.emergencyRelationship) updates.emergencyRelationship = savedEmergency.relationship
+
+        if (frontUrl || backUrl) {
+          setSavedFaydaDocs({ front: frontUrl, back: backUrl })
+        }
+
+        // Convert saved Fayda images to File objects if form doesn't already have documents
+        if ((frontUrl || backUrl) && (!form.idDocuments || form.idDocuments.length === 0)) {
+          const loadedFiles = []
+          if (frontUrl) {
+            const f = await urlToFile(frontUrl, 'Fayda_National_ID_Front.jpg')
+            if (f) {
+              f.faydaSide = 'Front'
+              loadedFiles.push(f)
+            }
+          }
+          if (backUrl) {
+            const b = await urlToFile(backUrl, 'Fayda_National_ID_Back.jpg')
+            if (b) {
+              b.faydaSide = 'Back'
+              loadedFiles.push(b)
+            }
+          }
+          if (loadedFiles.length > 0) {
+            updates.idDocuments = loadedFiles
+          }
+        }
+
+        updateForm(updates)
+        if (fullName || phone || nationalId || frontUrl || dob) {
+          setIsProfileAutoFilled(true)
+        }
+      } catch (err) {
+        console.error('Failed to load saved tenant information for booking:', err)
+      }
     }
-  }, [user, form.contactEmail, updateForm])
+
+    loadTenantSavedInformation()
+  }, [user, updateForm])
 
   useEffect(() => {
     let cancelled = false
@@ -262,6 +368,12 @@ export default function BookingCheckout() {
   }
 
   const handleContinue = async () => {
+    const hasSavedFayda = Boolean(savedFaydaDocs?.front && savedFaydaDocs?.back)
+    const hasValidDocuments =
+      (form.idDocuments && form.idDocuments.length >= 2) ||
+      hasSavedFayda ||
+      (form.idDocuments && form.idDocuments.length > 0 && (savedFaydaDocs?.front || savedFaydaDocs?.back))
+
     const validationErrors = {
       ...(property.listingType === 'car' ? validateBookingDetails(form) : {}),
       ...(!form.contactName.trim() ? { contactName: 'Full name is required.' } : {}),
@@ -275,13 +387,31 @@ export default function BookingCheckout() {
       ...(!form.gender ? { gender: 'Select a gender.' } : {}),
       ...(!form.idType ? { idType: 'Select an ID type.' } : {}),
       ...(!form.idNumber.trim() ? { idNumber: 'ID number is required.' } : {}),
-      ...(form.idDocuments.length < 2 ? { idDocuments: 'Please upload at least 2 ID images.' } : {}),
+      ...(!hasValidDocuments ? { idDocuments: 'Please upload at least 2 ID images (or attach saved Fayda ID).' } : {}),
       ...(!form.emergencyName.trim() ? { emergencyName: 'Emergency contact name is required.' } : {}),
       ...(!/^[A-Za-z][A-Za-z\s.'-]*$/.test(form.emergencyName.trim()) ? { emergencyName: 'Numbers are not allowed in emergency contact name.' } : {}),
       ...(!form.emergencyPhone.trim() ? { emergencyPhone: 'Emergency contact phone is required.' } : {}),
       ...(!isValidEthiopianPhone(form.emergencyPhone) ? { emergencyPhone: 'Use a valid Ethiopian mobile number starting with +251, 09 or 07.' } : {}),
       ...(!form.emergencyRelationship.trim() ? { emergencyRelationship: 'Relationship is required.' } : {}),
       ...(!form.informationConfirmed || !form.termsAccepted ? { terms: 'Confirm your information and accept the rental terms.' } : {}),
+    }
+
+    if (form.emergencyName && form.emergencyPhone) {
+      try {
+        localStorage.setItem(
+          'tenant_emergency_contact',
+          JSON.stringify({
+            name: form.emergencyName,
+            phone: form.emergencyPhone,
+            relationship: form.emergencyRelationship || '',
+          })
+        )
+      } catch {}
+    }
+    if (form.gender) {
+      try {
+        localStorage.setItem('tenant_gender', form.gender)
+      } catch {}
     }
 
     if (property.listingType === 'car') {
@@ -366,7 +496,7 @@ export default function BookingCheckout() {
     if (!form.gender) issues.push('Gender')
     if (!form.idType) issues.push('ID type')
     if (!form.idNumber?.trim()) issues.push('ID number')
-    if (form.idDocuments.length < 2) issues.push(`ID documents (${form.idDocuments.length}/2)`)
+    if (!hasValidDocuments) issues.push(`ID documents (${form.idDocuments?.length || 0}/2)`)
 
     // Emergency
     if (!form.emergencyName?.trim()) issues.push('Emergency contact name')
@@ -416,7 +546,7 @@ export default function BookingCheckout() {
     form.gender &&
     form.idType &&
     form.idNumber?.trim() &&
-    form.idDocuments.length >= 2
+    hasValidDocuments
   )
   const rentalSectionComplete = property?.listingType === 'car'
     ? !!(
@@ -564,6 +694,8 @@ export default function BookingCheckout() {
               onChange={handleFormChange}
               user={user}
               property={property}
+              isProfileAutoFilled={isProfileAutoFilled}
+              savedFaydaDocs={savedFaydaDocs}
             />
           </Card>
 

@@ -405,6 +405,33 @@ def _save_applicant_documents(applicant, property_obj, applicant_documents):
             document_type=document_type or "",
             original_filename=original_filename or "",
         )
+        saved_count += 1
+
+    # Fallback to renter profile's saved Fayda/National ID images if no documents were attached
+    if saved_count == 0 and getattr(applicant, "booking", None):
+        renter = getattr(applicant.booking, "renter", None)
+        profile = getattr(renter, "profile", None) if renter else None
+        if profile:
+            if profile.id_front_image:
+                try:
+                    BookingApplicantDocument.objects.create(
+                        applicant_details=applicant,
+                        document=profile.id_front_image,
+                        document_type="national_id_front",
+                        original_filename="Fayda_National_ID_Front.jpg",
+                    )
+                except Exception:
+                    pass
+            if profile.id_back_image:
+                try:
+                    BookingApplicantDocument.objects.create(
+                        applicant_details=applicant,
+                        document=profile.id_back_image,
+                        document_type="national_id_back",
+                        original_filename="Fayda_National_ID_Back.jpg",
+                    )
+                except Exception:
+                    pass
 
 
 def record_audit_event(*, booking, action, actor, previous_status, new_status, reason="", metadata=None):

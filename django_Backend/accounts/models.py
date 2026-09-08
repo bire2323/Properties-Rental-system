@@ -173,6 +173,26 @@ class Profile(models.Model):
         null=True
     )
 
+    national_id_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="National ID / FAN number"
+    )
+
+    id_front_image = models.ImageField(
+        upload_to="national_ids/front/",
+        blank=True,
+        null=True,
+        help_text="National ID front image"
+    )
+
+    id_back_image = models.ImageField(
+        upload_to="national_ids/back/",
+        blank=True,
+        null=True,
+        help_text="National ID back image"
+    )
 
     share_phone_with_hosts = models.BooleanField(
         default=True,
