@@ -12,7 +12,8 @@ const routeTitles = {
     payments: 'Payments',
     messages: 'Messages',
     favorites: 'Favorites',
-    reports: 'Reports',
+    reports: 'Reviews',
+    reviews: 'Reviews',
     settings: 'Settings',
 }
 

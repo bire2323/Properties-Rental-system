@@ -1,143 +1,88 @@
 import React, { useState } from 'react';
-import { Button } from '../../../../components/ui/button';
+import { Home, CalendarCheck, UserCog, Save } from 'lucide-react';
+
+const Toggle = ({ checked, onChange }) => (
+    <button
+        type="button"
+        onClick={onChange}
+        className={`relative inline-flex h-4.5 h-[18px] w-8 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#c99b43] focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${checked ? 'bg-[#c99b43]' : 'bg-slate-200 dark:bg-slate-700'}`}
+    >
+        <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform duration-200 ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
+    </button>
+);
+
+const Row = ({ title, description, settingKey, notifications, toggle }) => (
+    <div className="flex items-center justify-between py-2">
+        <div className="min-w-0 pr-3">
+            <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 leading-tight">{title}</p>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 leading-tight">{description}</p>
+        </div>
+        <Toggle checked={notifications[settingKey]} onChange={() => toggle(settingKey)} />
+    </div>
+);
+
+const Group = ({ icon: Icon, label, children }) => (
+    <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
+        <div className="flex items-center gap-1.5 border-b border-slate-100 px-3 py-2 dark:border-slate-800">
+            <Icon className="h-2.5 w-2.5 text-[#c99b43]" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</span>
+        </div>
+        <div className="divide-y divide-slate-100 px-3 dark:divide-slate-800">
+            {children}
+        </div>
+    </div>
+);
 
 export default function NotificationSettings() {
-    // Local state for UI only, no backend API available yet
     const [notifications, setNotifications] = useState({
-        newPropertyActivity: true,
-        propertyApproval: true,
-        propertyStatus: true,
-        newBookingRequests: true,
-        bookingConfirmations: true,
-        bookingCancellations: true,
-        verificationUpdates: true,
-        securityAlerts: true,
+        newPropertyActivity:   true,
+        propertyApproval:      true,
+        propertyStatus:        true,
+        newBookingRequests:    true,
+        bookingConfirmations:  true,
+        bookingCancellations:  true,
+        verificationUpdates:   true,
+        securityAlerts:        true,
         platformAnnouncements: false,
     });
-
     const [isSaving, setIsSaving] = useState(false);
 
-    const toggleNotification = (key) => {
-        setNotifications(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
-    };
+    const toggle = (key) => setNotifications(p => ({ ...p, [key]: !p[key] }));
 
     const handleSave = () => {
         setIsSaving(true);
         setTimeout(() => {
             setIsSaving(false);
-            alert("Future implementation: Notification preferences save API required.");
+            alert('Future implementation: Notification preferences save API required.');
         }, 600);
     };
 
-    const Toggle = ({ checked, onChange }) => (
-        <button
-            type="button"
-            onClick={onChange}
-            className={`relative inline-flex h-5 w-9 md:h-6 md:w-11 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#c99b43] focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
-                checked ? 'bg-[#c99b43]' : 'bg-slate-300 dark:bg-slate-600'
-            }`}
-        >
-            <span
-                className={`inline-block h-3.5 w-3.5 md:h-4 md:w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
-                    checked ? 'translate-x-5 md:translate-x-6' : 'translate-x-1'
-                }`}
-            />
-        </button>
-    );
-
-    const NotificationItem = ({ title, description, settingKey }) => (
-        <div className="flex items-start justify-between py-3 md:py-4">
-            <div className="pr-4">
-                <h5 className="text-xs md:text-sm font-medium text-slate-900 dark:text-white">{title}</h5>
-                <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 mt-0.5 md:mt-1">{description}</p>
-            </div>
-            <div className="flex-shrink-0 mt-1">
-                <Toggle checked={notifications[settingKey]} onChange={() => toggleNotification(settingKey)} />
-            </div>
-        </div>
-    );
-
     return (
-        <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="px-1">
-                <h3 className="text-base md:text-lg font-medium text-slate-900 dark:text-white">Notifications</h3>
-                <p className="mt-1 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                    Manage how you receive updates and alerts.
-                </p>
-            </div>
+        <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 space-y-2">
+            <Group icon={Home} label="Property">
+                <Row title="Property activity"    description="Someone interacts with your listings"    settingKey="newPropertyActivity"  notifications={notifications} toggle={toggle} />
+                <Row title="Approval updates"     description="Approved or rejected submissions"        settingKey="propertyApproval"     notifications={notifications} toggle={toggle} />
+                <Row title="Status changes"       description="Properties rented or available"          settingKey="propertyStatus"       notifications={notifications} toggle={toggle} />
+            </Group>
 
-            <div className="space-y-4 md:space-y-6">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <h4 className="text-xs md:text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3 md:pb-4 mb-1 md:mb-2">Property Notifications</h4>
-                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                        <NotificationItem 
-                            title="New property activity" 
-                            description="Get notified when someone interacts with your properties."
-                            settingKey="newPropertyActivity"
-                        />
-                        <NotificationItem 
-                            title="Property approval updates" 
-                            description="Alerts when your submitted properties are approved or rejected."
-                            settingKey="propertyApproval"
-                        />
-                        <NotificationItem 
-                            title="Property status changes" 
-                            description="Notifications when properties are rented out or become available."
-                            settingKey="propertyStatus"
-                        />
-                    </div>
-                </div>
+            <Group icon={CalendarCheck} label="Bookings">
+                <Row title="New requests"         description="Tenant books your property"              settingKey="newBookingRequests"   notifications={notifications} toggle={toggle} />
+                <Row title="Confirmations"        description="Booking confirmed, payment received"     settingKey="bookingConfirmations" notifications={notifications} toggle={toggle} />
+                <Row title="Cancellations"        description="Booking cancelled"                       settingKey="bookingCancellations" notifications={notifications} toggle={toggle} />
+            </Group>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <h4 className="text-xs md:text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3 md:pb-4 mb-1 md:mb-2">Booking Notifications</h4>
-                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                        <NotificationItem 
-                            title="New booking requests" 
-                            description="Receive an alert when a tenant requests to book."
-                            settingKey="newBookingRequests"
-                        />
-                        <NotificationItem 
-                            title="Booking confirmations" 
-                            description="Get notified when a booking is confirmed and payment is received."
-                            settingKey="bookingConfirmations"
-                        />
-                        <NotificationItem 
-                            title="Booking cancellations" 
-                            description="Alerts for cancelled bookings."
-                            settingKey="bookingCancellations"
-                        />
-                    </div>
-                </div>
+            <Group icon={UserCog} label="Account">
+                <Row title="Verification"         description="Owner verification status changes"       settingKey="verificationUpdates"  notifications={notifications} toggle={toggle} />
+                <Row title="Security alerts"      description="New logins, password changes"            settingKey="securityAlerts"       notifications={notifications} toggle={toggle} />
+                <Row title="Announcements"        description="News and feature updates"                settingKey="platformAnnouncements" notifications={notifications} toggle={toggle} />
+            </Group>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <h4 className="text-xs md:text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3 md:pb-4 mb-1 md:mb-2">Account Notifications</h4>
-                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                        <NotificationItem 
-                            title="Verification updates" 
-                            description="Updates regarding your owner verification status."
-                            settingKey="verificationUpdates"
-                        />
-                        <NotificationItem 
-                            title="Security notifications" 
-                            description="Important alerts about new logins and password changes."
-                            settingKey="securityAlerts"
-                        />
-                        <NotificationItem 
-                            title="Platform announcements" 
-                            description="News, feature updates, and general platform announcements."
-                            settingKey="platformAnnouncements"
-                        />
-                    </div>
-                </div>
-                
-                <div className="flex justify-end pt-2">
-                    <Button onClick={handleSave} disabled={isSaving} className="bg-[#c99b43] text-white hover:bg-[#b0873a] dark:bg-[#c99b43] dark:hover:bg-[#b0873a] text-xs md:text-sm h-8 md:h-10">
-                        {isSaving ? 'Saving Preferences...' : 'Save Preferences'}
-                    </Button>
-                </div>
+            <div className="flex justify-end pt-0.5">
+                <button onClick={handleSave} disabled={isSaving}
+                    className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#c99b43] to-[#e2af5b] px-3.5 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-[#c99b43]/20 transition hover:from-[#b08838] hover:to-[#c99b43] disabled:opacity-60">
+                    <Save className="h-2.5 w-2.5" />
+                    {isSaving ? 'Saving…' : 'Save'}
+                </button>
             </div>
         </div>
     );

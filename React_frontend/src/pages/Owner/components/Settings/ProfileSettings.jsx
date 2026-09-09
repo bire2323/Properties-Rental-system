@@ -1,305 +1,139 @@
-import React, { useRef, useState } from 'react';
-import { useAuth } from '../../../../hooks/useAuth';
-import { updateProfile } from '../../../../api/authApi';
-import { Button } from '../../../../components/ui/button';
-import { getImageUrl } from '@/lib/utils';
-import {
-    User,
-    Mail,
-    Phone,
-    Calendar,
-    BadgeCheck,
-    KeyRound,
-    Sparkles,
-    Pencil,
-    ImagePlus,
-    Trash2,
-    Save,
-    CheckCircle2,
-    XCircle,
-    Hourglass,
-    Building2,
-    RefreshCw,
-} from 'lucide-react';
+import { useRef, useState } from 'react'
+import { useAuth } from '../../../../hooks/useAuth'
+import { updateProfile } from '../../../../api/authApi'
+import { getImageUrl } from '@/lib/utils'
+import { AlertCircle, Camera, CheckCircle2, Lock, Save, Trash2, XCircle } from 'lucide-react'
 
-function formatDate(dateString) {
-    if (!dateString) return 'Not specified';
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'Not specified';
-        return new Intl.DateTimeFormat('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        }).format(date);
-    } catch {
-        return 'Not specified';
-    }
+const INPUT_OK = 'block w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-900 transition focus:border-[#c99b43] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white dark:focus:border-[#c99b43] dark:focus:bg-slate-800 placeholder:text-slate-400'
+const INPUT_ERR = 'block w-full rounded-lg border border-red-400 bg-red-50 px-2.5 py-1.5 text-xs text-slate-900 transition focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400/20 dark:border-red-600 dark:bg-slate-800/60 dark:text-white placeholder:text-slate-400'
+const INPUT_LOCK = 'block w-full rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-400 cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 select-none'
+const LABEL = 'mb-0.5 block text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500'
+
+function validatePhone(value) {
+    if (!value) return null
+    if (/^\+251[79]\d{8}$/.test(value) || /^0[79]\d{8}$/.test(value)) return null
+    return 'Use +251 7X/9X... or 07.../09...'
+}
+
+function validateName(value, label) {
+    if (!value.trim()) return `${label} is required`
+    if (!/^[A-Za-z\u00C0-\u024F\s'-]+$/.test(value)) return `${label} must contain letters only`
+    return null
+}
+
+function FieldError({ message }) {
+    if (!message) return null
+    return <p className="mt-0.5 flex items-center gap-1 text-[9px] font-semibold text-red-500"><XCircle className="h-2.5 w-2.5" />{message}</p>
 }
 
 export default function ProfileSettings() {
-    const { user, updateUser } = useAuth();
-    const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState({ type: '', text: '' });
-    const fileInputRef = useRef(null);
-    const [selectedImage, setSelectedImage] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
-
-    const [formData, setFormData] = useState({
+    const { user, updateUser } = useAuth()
+    const fileInputRef = useRef(null)
+    const [isLoading, setIsLoading] = useState(false)
+    const [message, setMessage] = useState({ type: '', text: '' })
+    const [selectedImage, setSelectedImage] = useState(null)
+    const [imagePreview, setImagePreview] = useState(null)
+    const [touched, setTouched] = useState({})
+    const [form, setForm] = useState({
         first_name: user?.first_name || '',
         last_name: user?.last_name || '',
-        email: user?.email || '',
         phone_number: user?.phone_number || user?.profile?.phone_number || '',
         date_of_birth: user?.date_of_birth || user?.profile?.date_of_birth || '',
-    });
+    })
 
-    const profileImageUrl = user?.profile_image ? getImageUrl(user.profile_image) : null;
-    const getInitials = (firstName, lastName) => {
-        if (!firstName && !lastName) return 'U';
-        return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
-    };
+    const errors = {
+        first_name: validateName(form.first_name, 'First name'),
+        last_name: validateName(form.last_name, 'Last name'),
+        phone_number: validatePhone(form.phone_number),
+    }
+    const hasErrors = Object.values(errors).some(Boolean)
+    const avatarSrc = imagePreview || (user?.profile_image ? getImageUrl(user.profile_image) : null)
+    const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() || 'U'
+    const fieldError = (field) => touched[field] ? errors[field] : null
 
-    const handleChange = (e) => {
-        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    };
+    const handleChange = (event) => {
+        const { name, value } = event.target
+        setForm((current) => ({ ...current, [name]: value }))
+        setTouched((current) => ({ ...current, [name]: true }))
+        setMessage({ type: '', text: '' })
+    }
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
+    const handleImageChange = (event) => {
+        const file = event.target.files?.[0]
         if (file) {
-            setSelectedImage(file);
-            setImagePreview(URL.createObjectURL(file));
+            setSelectedImage(file)
+            setImagePreview(URL.createObjectURL(file))
         }
-    };
+    }
 
-    const handleRemovePhoto = () => {
-        setSelectedImage(null);
-        setImagePreview(null);
-    };
+    const handleSubmit = async (event) => {
+        event.preventDefault()
+        setTouched({ first_name: true, last_name: true, phone_number: true })
+        if (hasErrors) {
+            setMessage({ type: 'error', text: 'Please fix the errors above.' })
+            return
+        }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setMessage({ type: '', text: '' });
-
+        setIsLoading(true)
+        setMessage({ type: '', text: '' })
         try {
-            const dataToSend = new FormData();
-            dataToSend.append('first_name', formData.first_name);
-            dataToSend.append('last_name', formData.last_name);
-            dataToSend.append('email', formData.email);
-            dataToSend.append('phone_number', formData.phone_number);
-            if (formData.date_of_birth) {
-                dataToSend.append('date_of_birth', formData.date_of_birth);
-            }
-            if (selectedImage) {
-                dataToSend.append('profile_image', selectedImage);
-            }
-
-            const result = await updateProfile(dataToSend);
-            updateUser(result.user);
-            setMessage({ type: 'success', text: result.message || 'Profile updated successfully.' });
+            const payload = new FormData()
+            payload.append('first_name', form.first_name)
+            payload.append('last_name', form.last_name)
+            payload.append('phone_number', form.phone_number)
+            if (form.date_of_birth) payload.append('date_of_birth', form.date_of_birth)
+            if (selectedImage) payload.append('profile_image', selectedImage)
+            const result = await updateProfile(payload)
+            updateUser(result.user)
+            setMessage({ type: 'success', text: 'Profile updated.' })
+            setTouched({})
         } catch (error) {
-            setMessage({ type: 'error', text: error.message || 'Failed to update profile.' });
+            setMessage({ type: 'error', text: error.message || 'Failed to update.' })
         } finally {
-            setIsLoading(false);
+            setIsLoading(false)
         }
-    };
-
-    const fullName =
-        [user?.first_name, user?.last_name].filter(Boolean).join(' ') ||
-        user?.email?.split('@')[0] ||
-        'Owner';
-    const avatarUrl = imagePreview || profileImageUrl;
-    const ownerProfile = user?.owner_profile || {};
-    const verificationStatus = ownerProfile.verification_status || 'pending';
-    const memberSince = formatDate(user?.created_at || user?.date_joined || ownerProfile?.created_at);
-    const authProviderLabel = user?.auth_provider || 'Email';
-    const canPostProperty = ownerProfile.can_post_property;
-
-    const verificationMeta = {
-        approved: { icon: CheckCircle2, label: 'Approved', color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-950/40 ring-emerald-200 dark:ring-emerald-900/50' },
-        rejected: { icon: XCircle, label: 'Rejected', color: 'text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-950/40 ring-red-200 dark:ring-red-900/50' },
-        pending: { icon: Hourglass, label: 'Pending Approval', color: 'text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/40 ring-amber-200 dark:ring-amber-900/50' },
-    };
-    const vMeta = verificationMeta[verificationStatus] || verificationMeta.pending;
-    const VIcon = vMeta.icon;
-
-    const inputBase =
-        'block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500';
+    }
 
     return (
-        <div className="space-y-5 md:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {/* Header */}
-            <div className="px-1">
-                <h3 className="text-base md:text-lg font-semibold text-slate-900 dark:text-white">Profile</h3>
-                <p className="mt-1 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                    Update your photo and personal details.
-                </p>
+        <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
+            <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+                <p className="text-xs font-bold text-slate-800 dark:text-white">Profile</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">Personal details and photo</p>
             </div>
 
-            {/* Hero profile card */}
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
-                <div className="h-28 bg-[linear-gradient(135deg,#0b2141_0%,#1e3a63_55%,#c99b43_100%)] dark:bg-[linear-gradient(135deg,#05101e_0%,#0f223d_55%,#916e25_100%)] relative">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,155,67,0.25),transparent_60%)]" />
-                    <div className="absolute right-5 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-                        <Sparkles className="h-3.5 w-3.5 text-[#f7db96]" />
-                        Owner Account
-                    </div>
-                </div>
-
-                <div className="px-5 pb-6 sm:px-7">
-                    <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end -mt-14 sm:-mt-12">
-                        {/* Avatar */}
-                        <div className="relative self-start">
-                            <div className="flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#f3cd7a,#c68c2b)] p-1 shadow-xl ring-4 ring-white dark:ring-slate-900">
-                                {avatarUrl ? (
-                                    <img src={avatarUrl} alt={fullName} className="h-full w-full rounded-full object-cover" />
-                                ) : (
-                                    <span className="flex h-full w-full items-center justify-center rounded-full bg-white text-2xl font-bold text-slate-900 dark:bg-slate-800 sm:text-3xl dark:text-white">
-                                        {getInitials(user?.first_name, user?.last_name)}
-                                    </span>
-                                )}
+            <form onSubmit={handleSubmit}>
+                <div className="space-y-3 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full ring-2 ring-[#c99b43]/30 ring-offset-1 ring-offset-white dark:ring-offset-slate-900">
+                                {avatarSrc ? <img src={avatarSrc} alt="Profile" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#c99b43] to-[#e2af5b] text-sm font-bold text-white">{initials}</div>}
                             </div>
-                            {user?.is_verified && (
-                                <span title="Verified Account" className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-slate-900">
-                                    <BadgeCheck className="h-4 w-4" />
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Name + badges */}
-                        <div className="flex-1 space-y-2 pt-1 sm:pt-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{fullName}</h2>
-                                <span className="inline-flex items-center rounded-full bg-[#c99b43]/15 px-2.5 py-0.5 text-xs font-semibold text-[#b27a23] dark:text-[#f3c96d] capitalize">
-                                    {user?.role || 'Owner'}
-                                </span>
-                            </div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{user?.email || ''}</p>
-                        </div>
-
-                        {/* Change photo controls */}
-                        <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#c99b43] text-white shadow hover:bg-[#b08838]" aria-label="Change profile photo"><Camera className="h-2 w-2" /></button>
                             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
-                            <Button variant="outline" size="sm" type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                                <ImagePlus className="h-4 w-4" /> Change Photo
-                            </Button>
-                            {(avatarUrl) && (
-                                <Button variant="ghost" size="sm" type="button" onClick={handleRemovePhoto} className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300">
-                                    <Trash2 className="h-4 w-4" /> Remove
-                                </Button>
-                            )}
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500">JPG, GIF or PNG. Max 2MB.</p>
+                        </div>
+                        <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-slate-800 dark:text-white">{user?.first_name} {user?.last_name}</p>
+                            <p className="text-[9px] text-slate-400">JPG or PNG, max 2 MB</p>
+                            <div className="mt-1 flex gap-1.5">
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-slate-500 hover:border-[#c99b43] hover:text-[#c99b43] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Change</button>
+                                {avatarSrc && <button type="button" onClick={() => { setSelectedImage(null); setImagePreview(null) }} className="flex items-center gap-0.5 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-semibold text-red-500 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400"><Trash2 className="h-2 w-2" /> Remove</button>}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Metadata summary */}
-                    <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
-                        <span className="inline-flex items-center gap-1.5">
-                            <Mail className="h-3.5 w-3.5 text-[#c99b43]" /> {user?.email || 'Not provided'}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <Phone className="h-3.5 w-3.5 text-[#c99b43]" /> {user?.phone_number || user?.profile?.phone_number || 'Not provided'}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-[#c99b43]" /> Member since {memberSince}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <KeyRound className="h-3.5 w-3.5 text-[#c99b43]" /> {authProviderLabel} login
-                        </span>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div><label className={LABEL}>First name</label><input name="first_name" value={form.first_name} onChange={handleChange} onBlur={() => setTouched((current) => ({ ...current, first_name: true }))} className={fieldError('first_name') ? INPUT_ERR : INPUT_OK} /><FieldError message={fieldError('first_name')} /></div>
+                        <div><label className={LABEL}>Last name</label><input name="last_name" value={form.last_name} onChange={handleChange} onBlur={() => setTouched((current) => ({ ...current, last_name: true }))} className={fieldError('last_name') ? INPUT_ERR : INPUT_OK} /><FieldError message={fieldError('last_name')} /></div>
+                        <div className="col-span-2"><label className={LABEL}>Email <span className="ml-1 inline-flex items-center gap-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[8px] text-slate-400 dark:bg-slate-800"><Lock className="h-2 w-2" /> Read-only</span></label><input type="email" value={user?.email || ''} disabled readOnly className={INPUT_LOCK} /></div>
+                        <div><label className={LABEL}>Phone</label><input type="tel" name="phone_number" value={form.phone_number} onChange={handleChange} onBlur={() => setTouched((current) => ({ ...current, phone_number: true }))} className={fieldError('phone_number') ? INPUT_ERR : INPUT_OK} /><FieldError message={fieldError('phone_number')} /></div>
+                        <div><label className={LABEL}>Date of birth</label><input type="date" name="date_of_birth" value={form.date_of_birth} onChange={handleChange} className={INPUT_OK} /></div>
                     </div>
+
+                    <div className="flex items-start gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 dark:bg-blue-900/20"><AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-blue-500" /><p className="text-[9px] leading-relaxed text-blue-700 dark:text-blue-400">Use an Ethiopian phone format such as +251 9X XXXXXXXX or 09XXXXXXXX.</p></div>
+                    {message.text && <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-medium ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>{message.type === 'success' ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}{message.text}</div>}
                 </div>
-            </div>
-
-            {/* Verification status banner */}
-            <div className={`flex items-center gap-3 rounded-2xl border p-4 ring-1 ${vMeta.color}`}>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/60 dark:bg-black/20">
-                    <VIcon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                    <p className="text-sm font-semibold">{vMeta.label}</p>
-                    <p className="text-xs opacity-80">
-                        {verificationStatus === 'approved'
-                            ? 'Your owner account is verified and you can post properties.'
-                            : verificationStatus === 'rejected'
-                            ? ownerProfile.rejection_reason || 'Your owner application was not approved.'
-                            : 'Your owner application is under review. Posting will be enabled once approved.'}
-                    </p>
-                </div>
-                {canPostProperty && (
-                    <span className="ml-auto hidden shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:inline-flex">
-                        <Building2 className="h-3.5 w-3.5" /> Can Post Property
-                    </span>
-                )}
-            </div>
-
-            {/* Editable personal details */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-7">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-5 dark:border-slate-800">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#c99b43]/15 text-[#c99b43]">
-                        <Pencil className="h-4 w-4" />
-                    </span>
-                    <div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Personal Information</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Update the contact details registered on your account.</p>
-                    </div>
-                </div>
-
-                <form onSubmit={handleSubmit} className="mt-6 space-y-5 md:space-y-6">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5">
-                        <div className="space-y-1.5">
-                            <label htmlFor="first_name" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                <User className="h-3.5 w-3.5 text-[#c99b43]" /> First Name
-                            </label>
-                            <input type="text" id="first_name" name="first_name" value={formData.first_name} onChange={handleChange} className={inputBase} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="last_name" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                <User className="h-3.5 w-3.5 text-[#c99b43]" /> Last Name
-                            </label>
-                            <input type="text" id="last_name" name="last_name" value={formData.last_name} onChange={handleChange} className={inputBase} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="email" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                <Mail className="h-3.5 w-3.5 text-[#c99b43]" /> Email
-                            </label>
-                            <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className={inputBase} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="phone_number" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                <Phone className="h-3.5 w-3.5 text-[#c99b43]" /> Phone Number
-                            </label>
-                            <input type="tel" id="phone_number" name="phone_number" value={formData.phone_number} onChange={handleChange} className={inputBase} />
-                        </div>
-                        <div className="space-y-1.5 sm:col-span-2">
-                            <label htmlFor="date_of_birth" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                <Calendar className="h-3.5 w-3.5 text-[#c99b43]" /> Date of Birth
-                            </label>
-                            <input type="date" id="date_of_birth" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className={inputBase} />
-                        </div>
-                    </div>
-
-                    {message.text && (
-                        <div className={`flex items-center gap-2 rounded-xl p-3 text-xs md:text-sm ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                            {message.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                            {message.text}
-                        </div>
-                    )}
-
-                    <div className="flex justify-end border-t border-slate-100 pt-5 dark:border-slate-800">
-                        <Button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 rounded-xl bg-[#c99b43] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b0873a] dark:bg-[#c99b43] dark:text-white dark:hover:bg-[#b0873a]">
-                            {isLoading ? (
-                                <>
-                                    <RefreshCw className="h-4 w-4 animate-spin" /> Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="h-4 w-4" /> Save Changes
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                </form>
-            </div>
+                <div className="flex justify-end border-t border-slate-100 px-4 py-2.5 dark:border-slate-800"><button type="submit" disabled={isLoading} className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#c99b43] to-[#e2af5b] px-3.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"><Save className="h-2.5 w-2.5" />{isLoading ? 'Saving...' : 'Save'}</button></div>
+            </form>
         </div>
-    );
+    )
 }

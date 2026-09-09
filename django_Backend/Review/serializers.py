@@ -8,12 +8,17 @@ class ReviewSerializer(serializers.ModelSerializer):
     listing_type = serializers.CharField(source='property.listing_type', read_only=True)
     user_role = serializers.CharField(source='user.role', read_only=True)
     profile_image = serializers.ImageField(source='user.profile.profile_image', read_only=True, allow_null=True)
+    property_image = serializers.SerializerMethodField()
+
+    def get_property_image(self, obj):
+        image = obj.property.images.first()
+        return image.image.url if image and image.image else None
 
     class Meta:
         model = Review
         fields = [
             'id', 'property', 'property_name', 'listing_type', 'user', 'user_name',
-            'user_email', 'user_role', 'profile_image', 'review_text', 'created_at', 'updated_at',
+            'user_email', 'user_role', 'profile_image', 'property_image', 'review_text', 'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'property', 'user', 'user_name', 'user_email',

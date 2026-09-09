@@ -27,8 +27,9 @@ import OwnerFavorites from '../pages/Owner/OwnerFavorites'
 import OwnerMessages from '../pages/Owner/OwnerMessages'
 import OwnerPayments from '../pages/Owner/OwnerPayments'
 import OwnerProperties from '../pages/Owner/OwnerProperties'
-import OwnerReports from '../pages/Owner/OwnerReports'
+import OwnerReviews from '../pages/Owner/OwnerReviews'
 import OwnerSettings from '../pages/Owner/OwnerSettings'
+import OwnerProfile from '../pages/Owner/OwnerProfile'
 import AddProperty from '../pages/Owner/AddProperty'
 import OwnerPropertyDetails from '../pages/Owner/OwnerPropertyDetails'
 import EditProperty from '../pages/Owner/EditProperty'
@@ -144,7 +145,9 @@ function AppRoutes() {
                     <Route path="favorites" element={<OwnerFavorites />} />
                     <Route path="payments" element={<OwnerPayments />} />
                     <Route path="messages" element={<OwnerMessages />} />
-                    <Route path="reports" element={<OwnerReports />} />
+                    <Route path="reports" element={<Navigate to="/owner/reviews" replace />} />
+                    <Route path="reviews" element={<OwnerReviews />} />
+                    <Route path="profile" element={<OwnerProfile />} />
                     <Route path="settings" element={<OwnerSettings />} />
                 </Route>
                 <Route

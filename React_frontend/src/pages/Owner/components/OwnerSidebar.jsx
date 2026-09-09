@@ -8,9 +8,10 @@ import {
     CreditCard,
     MessageSquare,
     Heart,
-    BarChart3,
+    Star,
     Car,
     Settings,
+    UserRound,
     Home,
     Info,
     LogOut,
@@ -30,7 +31,8 @@ const links = [
     { label: 'Payments', path: '/owner/payments', icon: CreditCard },
     { label: 'Messages', path: '/owner/messages', icon: MessageSquare },
     { label: 'Favorites', path: '/owner/favorites', icon: Heart },
-    { label: 'Reports', path: '/owner/reports', icon: BarChart3 },
+    { label: 'Reviews', path: '/owner/reviews', icon: Star },
+    { label: 'My Profile', path: '/owner/profile', icon: UserRound },
     { label: 'Settings', path: '/owner/settings', icon: Settings },
 ]
 

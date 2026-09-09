@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Building2, CalendarCheck, DollarSign, Home, Plus, Sparkles, Inbox } from 'lucide-react'
+import {
+    ArrowRight, Building2, CalendarCheck, DollarSign, Home,
+    Plus, Sparkles, Inbox, TrendingUp, ChevronRight, LayoutGrid,
+    Clock, CheckCircle2, XCircle, Zap
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getAllProperties } from '../../api/property/propertyApi'
@@ -12,6 +16,40 @@ import BookingStatusBadge from '../../components/booking/BookingStatusBadge'
 import { formatAmount, formatDisplayDate, formatRentalType } from '../../lib/bookingDisplay'
 
 const DRAFT_STORAGE_KEY = 'property_add_draft'
+
+function getInitials(user) {
+    if (!user) return '?'
+    const f = user.first_name?.[0] ?? ''
+    const l = user.last_name?.[0] ?? ''
+    return (f + l).toUpperCase() || user.email?.[0]?.toUpperCase() || '?'
+}
+
+function QuickAction({ icon, label, sub, onClick, primary }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`group flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-left transition-all duration-200 ${primary
+                    ? 'bg-gradient-to-r from-[#c99b43] to-[#e8bb6a] text-white shadow-md shadow-amber-200/40 hover:shadow-lg hover:shadow-amber-300/50 hover:-translate-y-0.5 dark:shadow-amber-900/30'
+                    : 'border border-slate-200/80 bg-slate-50/80 text-slate-800 hover:border-[#c99b43]/40 hover:bg-amber-50/60 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-100 dark:hover:border-[#c99b43]/40 dark:hover:bg-amber-950/30'
+                }`}
+        >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${primary ? 'bg-white/20' : 'bg-white dark:bg-slate-800 shadow-sm'
+                }`}>
+                {icon}
+            </span>
+            <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold leading-snug">{label}</span>
+                {sub && (
+                    <span className={`mt-0.5 block text-xs ${primary ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {sub}
+                    </span>
+                )}
+            </span>
+            <ChevronRight className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 ${primary ? 'text-white/70' : 'text-slate-400'}`} />
+        </button>
+    )
+}
 
 export default function OwnerDashboard() {
     const navigate = useNavigate()
@@ -36,7 +74,6 @@ export default function OwnerDashboard() {
                 setLoading(false)
             }
         }
-
         loadProperties()
     }, [])
 
@@ -55,47 +92,67 @@ export default function OwnerDashboard() {
         loadBookings()
     }, [])
 
-    const ownerProperties = useMemo(() => {
-        return properties.filter((property) => property.owner_email === user?.email)
-    }, [properties, user])
+    const ownerProperties = useMemo(
+        () => properties.filter((p) => p.owner_email === user?.email),
+        [properties, user]
+    )
 
     const pendingBookings = useMemo(() => bookings.filter((b) => b.status === 'pending'), [bookings])
+    const approvedBookings = useMemo(() => bookings.filter((b) => b.status === 'approved'), [bookings])
     const recentBookings = useMemo(() => bookings.slice(0, 4), [bookings])
 
     const totalProperties = ownerProperties.length
-    const availableProperties = ownerProperties.filter((property) => property.status === 'active').length
-    const rentedProperties = ownerProperties.filter((property) => property.status !== 'active').length
-    const rentalValue = ownerProperties.reduce((sum, property) => sum + parseFloat(property.price || 0), 0)
+    const availableProperties = ownerProperties.filter((p) => p.status === 'active').length
+    const rentedProperties = ownerProperties.filter((p) => p.status !== 'active').length
+    const rentalValue = ownerProperties.reduce((s, p) => s + parseFloat(p.price || 0), 0)
 
     const recentProperties = ownerProperties.slice(0, 3)
 
+    const hour = new Date().getHours()
+    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+    const name = user?.first_name || 'there'
+
     return (
         <div className="space-y-6 sm:space-y-8">
-            <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#f8e6ba]/80 via-white/0 to-[#dfeaf7]/80 dark:from-[#201d17]/60 dark:via-slate-950/10 dark:to-[#0f172a]/60" aria-hidden="true" />
+
+            {/* HERO BANNER */}
+            <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-200/60 bg-gradient-to-br from-[#fdf6e3] via-white to-[#eef4fb] p-6 sm:p-8 shadow-md dark:border-amber-900/30 dark:from-[#1a1608] dark:via-slate-950 dark:to-[#0d1520]">
+                <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#c99b43]/10 blur-3xl dark:bg-[#c99b43]/5" />
+                <div className="pointer-events-none absolute -left-10 -bottom-10 h-48 w-48 rounded-full bg-sky-400/10 blur-3xl dark:bg-sky-500/5" />
+                <div className="absolute inset-x-0 top-0 h-1 rounded-t-3xl bg-gradient-to-r from-[#c99b43]/0 via-[#c99b43] to-[#c99b43]/0" />
+
                 <img
-                    src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80"
-                    alt="Modern house"
-                    className="absolute -right-16 top-6 h-32 w-32 sm:h-44 sm:w-44 lg:h-56 lg:w-56 rounded-[2rem] object-cover opacity-30 blur-[1px] grayscale-[0.1] dark:opacity-35"
-                />
-                <img
-                    src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80"
-                    alt="Luxury car"
-                    className="absolute -left-14 bottom-2 h-28 w-28 sm:h-36 sm:w-36 lg:h-48 lg:w-48 rounded-[2rem] object-cover opacity-35 blur-[1px] grayscale-[0.1] dark:opacity-30"
+                    src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80"
+                    alt=""
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-8 top-4 h-36 w-36 rounded-3xl object-cover opacity-20 blur-[0.5px] sm:h-48 sm:w-48 lg:right-6 lg:h-56 lg:w-56 lg:opacity-25"
                 />
 
-                <div className="relative flex flex-col gap-5 sm:gap-6 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="max-w-2xl">
-                        <p className="text-[10px] sm:text-sm font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Welcome back</p>
-                        <h2 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white">{user?.first_name ? `Welcome back, ${user.first_name}` : 'Welcome back'}</h2>
-                        <p className="mt-2 sm:mt-3 max-w-xl text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 dark:text-slate-300">Manage your properties, bookings, and rental activity from one place.</p>
+                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="flex items-center gap-5">
+                        <div className="relative hidden sm:flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#c99b43] to-[#e8bb6a] text-white text-lg font-bold shadow-lg shadow-amber-300/30 dark:shadow-amber-900/40">
+                            {getInitials(user)}
+                            <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-400 dark:border-slate-950" />
+                        </div>
+
+                        <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#c99b43]">
+                                {greeting}
+                            </p>
+                            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                                {name} <span className="text-[#c99b43]">✦</span>
+                            </h2>
+                            <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                                Manage your properties, bookings, and rental activity from one beautiful place.
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:auto-cols-fr xl:grid-flow-col">
+                    <div className="flex flex-wrap gap-3 xl:flex-nowrap xl:flex-col xl:min-w-[200px]">
                         <button
                             type="button"
                             onClick={() => navigate('/owner/properties/add')}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[#c99b43] px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#c99b43] to-[#e2af5b] px-5 py-3 text-sm font-bold text-white shadow-md shadow-amber-300/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-400/50 dark:shadow-amber-900/30 active:translate-y-0"
                         >
                             <Plus className="h-4 w-4" />
                             Add Property
@@ -103,17 +160,16 @@ export default function OwnerDashboard() {
                         <button
                             type="button"
                             onClick={() => navigate('/owner/properties')}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl border border-slate-200 bg-white px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-5 py-3 text-sm font-semibold text-slate-700 backdrop-blur-sm transition-all duration-200 hover:border-[#c99b43]/40 hover:bg-amber-50/60 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-100 dark:hover:border-[#c99b43]/40"
                         >
-                            <ArrowRight className="h-4 w-4" />
+                            <LayoutGrid className="h-4 w-4" />
                             View Properties
                         </button>
                     </div>
                 </div>
             </section>
 
-
-
+            {/* STAT CARDS */}
             <section>
                 {loading ? (
                     <LoadingSkeleton />
@@ -123,57 +179,86 @@ export default function OwnerDashboard() {
                         <p className="mt-2">{error}</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                        <StatCard icon={<Home className="h-4 w-4 sm:h-5 sm:w-5" />} label="Total" value={totalProperties} description="Your active post" accent="bg-[#f6e6c1] text-[#7f5c20]" />
-                        <StatCard icon={<Building2 className="h-4 w-4 sm:h-5 sm:w-5" />} label="Available" value={availableProperties} description="Ready for bookings" accent="bg-[#e6f8ef] text-[#1d6f4f]" />
-                        <StatCard icon={<CalendarCheck className="h-4 w-4 sm:h-5 sm:w-5" />} label="Rented" value={rentedProperties} description="Currently occupied" accent="bg-[#ede9ff] text-[#5a3d9f]" />
-                        <StatCard icon={<DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />} label="Value" value={`ETB ${rentalValue.toLocaleString()}`} description="Estimated monthly rents" accent="bg-[#fdeedb] text-[#a05713]" />
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                        <StatCard
+                            icon={<Home className="h-5 w-5" />}
+                            label="Total"
+                            value={totalProperties}
+                            description="Properties posted"
+                            accent="bg-gradient-to-br from-[#fef3c7] to-[#fde68a] text-[#92400e] dark:from-[#451a03] dark:to-[#78350f] dark:text-[#fcd34d]"
+                        />
+                        <StatCard
+                            icon={<Building2 className="h-5 w-5" />}
+                            label="Available"
+                            value={availableProperties}
+                            description="Ready for bookings"
+                            accent="bg-gradient-to-br from-[#d1fae5] to-[#a7f3d0] text-[#065f46] dark:from-[#022c22] dark:to-[#064e3b] dark:text-[#6ee7b7]"
+                        />
+                        <StatCard
+                            icon={<CalendarCheck className="h-5 w-5" />}
+                            label="Rented"
+                            value={rentedProperties}
+                            description="Currently occupied"
+                            accent="bg-gradient-to-br from-[#ede9fe] to-[#ddd6fe] text-[#4c1d95] dark:from-[#2e1065] dark:to-[#3b0764] dark:text-[#c4b5fd]"
+                        />
+                        <StatCard
+                            icon={<TrendingUp className="h-5 w-5" />}
+                            label="Value"
+                            value={`ETB ${rentalValue.toLocaleString()}`}
+                            description="Est. monthly rents"
+                            accent="bg-gradient-to-br from-[#fef9c3] to-[#fef08a] text-[#854d0e] dark:from-[#422006] dark:to-[#713f12] dark:text-[#fde047]"
+                        />
                     </div>
                 )}
             </section>
 
-            {/* Pending review banner */}
+            {/* PENDING BOOKING BANNER */}
             {!bookingsLoading && pendingBookings.length > 0 && (
                 <button
                     type="button"
                     onClick={() => navigate('/owner/bookings')}
-                    className="group flex w-full items-center gap-4 rounded-2xl sm:rounded-3xl border border-amber-200 bg-amber-50 p-5 text-left transition hover:bg-amber-100/70 dark:border-amber-900/40 dark:bg-amber-950/40 dark:hover:bg-amber-950/60"
+                    className="group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-300/70 bg-gradient-to-r from-amber-50 to-orange-50 p-5 text-left transition-all duration-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-100/60 dark:border-amber-800/50 dark:from-amber-950/50 dark:to-orange-950/40 dark:hover:shadow-amber-950/40"
                 >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200">
+                    <span className="absolute right-16 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-amber-400 opacity-60">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                    </span>
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-sm dark:bg-amber-900/50 dark:text-amber-200">
                         <Inbox className="h-5 w-5" />
                     </span>
                     <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-amber-900 dark:text-amber-100">
-                            {pendingBookings.length} booking{pendingBookings.length > 1 ? 's' : ''} waiting for your review.
+                        <span className="block text-sm font-bold text-amber-900 dark:text-amber-100">
+                            {pendingBookings.length} booking{pendingBookings.length > 1 ? 's' : ''} waiting for your review
                         </span>
-                        <span className="mt-1 block text-xs text-amber-700 dark:text-amber-300">
-                            Go to Bookings to approve or reject.
+                        <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-400">
+                            Tap to approve or reject them.
                         </span>
                     </span>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-amber-500 transition group-hover:translate-x-0.5" />
+                    <ArrowRight className="h-4 w-4 shrink-0 text-amber-500 transition-transform duration-200 group-hover:translate-x-1" />
                 </button>
             )}
 
-            <section className="grid gap-6 xl:grid-cols-[2fr_0.6fr]">
-                <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            {/* MAIN GRID */}
+            <section className="grid gap-5 xl:grid-cols-[1fr_320px]">
+
+                {/* Property Overview */}
+                <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Property overview</h3>
-                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Your most recent properties are shown here.</p>
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">Property Overview</h3>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Your most recently added properties</p>
                         </div>
                         <button
                             type="button"
                             onClick={() => navigate('/owner/properties')}
-                            className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                            className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-amber-50 hover:text-[#c99b43] dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-amber-950/30 dark:hover:text-[#c99b43]"
                         >
                             View all
+                            <ArrowRight className="h-3.5 w-3.5" />
                         </button>
                     </div>
 
                     {loading ? (
-                        <div className="mt-6">
-                            <LoadingSkeleton />
-                        </div>
+                        <div className="mt-6"><LoadingSkeleton /></div>
                     ) : !ownerProperties.length ? (
                         <div className="mt-6">
                             <EmptyState
@@ -183,72 +268,100 @@ export default function OwnerDashboard() {
                                     <button
                                         type="button"
                                         onClick={() => navigate('/owner/properties/add')}
-                                        className="rounded-2xl bg-[#c99b43] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b08838]"
+                                        className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#c99b43] to-[#e2af5b] px-5 py-3 text-sm font-bold text-white shadow-md shadow-amber-300/40 transition hover:-translate-y-0.5 hover:shadow-lg dark:shadow-amber-900/30"
                                     >
+                                        <Plus className="h-4 w-4" />
                                         Add Property
                                     </button>
                                 }
                             />
                         </div>
                     ) : (
-                        <div className="mt-6 space-y-6">
+                        <div className="mt-6">
                             <PropertyGrid properties={recentProperties} />
                         </div>
                     )}
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <div className="flex items-center justify-between gap-4">
+                {/* Quick Actions */}
+                <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
+                    <div className="flex items-center justify-between gap-3">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Quick actions</h3>
-                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Jump to the most important owner workflows.</p>
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">Quick Actions</h3>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Jump to important workflows</p>
                         </div>
-                        <Sparkles className="h-6 w-6 text-[#c99b43]" />
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/30">
+                            <Zap className="h-4 w-4 text-[#c99b43]" />
+                        </span>
                     </div>
 
-                    <div className="mt-6 space-y-4">
-                        <button
-                            type="button"
+                    <div className="mt-5 space-y-3">
+                        <QuickAction
+                            primary
+                            icon={<Plus className="h-4 w-4 text-white" />}
+                            label="Add a new property"
+                            sub="List your property or vehicle"
                             onClick={() => navigate('/owner/properties/add')}
-                            className="flex w-full items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-left text-sm font-semibold text-slate-900 transition hover:border-[#c99b43] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-[#c99b43]"
-                        >
-                            Add a new property
-                            <ArrowRight className="h-4 w-4 text-[#c99b43]" />
-                        </button>
-                        <button
-                            type="button"
+                        />
+                        <QuickAction
+                            icon={<Inbox className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                            label="Review booking requests"
+                            sub={pendingBookings.length > 0 ? `${pendingBookings.length} pending` : 'All caught up'}
                             onClick={() => navigate('/owner/bookings')}
-                            className="flex w-full items-center justify-between rounded-3xl border border-slate-200 bg-white px-5 py-4 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-                        >
-                            Review booking requests
-                            <ArrowRight className="h-4 w-4 text-slate-500" />
-                        </button>
-                        <button
-                            type="button"
+                        />
+                        <QuickAction
+                            icon={<DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                            label="View payments"
+                            sub="Track your earnings"
                             onClick={() => navigate('/owner/payments')}
-                            className="flex w-full items-center justify-between rounded-3xl border border-slate-200 bg-white px-5 py-4 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-                        >
-                            View payments
-                            <ArrowRight className="h-4 w-4 text-slate-500" />
-                        </button>
+                        />
+                        <QuickAction
+                            icon={<LayoutGrid className="h-4 w-4 text-sky-600 dark:text-sky-400" />}
+                            label="Manage properties"
+                            sub={`${totalProperties} total listings`}
+                            onClick={() => navigate('/owner/properties')}
+                        />
                     </div>
+
+                    {!bookingsLoading && (
+                        <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                Booking Summary
+                            </p>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                                <div>
+                                    <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{pendingBookings.length}</p>
+                                    <p className="text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Pending</p>
+                                </div>
+                                <div>
+                                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{approvedBookings.length}</p>
+                                    <p className="text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Approved</p>
+                                </div>
+                                <div>
+                                    <p className="text-lg font-bold text-slate-700 dark:text-slate-300">{bookings.length}</p>
+                                    <p className="text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </section>
 
-            {/* Recent bookings */}
+            {/* RECENT BOOKINGS */}
             {!bookingsLoading && bookings.length > 0 && (
-                <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Recent bookings</h3>
-                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Latest requests on your managed listings.</p>
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">Recent Bookings</h3>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Latest requests on your listings</p>
                         </div>
                         <button
                             type="button"
                             onClick={() => navigate('/owner/bookings')}
-                            className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                            className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-amber-50 hover:text-[#c99b43] dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-amber-950/30 dark:hover:text-[#c99b43]"
                         >
                             View all
+                            <ArrowRight className="h-3.5 w-3.5" />
                         </button>
                     </div>
 
@@ -258,18 +371,37 @@ export default function OwnerDashboard() {
                                 <button
                                     type="button"
                                     onClick={() => navigate('/owner/bookings')}
-                                    className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 p-4 text-left transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
+                                    className="group flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-left transition-all duration-200 hover:border-[#c99b43]/30 hover:bg-amber-50/40 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-[#c99b43]/30 dark:hover:bg-amber-950/20"
                                 >
+                                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform duration-200 group-hover:scale-105 ${booking.status === 'approved'
+                                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                                            : booking.status === 'rejected'
+                                                ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                                                : 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                                        }`}>
+                                        {booking.status === 'approved'
+                                            ? <CheckCircle2 className="h-5 w-5" />
+                                            : booking.status === 'rejected'
+                                                ? <XCircle className="h-5 w-5" />
+                                                : <Clock className="h-5 w-5" />
+                                        }
+                                    </span>
+
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate font-semibold text-slate-900 dark:text-white">{booking.property_name}</p>
-                                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                            {formatRentalType(booking.rental_type)} · {formatDisplayDate(booking.start_date)}
-                                            {booking.end_date ? ` → ${formatDisplayDate(booking.end_date)}` : ' (ongoing)'}
+                                        <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                                            {booking.property_name}
                                         </p>
-                                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{booking.renter_email || 'Renter'}</p>
+                                        <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                                            {formatRentalType(booking.rental_type)} · {formatDisplayDate(booking.start_date)}
+                                            {booking.end_date ? ` -> ${formatDisplayDate(booking.end_date)}` : ' (ongoing)'}
+                                        </p>
+                                        <p className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">
+                                            {booking.renter_email || 'Renter'}
+                                        </p>
                                     </div>
-                                    <div className="flex shrink-0 flex-col items-end gap-1">
-                                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+
+                                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                        <span className="text-sm font-bold text-slate-900 dark:text-white">
                                             {formatAmount(booking.total_amount, booking.currency)}
                                         </span>
                                         <BookingStatusBadge status={booking.status} size="sm" />

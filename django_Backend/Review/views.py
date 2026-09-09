@@ -2,8 +2,9 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Prefetch
 
-from properties.models import Property
+from properties.models import Property, PropertyImage
 from .models import Review
 from .serializers import ReviewSerializer
 
@@ -15,6 +16,18 @@ class ReviewListAPIView(APIView):
 		reviews = Review.objects.filter(
 			property__status='active', property__is_available=True
 		).select_related('property', 'user')
+		return Response(ReviewSerializer(reviews, many=True).data)
+
+
+class OwnerReviewListAPIView(APIView):
+	permission_classes = [IsAuthenticated]
+
+	def get(self, request):
+		reviews = Review.objects.filter(
+			property__owner=request.user,
+		).select_related('property', 'user').prefetch_related(
+			Prefetch('property__images', queryset=PropertyImage.objects.order_by('order'))
+		).order_by('-created_at')
 		return Response(ReviewSerializer(reviews, many=True).data)
 
 
