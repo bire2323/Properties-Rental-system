@@ -74,19 +74,19 @@ function mapPropertyToCard(property) {
 
 function PropertyCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-100 dark:border-slate-800/60 dark:bg-slate-900 dark:ring-slate-800/40">
-      <div className="h-28 sm:h-52 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50" />
-      <div className="space-y-3 p-4">
-        <div className="h-5 w-3/4 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-        <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
-        <div className="flex gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-          <div className="h-4 w-12 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
-          <div className="h-4 w-12 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
-          <div className="h-4 w-16 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
+    <div className="overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm animate-pulse">
+      <div className="h-48 sm:h-52 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50" />
+      <div className="p-4 space-y-3">
+        <div className="h-5 w-3/4 rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-1/2 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+        <div className="flex gap-2 pt-1">
+          <div className="h-5 w-16 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-5 w-16 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-5 w-16 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
         </div>
-        <div className="flex items-center justify-between pt-2">
-          <div className="h-6 w-24 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-          <div className="h-8 w-20 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+        <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="h-4 w-10 rounded-md bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-7 w-16 rounded-xl bg-slate-200 dark:bg-slate-800" />
         </div>
       </div>
     </div>
@@ -190,22 +190,11 @@ function Properties() {
     setLoading(true)
     setError(null)
 
-    // Prepare backend-compatible filters
     const apiFilters = { ...filters, type: 'house' };
     if (apiFilters.bedrooms === 'any') delete apiFilters.bedrooms;
     if (apiFilters.features && apiFilters.features.length === 0) delete apiFilters.features;
-    if (apiFilters.search) {
-      // Backend uses location for text search of city/region/address if we want to combine them, or we could pass `location=search`
-      // Actually, since we added location dropdown, we can pass both or just map search to a query string.
-      // Wait, backend supports `location` for city/address/region. The sidebar now has both search and location.
-      // If we pass both, the backend only looks at `location`. Let's map search to a custom param or just merge it into location if backend doesn't support generic search.
-      // For now, let's just pass `location: apiFilters.location || apiFilters.search` if we want, or leave it. We'll pass `location` and `search` as they are, but backend might ignore `search`.
-      // Actually we can just send `location` if search is set.
-      if (!apiFilters.location && apiFilters.search) {
-        apiFilters.location = apiFilters.search;
-      }
-    }
-    delete apiFilters.search; // Backend doesn't use `search`
+    // `search` is now passed directly to the backend which filters by property_name / description
+    if (!apiFilters.search) delete apiFilters.search;
 
     try {
       const data = await getAllProperties(apiFilters)
@@ -278,7 +267,6 @@ function Properties() {
     return 'Houses'
   }
 
-  // Client-side filtering is no longer needed!
   const filteredProperties = properties;
 
   const sortedProperties = [...filteredProperties].sort((a, b) => {
@@ -380,11 +368,10 @@ function Properties() {
 
       {/* Main Layout */}
       <section className="bg-white py-8 dark:bg-slate-950">
-        <div className="mx-auto max-w-screen-2xl xl:mx-10 gap-2 px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-4 lg:gap-6">
+        <div className="flex gap-4 lg:gap-6">
 
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:block w-[260px] xl:w-[272px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
+            <aside className="hidden lg:block w-[196px] xl:w-[208px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8 pl-4 sm:pl-6 lg:pl-8">
               <PropertySidebarFilters
                 filters={filters}
                 setFilters={setFilters}
@@ -392,11 +379,11 @@ function Properties() {
               />
             </aside>
 
-            {/* Content Area */}
-            <main className="flex-1 min-w-0">
+            {/* Content Area — stretches to right edge */}
+            <main className="flex-1 min-w-0 px-4 sm:px-6 lg:pl-0 lg:pr-6">
               {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
-                  {Array.from({ length: 6 }).map((_, i) => (
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" : "flex flex-col gap-4"}>
+                  {Array.from({ length: 8 }).map((_, i) => (
                     <PropertyCardSkeleton key={i} />
                   ))}
                 </div>
@@ -424,7 +411,7 @@ function Properties() {
               )}
 
               {!loading && !error && sortedProperties.length > 0 && (
-                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-4'}>
+                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col gap-4'}>
                   {sortedProperties.map((property, index) => (
                     <motion.div
                       key={property.id}
@@ -446,8 +433,8 @@ function Properties() {
 
               {!loading && !error && sortedProperties.length === 0 && (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-20 text-center shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
-                  <div className="rounded-full bg-slate-100 p-5 dark:bg-slate-800/60">
-                    <Building2 className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                  <div className="rounded-full bg-[#c99b43]/10 p-5 dark:bg-[#c99b43]/10">
+                    <Building2 className="h-10 w-10 text-[#c99b43]/60" />
                   </div>
                   <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
                     No Properties Found
@@ -469,7 +456,6 @@ function Properties() {
                 </div>
               )}
             </main>
-          </div>
         </div>
       </section>
 

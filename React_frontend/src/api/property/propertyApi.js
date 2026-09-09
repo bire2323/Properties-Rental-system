@@ -289,6 +289,14 @@ export async function deleteCompany(id) {
 // ─── Interactions ────────────────────────────────────────────────────────────
 
 /**
+ * GET /api/reviews/
+ * Returns public reviews from active, available listings.
+ */
+export async function getTestimonials() {
+    return request('/api/reviews/', { method: 'GET' })
+}
+
+/**
  * POST /api/interactions/properties/:id/rating/
  * Rates a property (1-5 stars) for the authenticated user.
  */
@@ -296,6 +304,17 @@ export async function rateProperty(propertyId, rating) {
     return request(`/api/interactions/properties/${propertyId}/rating/`, {
         method: 'POST',
         body: JSON.stringify({ rating }),
+    })
+}
+
+/**
+ * POST /api/reviews/properties/:id/
+ * Creates or updates the authenticated user's written review.
+ */
+export async function submitPropertyReview(propertyId, reviewText) {
+    return request(`/api/reviews/properties/${propertyId}/`, {
+        method: 'POST',
+        body: JSON.stringify({ review_text: reviewText }),
     })
 }
 

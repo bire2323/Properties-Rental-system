@@ -1,141 +1,136 @@
-// src/components/properties/PropertyCard.jsx
-import { MapPin, Heart, Bed, Bath, Maximize2, Loader2 } from 'lucide-react'
+// src/pages/Properties/PropertyCard.jsx
+import { MapPin, Heart, Bed, Bath, Maximize2, Loader2, ArrowRight, Star } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../../components/ui/button'
 import { motion } from 'framer-motion'
 
 export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layout = 'grid' }) {
-    const navigate = useNavigate()
-    const isGrid = layout === 'grid'
+  const navigate = useNavigate()
+  const isGrid = layout === 'grid'
 
-    return (
-        <motion.div
-            className={`group overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:ring-slate-200 dark:border-slate-800/60 dark:bg-slate-900 dark:ring-slate-800/40 dark:hover:ring-slate-700/60 ${isGrid ? 'flex flex-col' : 'flex flex-col sm:flex-row'
-                }`}
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+      className={`group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:shadow-[#c99b43]/10 border border-slate-100 dark:border-slate-800/70 transition-shadow duration-300 cursor-pointer ${isGrid ? 'flex flex-col' : 'flex flex-col sm:flex-row'}`}
+      onClick={() => navigate(`/properties/${property.id}`)}
+    >
+      {/* ── Image ──────────────────────────────── */}
+      <div className={`relative overflow-hidden ${isGrid ? 'h-44 sm:h-48 xl:h-52 w-full' : 'h-48 sm:h-auto w-full sm:w-64 lg:w-72 flex-shrink-0'}`}>
+        <img
+          src={property.image}
+          alt={property.title}
+          className="h-full w-full object-cover transition-transform duration-600 group-hover:scale-108"
+          style={{ transitionDuration: '600ms' }}
+          onError={e => { e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800' }}
+        />
+
+        {/* Gradient overlay – stronger at bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+        {/* Top-left: availability */}
+        <div className="absolute top-2.5 left-2.5 z-10">
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold shadow backdrop-blur-sm
+            ${property.is_available
+              ? 'bg-emerald-500/90 text-white'
+              : 'bg-slate-600/85 text-white'
+            }`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${property.is_available ? 'bg-white animate-pulse' : 'bg-white/60'}`} />
+            {property.is_available ? 'Available' : 'Rented'}
+          </span>
+        </div>
+
+        {/* Top-right: favorite */}
+        <button
+          onClick={e => { e.stopPropagation(); toggleFavorite(property.id) }}
+          disabled={isLoading}
+          className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/95 dark:bg-slate-900/90 shadow-md backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50"
+          aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
         >
-            {/* Image Container */}
-            <div
-                className={`relative overflow-hidden ${isGrid
-                    ? 'h-28 sm:h-44 xl:h-52 w-full'
-                    : 'h-44 sm:h-auto w-full sm:w-64 lg:w-80 flex-shrink-0'
-                    }`}
-            >
-                <img
-                    src={property.image}
-                    alt={property.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
-                    }}
-                />
-                {/* Subtle gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          {isLoading
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
+            : <Heart className={`h-3.5 w-3.5 transition-all duration-200 ${isFav ? 'fill-red-500 text-red-500 scale-110' : 'text-slate-500 dark:text-slate-400'}`} />
+          }
+        </button>
 
-                {/* Availability badge */}
-                <div className="absolute left-2 top-2 sm:left-3 sm:top-3 z-10">
-                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] sm:text-xs font-semibold shadow-md backdrop-blur-sm ${property.is_available
-                        ? 'bg-emerald-500/90 text-white'
-                        : 'bg-slate-500/90 text-white'
-                        }`}>
-                        <span className={`mr-1 h-1 w-1 rounded-full sm:mr-1.5 sm:h-1.5 sm:w-1.5 ${property.is_available ? 'bg-white' : 'bg-white/70'}`} />
-                        {property.is_available ? 'Available' : 'Rented'}
-                    </span>
-                </div>
+        {/* Bottom-left: type tag */}
+        <div className="absolute bottom-2.5 left-2.5 z-10">
+          <span className="inline-flex rounded-full bg-[#c99b43]/90 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow backdrop-blur-sm">
+            {property.type}
+          </span>
+        </div>
 
-                {/* Type badge */}
-                <div className="absolute left-2 bottom-2 sm:left-3 sm:bottom-3 z-10">
-                    <span className="inline-flex rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] sm:text-xs font-semibold text-slate-700 shadow-md backdrop-blur-md dark:bg-slate-900/90 dark:text-slate-300">
-                        {property.type}
-                    </span>
-                </div>
+        {/* Bottom-right: price */}
+        <div className="absolute bottom-2.5 right-2.5 z-10 flex items-baseline gap-0.5">
+          <span className="text-sm sm:text-base font-extrabold text-white drop-shadow">{property.price}</span>
+          <span className="text-[9px] text-white/75">ETB/{property.rental_unit}</span>
+        </div>
+      </div>
 
-                {/* Favorite Button */}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(property.id);
-                    }}
-                    disabled={isLoading}
-                    className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10 flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900 disabled:opacity-50"
-                    aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-                >
-                    {isLoading ? (
-                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-slate-600 dark:text-slate-400" />
-                    ) : (
-                        <Heart className={`h-3 w-3 sm:h-4 sm:w-4 transition-colors duration-200 ${isFav
-                            ? 'fill-red-500 text-red-500'
-                            : 'text-slate-500 dark:text-slate-400'
-                            }`} />
-                    )}
-                </button>
+      {/* ── Content ────────────────────────────── */}
+      <div className={`flex flex-1 flex-col justify-between ${isGrid ? 'p-3 sm:p-4' : 'p-4 sm:p-5'}`}>
+        <div>
+          {/* Title */}
+          <h3 className={`font-bold text-slate-900 dark:text-white group-hover:text-[#c99b43] dark:group-hover:text-[#f3c96d] transition-colors duration-200 line-clamp-1 ${isGrid ? 'text-sm sm:text-[15px]' : 'text-base sm:text-lg'}`}>
+            {property.title}
+          </h3>
+
+          {/* Location */}
+          <p className="mt-1 flex items-center gap-1 text-slate-400 dark:text-slate-500 text-[11px] sm:text-xs truncate">
+            <MapPin className="h-3 w-3 text-[#c99b43] shrink-0" />
+            <span className="truncate">{property.location}</span>
+          </p>
+
+          {/* Feature chips */}
+          {property.type === 'House' ? (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs">
+              {[
+                { Icon: Bed, label: `${property.beds} Beds` },
+                { Icon: Bath, label: `${property.baths} Baths` },
+                ...(property.area !== '-' ? [{ Icon: Maximize2, label: `${property.area} ft²` }] : []),
+              ].map(({ Icon, label }) => (
+                <span key={label} className="inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/8 dark:bg-[#c99b43]/10 border border-[#c99b43]/20 px-2 py-0.5 font-medium text-[#a07c30] dark:text-[#f3c96d]">
+                  <Icon className="h-3 w-3" />
+                  {label}
+                </span>
+              ))}
             </div>
-
-            {/* Content */}
-            <div className={`flex flex-1 flex-col justify-between ${isGrid ? 'p-2.5 sm:p-4' : 'p-3.5 sm:p-5'
-                }`}>
-                <div>
-                    <h3 className={`font-semibold text-slate-900 transition-colors duration-200 group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d] line-clamp-1 ${isGrid ? 'text-sm sm:text-base' : 'text-sm sm:text-lg'
-                        }`}>
-                        {property.title}
-                    </h3>
-                    <p className={`mt-1 flex items-center gap-1 text-slate-500 dark:text-slate-400 truncate ${isGrid ? 'text-[11px] sm:text-sm' : 'text-xs sm:text-sm'
-                        }`}>
-                        <MapPin className="shrink-0 h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#c99b43]" />
-                        <span className="truncate">{property.location}</span>
-                    </p>
-
-                    {property.type === 'House' ? (
-                        <div className={`mt-2 sm:mt-3 flex items-center gap-1.5 sm:gap-3 border-t border-slate-100 pt-2 sm:pt-2.5 text-slate-500 dark:border-slate-800 dark:text-slate-400 ${isGrid ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'
-                            }`}>
-                            <div className="flex items-center gap-1">
-                                <Bed className="h-3.5 w-3.5" />
-                                <span>{property.beds}</span>
-                            </div>
-                            <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
-                            <div className="flex items-center gap-1">
-                                <Bath className="h-3.5 w-3.5" />
-                                <span>{property.baths}</span>
-                            </div>
-                            <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
-                            <div className="flex items-center gap-1">
-                                <Maximize2 className="h-3.5 w-3.5" />
-                                <span className="truncate max-w-[40px] sm:max-w-none">{property.area}</span>
-                            </div>
-                        </div>
-                    ) : property.type === 'Car' ? (
-                        <div className={`mt-2 sm:mt-3 grid grid-cols-2 gap-x-2 sm:gap-x-3 gap-y-0.5 border-t border-slate-100 pt-2 sm:pt-2.5 text-slate-500 dark:border-slate-800 dark:text-slate-400 ${isGrid ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'
-                            }`}>
-                            <span className="truncate"><strong className="font-medium text-slate-600 dark:text-slate-300">Brand:</strong> {property.brand}</span>
-                            <span className="truncate"><strong className="font-medium text-slate-600 dark:text-slate-300">Model:</strong> {property.model}</span>
-                            <span className="truncate"><strong className="font-medium text-slate-600 dark:text-slate-300">Year:</strong> {property.year}</span>
-                            <span className="truncate"><strong className="font-medium text-slate-600 dark:text-slate-300">Mileage:</strong> {property.mileage}</span>
-                        </div>
-                    ) : null}
-                </div>
-
-                <div className={`flex items-center justify-between ${property.type === 'House' ? 'mt-2 sm:mt-4' : 'mt-2 sm:mt-4 border-t border-slate-100 pt-2 sm:pt-3 dark:border-slate-800'
-                    }`}>
-                    <div className="flex items-baseline gap-1">
-                        <span className={`font-bold text-[#c99b43] ${isGrid ? 'text-sm sm:text-base xl:text-xl' : 'text-lg sm:text-2xl'
-                            }`}>
-                            {property.price}
-                        </span>
-                        <span className={`text-slate-400 dark:text-slate-500 ${isGrid ? 'text-[9px] sm:text-xs' : 'text-xs sm:text-sm'
-                            }`}>ETB/{property.rental_unit}</span>
-                    </div>
-                    <Button
-                        size="sm"
-                        className={`rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] font-semibold text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-[#c99b43]/20 hover:opacity-90 active:scale-95 ${isGrid ? 'h-7 px-2.5 text-[11px] sm:h-9 sm:px-4 sm:text-sm' : 'px-4 py-2 text-sm'
-                            }`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/properties/${property.id}`);
-                        }}
-                    >
-                        View
-                    </Button>
-                </div>
+          ) : property.type === 'Car' ? (
+            <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] sm:text-xs">
+              {[
+                { k: 'Brand', v: property.brand },
+                { k: 'Model', v: property.model },
+                { k: 'Year', v: property.year },
+                { k: 'Mileage', v: property.mileage },
+              ].map(({ k, v }) => (
+                <span key={k} className="inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/8 dark:bg-[#c99b43]/10 border border-[#c99b43]/20 px-2 py-0.5 font-medium text-[#a07c30] dark:text-[#f3c96d] truncate">
+                  <span className="text-slate-400 dark:text-slate-500 font-normal">{k}:</span>
+                  <span className="truncate">{v}</span>
+                </span>
+              ))}
             </div>
-        </motion.div>
-    )
+          ) : null}
+        </div>
+
+        {/* ── CTA ── */}
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+          {/* Star rating placeholder */}
+          <div className="flex items-center gap-1">
+            <Star className="h-3.5 w-3.5 fill-[#c99b43] text-[#c99b43]" />
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">New</span>
+          </div>
+
+          <button
+            onClick={e => { e.stopPropagation(); navigate(`/properties/${property.id}`) }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-3.5 py-1.5 text-[11px] sm:text-xs font-bold text-slate-900 shadow-sm shadow-[#c99b43]/25 transition-all duration-200 hover:shadow-md hover:shadow-[#c99b43]/30 hover:opacity-90 active:scale-95"
+          >
+            View
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Accent border glow on hover */}
+      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ring-1 ring-[#c99b43]/30" />
+    </motion.div>
+  )
 }

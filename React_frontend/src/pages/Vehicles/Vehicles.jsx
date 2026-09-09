@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Car, MapPin, Search, Star, Heart, Grid3x3, List, ChevronDown, Fuel, Users, Settings2, Loader2, AlertCircle, RefreshCw, Filter, X } from 'lucide-react'
+import {
+  Car, MapPin, Star, Heart, Grid3x3, List, ChevronDown,
+  Fuel, Users, Settings2, Loader2, AlertCircle, RefreshCw, Filter, X, ArrowRight
+} from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
-import { Card } from '../../components/ui/card'
 import { getAllProperties, getFavorites, addFavorite, removeFavorite } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 import { VehicleSidebarFilters } from './VehicleSidebarFilters'
@@ -50,30 +52,143 @@ function mapVehicleToCard(property) {
     transmission: detail.transmission || 'Auto',
     rating: rating > 0 ? rating.toFixed(1) : 'New',
     created_at: property.created_at,
+    is_available: property.status === 'active',
   }
 }
 
+// ─── Vehicle Card ─────────────────────────────────────────────────────
+function VehicleCard({ vehicle, isFav, favLoading, onToggleFav, onView, viewMode }) {
+  const isGrid = viewMode === 'grid'
+
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+      className={`group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:shadow-[#c99b43]/10 border border-slate-100 dark:border-slate-800/70 transition-shadow duration-300 cursor-pointer ${isGrid ? 'flex flex-col' : 'flex flex-row h-36 sm:h-48'}`}
+      onClick={() => onView(vehicle.id)}
+    >
+      {/* ── Image ── */}
+      <div className={`relative overflow-hidden ${isGrid ? 'h-40 sm:h-48 xl:h-52 w-full' : 'w-2/5 sm:w-1/3 shrink-0 h-full'}`}>
+        <img
+          src={vehicle.image}
+          alt={vehicle.name}
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          onError={e => { e.target.src = 'https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=800' }}
+        />
+
+        {/* Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+        {/* Top-left: type badge */}
+        <div className="absolute top-2.5 left-2.5 z-10">
+          <span className="inline-flex rounded-full bg-[#c99b43]/90 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow backdrop-blur-sm">
+            {vehicle.type}
+          </span>
+        </div>
+
+        {/* Top-right: favorite */}
+        <button
+          onClick={e => { e.stopPropagation(); onToggleFav(vehicle.id) }}
+          className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/95 dark:bg-slate-900/90 shadow-md backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:bg-white dark:hover:bg-slate-800"
+          aria-label="Favorite"
+        >
+          {favLoading
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+            : <Heart className={`h-3.5 w-3.5 transition-all duration-200 ${isFav ? 'fill-red-500 text-red-500 scale-110' : 'text-slate-500 dark:text-slate-400'}`} />
+          }
+        </button>
+
+        {/* Bottom-left: rating */}
+        <div className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 px-2 py-0.5">
+          <Star className="h-2.5 w-2.5 fill-[#c99b43] text-[#c99b43] sm:h-3 sm:w-3" />
+          <span className="text-[9px] sm:text-[10px] font-bold text-white">{vehicle.rating}</span>
+        </div>
+
+        {/* Bottom-right: price */}
+        <div className="absolute bottom-2.5 right-2.5 z-10 flex items-baseline gap-0.5">
+          <span className="text-sm sm:text-base font-extrabold text-white drop-shadow">{vehicle.price}</span>
+          <span className="text-[9px] text-white/75 ml-0.5">ETB/d</span>
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div className={`flex flex-col justify-between ${isGrid ? 'p-3 sm:p-4' : 'flex-1 min-w-0 p-3 sm:p-4'}`}>
+        <div>
+          {/* Title */}
+          <h3 className={`font-bold text-slate-900 dark:text-white group-hover:text-[#c99b43] dark:group-hover:text-[#f3c96d] transition-colors duration-200 line-clamp-1 ${isGrid ? 'text-sm sm:text-[15px]' : 'text-xs sm:text-sm'}`}>
+            {vehicle.name}
+          </h3>
+
+          {/* Location */}
+          <p className="mt-1 flex items-center gap-1 text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 truncate">
+            <MapPin className="h-3 w-3 text-[#c99b43] shrink-0" />
+            <span className="truncate">{vehicle.location}</span>
+          </p>
+
+          {/* Spec chips */}
+          <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs ${isGrid ? '' : 'hidden sm:flex'}`}>
+            {[
+              { Icon: Users, label: `${vehicle.seats}` },
+              { Icon: Fuel, label: vehicle.fuel },
+              { Icon: Settings2, label: vehicle.transmission },
+            ].map(({ Icon, label }) => (
+              <span key={label} className="inline-flex items-center gap-1 rounded-lg bg-[#c99b43]/8 dark:bg-[#c99b43]/10 border border-[#c99b43]/20 px-2 py-0.5 font-medium text-[#a07c30] dark:text-[#f3c96d] truncate max-w-[60px] sm:max-w-none">
+                <Icon className="h-3 w-3 shrink-0" />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+          {/* Availability dot */}
+          <div className="flex items-center gap-1.5">
+            <span className={`h-2 w-2 rounded-full ${vehicle.is_available ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
+            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+              {vehicle.is_available ? 'Available' : 'Rented'}
+            </span>
+          </div>
+
+          <button
+            onClick={e => { e.stopPropagation(); onView(vehicle.id) }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-3.5 py-1.5 text-[11px] sm:text-xs font-bold text-slate-900 shadow-sm shadow-[#c99b43]/25 transition-all duration-200 hover:shadow-md hover:shadow-[#c99b43]/30 hover:opacity-90 active:scale-95"
+          >
+            View
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Hover glow ring */}
+      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ring-1 ring-[#c99b43]/30" />
+    </motion.div>
+  )
+}
+
+// ─── Skeleton ──────────────────────────────────────────────────────────
 function VehicleCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-100 dark:border-slate-800/60 dark:bg-slate-900 dark:ring-slate-800/40">
-      <div className="h-28 sm:h-48 lg:h-44 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50" />
-      <div className="space-y-3 p-4">
-        <div className="h-5 w-3/4 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-        <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
-        <div className="flex gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-          <div className="h-4 w-10 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
-          <div className="h-4 w-10 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
-          <div className="h-4 w-12 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/60" />
+    <div className="overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm animate-pulse">
+      <div className="h-48 sm:h-52 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-800/50" />
+      <div className="p-4 space-y-3">
+        <div className="h-5 w-3/4 rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-1/2 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+        <div className="flex gap-1.5 pt-1">
+          <div className="h-5 w-14 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-5 w-14 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-5 w-16 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
         </div>
-        <div className="flex items-center justify-between pt-2">
-          <div className="h-6 w-20 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-          <div className="h-8 w-16 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+        <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="h-4 w-16 rounded-md bg-slate-100 dark:bg-slate-800/60" />
+          <div className="h-7 w-16 rounded-xl bg-slate-200 dark:bg-slate-800" />
         </div>
       </div>
     </div>
   )
 }
 
+// ─── Main Component ─────────────────────────────────────────────────────
 function Vehicles() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -152,16 +267,10 @@ function Vehicles() {
     setLoading(true)
     setError(null)
 
-    const apiFilters = { ...filters, type: 'car' }; // Enforce car listing_type
-
+    const apiFilters = { ...filters, type: 'car' };
     if (apiFilters.seating_capacity === 'any') delete apiFilters.seating_capacity;
-
-    if (apiFilters.search) {
-      if (!apiFilters.location) {
-        apiFilters.location = apiFilters.search;
-      }
-    }
-    delete apiFilters.search;
+    // `search` is now passed directly to the backend which filters by property_name / description
+    if (!apiFilters.search) delete apiFilters.search;
 
     try {
       const data = await getAllProperties(apiFilters)
@@ -330,192 +439,91 @@ function Vehicles() {
 
       {/* Main Layout */}
       <section className="bg-white py-8 dark:bg-slate-950">
-        <div className="mx-auto max-w-screen-2xl lg:mx-10 px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-4 lg:gap-6">
+        <div className="flex gap-4 lg:gap-6">
 
-            {/* Desktop Sidebar */}
-            <aside className="hidden lg:block w-[260px] xl:w-[272px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
-              <VehicleSidebarFilters
-                filters={filters}
-                setFilters={setFilters}
-                onClearAll={handleClearAll}
-              />
-            </aside>
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block w-[196px] xl:w-[208px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8 pl-4 sm:pl-6 lg:pl-8">
+            <VehicleSidebarFilters
+              filters={filters}
+              setFilters={setFilters}
+              onClearAll={handleClearAll}
+            />
+          </aside>
 
-            {/* Content Area */}
-            <main className="flex-1 min-w-0">
-              {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <VehicleCardSkeleton key={i} />
-                  ))}
+          {/* Content Area — stretches to right edge */}
+          <main className="flex-1 min-w-0 px-4 sm:px-6 lg:pl-0 lg:pr-6">
+            {loading && (
+              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" : "flex flex-col gap-4"}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <VehicleCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200/60 bg-white py-20 text-center shadow-sm dark:border-red-900/30 dark:bg-slate-900">
+                <div className="rounded-full bg-red-50 p-5 dark:bg-red-950/30">
+                  <AlertCircle className="h-10 w-10 text-red-400 dark:text-red-500" />
                 </div>
-              )}
+                <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
+                  Failed to Load Vehicles
+                </h3>
+                <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                  {error}
+                </p>
+                <Button
+                  onClick={fetchVehicles}
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-sm hover:opacity-90"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+              </div>
+            )}
 
-              {!loading && error && (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200/60 bg-white py-20 text-center shadow-sm dark:border-red-900/30 dark:bg-slate-900">
-                  <div className="rounded-full bg-red-50 p-5 dark:bg-red-950/30">
-                    <AlertCircle className="h-10 w-10 text-red-400 dark:text-red-500" />
-                  </div>
-                  <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
-                    Failed to Load Vehicles
-                  </h3>
-                  <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                    {error}
-                  </p>
-                  <Button
-                    onClick={fetchVehicles}
-                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-sm hover:opacity-90"
+            {!loading && !error && sortedVehicles.length > 0 && (
+              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" : "flex flex-col gap-4"}>
+                {sortedVehicles.map((vehicle, index) => (
+                  <motion.div
+                    key={vehicle.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.35 }}
                   >
-                    <RefreshCw className="h-4 w-4" />
-                    Try Again
-                  </Button>
+                    <VehicleCard
+                      vehicle={vehicle}
+                      isFav={favorites.includes(vehicle.id)}
+                      favLoading={favoriteLoading[vehicle.id]}
+                      onToggleFav={toggleFavorite}
+                      onView={(id) => navigate(`/vehicles/${id}`)}
+                      viewMode={viewMode}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {!loading && !error && sortedVehicles.length === 0 && (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-20 text-center shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
+                <div className="rounded-full bg-[#c99b43]/10 p-5">
+                  <Car className="h-10 w-10 text-[#c99b43]/60" />
                 </div>
-              )}
-
-              {!loading && !error && sortedVehicles.length > 0 && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-4"}>
-                  {sortedVehicles.map((vehicle, index) => (
-                    <motion.div
-                      key={vehicle.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.35 }}
-                    >
-                      <Card
-                        className={`group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:ring-slate-200 dark:border-slate-800/60 dark:bg-slate-900 dark:ring-slate-800/40 dark:hover:ring-slate-700/60 ${viewMode === 'list' ? 'flex flex-row h-32 sm:h-48' : ''
-                          }`}
-                      >
-                        {/* Image Container */}
-                        <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-2/5 sm:w-1/3 shrink-0 h-full' : 'h-28 sm:h-44 xl:h-52'}`}>
-                          <img
-                            src={vehicle.image}
-                            alt={vehicle.name}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                          {/* Subtle gradient overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
-                          {/* Type Badge */}
-                          <div className="absolute left-2 top-2 sm:left-3 sm:top-3 z-10">
-                            <span className="inline-flex rounded-full bg-[#c99b43]/90 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-md backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-xs">
-                              {vehicle.type}
-                            </span>
-                          </div>
-
-                          {/* Favorite Button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(vehicle.id);
-                            }}
-                            className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10 flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-white dark:bg-slate-900/90 dark:hover:bg-slate-900"
-                            aria-label="Add to favorites"
-                          >
-                            {favoriteLoading[vehicle.id] ? (
-                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-slate-400" />
-                            ) : (
-                              <Heart
-                                className={`h-3 w-3 sm:h-4 sm:w-4 transition-colors duration-200 ${favorites.includes(vehicle.id)
-                                  ? 'fill-red-500 text-red-500'
-                                  : 'text-slate-500 dark:text-slate-400'
-                                  }`}
-                              />
-                            )}
-                          </button>
-
-                          {/* Rating Badge */}
-                          <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 z-10 flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 shadow-md backdrop-blur-md dark:bg-slate-900/90 sm:px-2.5 sm:py-1">
-                            <Star className="h-2.5 w-2.5 fill-[#c99b43] text-[#c99b43] sm:h-3.5 sm:w-3.5" />
-                            <span className="text-[9px] font-bold text-slate-900 dark:text-white sm:text-xs">
-                              {vehicle.rating}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className={`p-2.5 sm:p-4 flex flex-col justify-between ${viewMode === 'list' ? 'flex-1 min-w-0' : ''}`}>
-                          <div>
-                            {/* Title */}
-                            <h3 className="text-xs sm:text-base font-semibold text-slate-900 transition-colors duration-200 group-hover:text-[#c99b43] dark:text-white dark:group-hover:text-[#f3c96d] line-clamp-1">
-                              {vehicle.name}
-                            </h3>
-
-                            {/* Location */}
-                            <p className="mt-1 flex items-center gap-1 text-[11px] sm:text-sm text-slate-500 dark:text-slate-400 truncate">
-                              <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-[#c99b43]" />
-                              <span className="truncate">{vehicle.location}</span>
-                            </p>
-
-                            {/* Vehicle Details */}
-                            <div className={`mt-2 sm:mt-3 flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 ${viewMode === 'list' ? '' : 'border-t border-slate-100 pt-2 sm:pt-3 dark:border-slate-800'}`}>
-                              <div className="flex items-center gap-1">
-                                <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                <span>{vehicle.seats}</span>
-                              </div>
-                              <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
-                              <div className="flex items-center gap-1">
-                                <Fuel className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                <span className="truncate max-w-[36px] sm:max-w-none">{vehicle.fuel}</span>
-                              </div>
-                              <div className="hidden sm:block h-3 w-px bg-slate-200 dark:bg-slate-700" />
-                              <div className="hidden sm:flex items-center gap-1">
-                                <Settings2 className="h-3.5 w-3.5" />
-                                <span>{vehicle.transmission}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Price & CTA */}
-                          <div className="mt-2 sm:mt-4 flex items-center justify-between border-t border-slate-100 pt-2 sm:pt-3 dark:border-slate-800">
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-sm sm:text-xl font-bold text-[#c99b43]">
-                                {vehicle.price}
-                              </span>
-                              <span className="text-[9px] sm:text-xs text-slate-400 dark:text-slate-500">
-                                ETB/d
-                              </span>
-                            </div>
-                            <Button
-                              size="sm"
-                              className="rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] h-7 px-2.5 text-[11px] font-semibold text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-[#c99b43]/20 hover:opacity-90 sm:h-9 sm:px-4 sm:text-sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/vehicles/${vehicle.id}`);
-                              }}
-                            >
-                              View
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {!loading && !error && sortedVehicles.length === 0 && (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-20 text-center shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
-                  <div className="rounded-full bg-slate-100 p-5 dark:bg-slate-800/60">
-                    <Car className="h-10 w-10 text-slate-300 dark:text-slate-600" />
-                  </div>
-                  <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
-                    No Vehicles Found
-                  </h3>
-                  <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                    We couldn't find any vehicles matching your search criteria. Try adjusting your filters.
-                  </p>
-                  <Button
-                    onClick={handleClearAll}
-                    variant="outline"
-                    className="mt-6 rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              )}
-            </main>
-          </div>
+                <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
+                  No Vehicles Found
+                </h3>
+                <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                  We couldn't find any vehicles matching your search criteria. Try adjusting your filters.
+                </p>
+                <Button
+                  onClick={handleClearAll}
+                  variant="outline"
+                  className="mt-6 rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </main>
         </div>
       </section>
 

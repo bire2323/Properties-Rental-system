@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "accounts",
     "properties",
     "interactions",
+    "Review",
     "bookings",
     "payments",
     "site_settings",

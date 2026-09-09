@@ -17,6 +17,7 @@ from .models import (
     City,
     Category,
 )
+from Review.serializers import ReviewSerializer
 
 
 # ---------------------------------------------------------------------------
@@ -337,6 +338,7 @@ class PropertySerializer(serializers.ModelSerializer):
     house_detail = HouseDetailSerializer(read_only=True)
     car_detail = CarDetailSerializer(read_only=True)
     category = CategoryAdminSerializer(read_only=True)
+    reviews = serializers.SerializerMethodField()
 
     # Nested location objects
     city = CitySerializer(read_only=True)
@@ -376,6 +378,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'car_detail',
             'images',
             'rating_summary',
+            'reviews',
             'is_favorite',
             'created_at',
             'updated_at',
@@ -416,6 +419,9 @@ class PropertySerializer(serializers.ModelSerializer):
                 return len(obj.user_favorites) > 0
             return obj.favorited_by.filter(user=request.user).exists()
         return False
+
+    def get_reviews(self, obj):
+        return ReviewSerializer(obj.reviews.all(), many=True).data
 
 
 # ---------------------------------------------------------------------------
