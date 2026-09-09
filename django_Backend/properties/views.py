@@ -436,6 +436,14 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 ),
             )
 
+        # ── Free-text search on property name / description ────────────────
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(property_name__icontains=search) |
+                Q(description__icontains=search)
+            )
+
         # ── Location filtering via ForeignKey IDs ──────────────────────────
         region_id = self.request.query_params.get('region_id')
         if region_id:

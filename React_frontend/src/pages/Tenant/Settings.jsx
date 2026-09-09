@@ -15,7 +15,6 @@ import {
     ShieldCheck,
     Smartphone,
     Mail,
-    Download,
     RefreshCw,
     Sparkles,
     Sliders,
@@ -33,9 +32,11 @@ import {
 } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuth } from '../../hooks/useAuth'
-import { updateProfile, getProfile } from '../../api/authApi'
-import { listBookings } from '../../api/bookingApi'
+import { updateProfile } from '../../api/authApi'
 import { getImageUrl } from '@/lib/utils'
+
+const NAME_PATTERN = /^[A-Za-z]+(?:\s+[A-Za-z]+)*$/
+const PHONE_PATTERN = /^(?:\+251[79]\d{8}|0[79]\d{8})$/
 
 export default function Settings() {
     const navigate = useNavigate()
@@ -82,6 +83,7 @@ export default function Settings() {
         new_password: '',
         confirm_password: '',
     })
+    const [currentPasswordError, setCurrentPasswordError] = useState('')
 
     // Password validation tests
     const passwordValidation = useMemo(() => ({
@@ -95,6 +97,22 @@ export default function Settings() {
     const passwordStrengthScore = useMemo(() => {
         return Object.values(passwordValidation).filter(Boolean).length
     }, [passwordValidation])
+
+    // Confirm password real-time match status
+    const confirmStatus = useMemo(() => {
+        if (!passwordForm.confirm_password) return 'empty'
+        return passwordForm.confirm_password === passwordForm.new_password ? 'match' : 'mismatch'
+    }, [passwordForm.confirm_password, passwordForm.new_password])
+
+    const isPasswordFormValid =
+        passwordStrengthScore === 5 && confirmStatus === 'match' && passwordForm.current_password.length > 0
+
+    const maxDateOfBirth = useMemo(() => {
+        const date = new Date()
+        date.setHours(0, 0, 0, 0)
+        date.setFullYear(date.getFullYear() - 18)
+        return date.toISOString().split('T')[0]
+    }, [])
 
     // Privacy Controls (directly synced with Backend profile)
     const [sharePhoneWithHost, setSharePhoneWithHost] = useState(() => {
@@ -177,17 +195,17 @@ export default function Settings() {
         e.preventDefault()
 
         if (!passwordForm.current_password) {
-            showNotification('error', 'Please provide your current password.')
+            setCurrentPasswordError('Current password is required.')
             return
         }
 
-        if (passwordStrengthScore < 4) {
-            showNotification('error', 'New password must meet at least 4 security requirements.')
+        if (passwordStrengthScore < 5) {
+            showNotification('error', 'New password must meet all password requirements.')
             return
         }
 
-        if (passwordForm.new_password !== passwordForm.confirm_password) {
-            showNotification('error', 'New password and confirmation password do not match.')
+        if (confirmStatus !== 'match') {
+            showNotification('error', 'Passwords do not match.')
             return
         }
 
@@ -204,6 +222,7 @@ export default function Settings() {
                 new_password: '',
                 confirm_password: '',
             })
+            setCurrentPasswordError('')
 
             if (result?.user) {
                 updateUser(result.user)
@@ -211,7 +230,18 @@ export default function Settings() {
 
             showNotification('success', result?.message || 'Password changed successfully! Your session is secure.')
         } catch (err) {
-            showNotification('error', err.message || 'Failed to update password. Please check your current password.')
+            // If the server says wrong current password, show it inline
+            const msg = err.message || ''
+            if (
+                msg.toLowerCase().includes('current') ||
+                msg.toLowerCase().includes('incorrect') ||
+                msg.toLowerCase().includes('wrong') ||
+                msg.toLowerCase().includes('invalid')
+            ) {
+                setCurrentPasswordError('Current password is incorrect.')
+            } else {
+                showNotification('error', msg || 'Failed to update password.')
+            }
         } finally {
             setSavingPassword(false)
         }
@@ -353,12 +383,32 @@ export default function Settings() {
 
     const handleSaveProfile = async (e) => {
         e.preventDefault()
+
+        const firstName = profileForm.first_name.trim()
+        const lastName = profileForm.last_name.trim()
+        const phoneNumber = profileForm.phone_number.trim()
+
+        if (!NAME_PATTERN.test(firstName) || !NAME_PATTERN.test(lastName)) {
+            showNotification('error', 'First and last names may contain letters and spaces only.')
+            return
+        }
+
+        if (!PHONE_PATTERN.test(phoneNumber)) {
+            showNotification('error', 'Phone number must start with +2519, +2517, 09, or 07 and contain a valid number.')
+            return
+        }
+
+        if (profileForm.date_of_birth && profileForm.date_of_birth > maxDateOfBirth) {
+            showNotification('error', 'You must be at least 18 years old.')
+            return
+        }
+
         setSavingProfile(true)
         try {
             const formData = new FormData()
-            formData.append('first_name', profileForm.first_name.trim())
-            formData.append('last_name', profileForm.last_name.trim())
-            formData.append('phone_number', profileForm.phone_number.trim())
+            formData.append('first_name', firstName)
+            formData.append('last_name', lastName)
+            formData.append('phone_number', phoneNumber)
             if (profileForm.date_of_birth) {
                 formData.append('date_of_birth', profileForm.date_of_birth)
             } else {
@@ -392,63 +442,9 @@ export default function Settings() {
         }
     }
 
-    // ─── 4. Account Archive & Danger Zone ─────────────────────────────
-    const [exporting, setExporting] = useState(false)
+    // ─── 4. Account Controls ──────────────────────────────────────────
     const [logoutModalOpen, setLogoutModalOpen] = useState(false)
     const [clearCacheModalOpen, setClearCacheModalOpen] = useState(false)
-
-    const handleExportData = async () => {
-        setExporting(true)
-        try {
-            const [profileRes, bookingsRes] = await Promise.allSettled([
-                getProfile(),
-                listBookings(),
-            ])
-
-            const profileData = profileRes.status === 'fulfilled' ? profileRes.value : user
-            const bookingsData = bookingsRes.status === 'fulfilled'
-                ? (Array.isArray(bookingsRes.value) ? bookingsRes.value : bookingsRes.value?.results || [])
-                : []
-
-            const exportPayload = {
-                account_id: user?.id,
-                email: user?.email,
-                role: user?.role,
-                profile: profileData,
-                bookings_summary: {
-                    total_count: bookingsData.length,
-                    active: bookingsData.filter((b) => b.status === 'confirmed' || b.status === 'approved').length,
-                    records: bookingsData,
-                },
-                preferences: {
-                    theme,
-                    compactView,
-                    reducedMotion,
-                    privacy: {
-                        sharePhoneWithHost,
-                        hideEmailOnReviews,
-                    },
-                },
-                exported_at: new Date().toISOString(),
-            }
-
-            const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `tenant-account-archive-${new Date().toISOString().split('T')[0]}.json`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-
-            showNotification('success', 'Personal account archive downloaded successfully!')
-        } catch (err) {
-            showNotification('error', err.message || 'Failed to export account archive.')
-        } finally {
-            setExporting(false)
-        }
-    }
 
     const handleClearCache = () => {
         localStorage.removeItem('tenant_pref_compact_view')
@@ -466,14 +462,12 @@ export default function Settings() {
             aria-checked={checked}
             disabled={disabled}
             onClick={onChange}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#c99b43] focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
-                checked ? 'bg-[#c99b43]' : 'bg-slate-200 dark:bg-slate-700'
-            } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#c99b43] focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${checked ? 'bg-[#c99b43]' : 'bg-slate-200 dark:bg-slate-700'
+                } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
         >
             <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    checked ? 'translate-x-5' : 'translate-x-0'
-                }`}
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
+                    }`}
             />
         </button>
     )
@@ -503,11 +497,10 @@ export default function Settings() {
             {/* Toast Notification Alert */}
             {feedback && (
                 <div
-                    className={`flex items-center justify-between gap-3 rounded-2xl p-4 shadow-xl transition-all animate-in fade-in slide-in-from-top-3 ${
-                        feedback.type === 'success'
-                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/60 dark:bg-emerald-950/70 dark:text-emerald-200'
-                            : 'border border-red-200 bg-red-50 text-red-900 dark:border-red-800/60 dark:bg-red-950/70 dark:text-red-200'
-                    }`}
+                    className={`flex items-center justify-between gap-3 rounded-2xl p-4 shadow-xl transition-all animate-in fade-in slide-in-from-top-3 ${feedback.type === 'success'
+                        ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/60 dark:bg-emerald-950/70 dark:text-emerald-200'
+                        : 'border border-red-200 bg-red-50 text-red-900 dark:border-red-800/60 dark:bg-red-950/70 dark:text-red-200'
+                        }`}
                 >
                     <div className="flex items-center gap-3">
                         {feedback.type === 'success' ? (
@@ -575,11 +568,10 @@ export default function Settings() {
                                         key={tab.id}
                                         type="button"
                                         onClick={() => handleSelectTab(tab.id)}
-                                        className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${
-                                            isSelected
-                                                ? 'bg-[#c99b43] text-white shadow-md shadow-[#c99b43]/25'
-                                                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                                        }`}
+                                        className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${isSelected
+                                            ? 'bg-[#c99b43] text-white shadow-md shadow-[#c99b43]/25'
+                                            : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                                            }`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <Icon className={`h-4 w-4 ${isSelected ? 'text-white' : 'text-[#c99b43]'}`} />
@@ -587,11 +579,10 @@ export default function Settings() {
                                         </div>
                                         {tab.badge && (
                                             <span
-                                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                                    isSelected
-                                                        ? 'bg-white/20 text-white'
-                                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                                                }`}
+                                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isSelected
+                                                    ? 'bg-white/20 text-white'
+                                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                                    }`}
                                             >
                                                 {tab.badge}
                                             </span>
@@ -653,15 +644,20 @@ export default function Settings() {
                                             <input
                                                 type={showCurrentPassword ? 'text' : 'password'}
                                                 value={passwordForm.current_password}
-                                                onChange={(e) =>
+                                                onChange={(e) => {
+                                                    setCurrentPasswordError('')
                                                     setPasswordForm((prev) => ({
                                                         ...prev,
                                                         current_password: e.target.value,
                                                     }))
-                                                }
+                                                }}
                                                 required
                                                 placeholder="Enter your current password"
-                                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 pr-10 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                                                className={`h-11 w-full rounded-xl border px-3.5 pr-10 text-sm outline-none transition bg-white text-slate-900 dark:bg-slate-950 dark:text-white
+                                                    ${currentPasswordError
+                                                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                        : 'border-slate-200 dark:border-slate-800 focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20'
+                                                    }`}
                                             />
                                             <button
                                                 type="button"
@@ -671,6 +667,12 @@ export default function Settings() {
                                                 {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                             </button>
                                         </div>
+                                        {currentPasswordError && (
+                                            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-500">
+                                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                                {currentPasswordError}
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* New Password */}
@@ -706,25 +708,23 @@ export default function Settings() {
                                             <div className="mt-2.5">
                                                 <div className="flex items-center justify-between text-[11px] mb-1">
                                                     <span className="text-slate-500">Strength:</span>
-                                                    <span className={`font-bold ${
-                                                        passwordStrengthScore <= 2
-                                                            ? 'text-red-500'
-                                                            : passwordStrengthScore <= 4
+                                                    <span className={`font-bold ${passwordStrengthScore <= 2
+                                                        ? 'text-red-500'
+                                                        : passwordStrengthScore <= 4
                                                             ? 'text-amber-500'
                                                             : 'text-emerald-500'
-                                                    }`}>
+                                                        }`}>
                                                         {passwordStrengthScore <= 2 ? 'Weak' : passwordStrengthScore <= 4 ? 'Good' : 'Very Strong'}
                                                     </span>
                                                 </div>
                                                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-slate-800">
                                                     <div
-                                                        className={`h-full transition-all duration-300 ${
-                                                            passwordStrengthScore <= 2
-                                                                ? 'bg-red-500'
-                                                                : passwordStrengthScore <= 4
+                                                        className={`h-full transition-all duration-300 ${passwordStrengthScore <= 2
+                                                            ? 'bg-red-500'
+                                                            : passwordStrengthScore <= 4
                                                                 ? 'bg-amber-500'
                                                                 : 'bg-emerald-500'
-                                                        }`}
+                                                            }`}
                                                         style={{ width: `${(passwordStrengthScore / 5) * 100}%` }}
                                                     />
                                                 </div>
@@ -738,47 +738,42 @@ export default function Settings() {
                                             </p>
                                             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 text-xs">
                                                 <span
-                                                    className={`flex items-center gap-1.5 ${
-                                                        passwordValidation.hasMinLength
-                                                            ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                                                            : 'text-slate-400'
-                                                    }`}
+                                                    className={`flex items-center gap-1.5 ${passwordValidation.hasMinLength
+                                                        ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                                        : 'text-slate-400'
+                                                        }`}
                                                 >
                                                     <Check className="h-3.5 w-3.5" /> 8+ characters
                                                 </span>
                                                 <span
-                                                    className={`flex items-center gap-1.5 ${
-                                                        passwordValidation.hasUpper
-                                                            ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                                                            : 'text-slate-400'
-                                                    }`}
+                                                    className={`flex items-center gap-1.5 ${passwordValidation.hasUpper
+                                                        ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                                        : 'text-slate-400'
+                                                        }`}
                                                 >
                                                     <Check className="h-3.5 w-3.5" /> Uppercase letter
                                                 </span>
                                                 <span
-                                                    className={`flex items-center gap-1.5 ${
-                                                        passwordValidation.hasLower
-                                                            ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                                                            : 'text-slate-400'
-                                                    }`}
+                                                    className={`flex items-center gap-1.5 ${passwordValidation.hasLower
+                                                        ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                                        : 'text-slate-400'
+                                                        }`}
                                                 >
                                                     <Check className="h-3.5 w-3.5" /> Lowercase letter
                                                 </span>
                                                 <span
-                                                    className={`flex items-center gap-1.5 ${
-                                                        passwordValidation.hasNumber
-                                                            ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                                                            : 'text-slate-400'
-                                                    }`}
+                                                    className={`flex items-center gap-1.5 ${passwordValidation.hasNumber
+                                                        ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                                        : 'text-slate-400'
+                                                        }`}
                                                 >
                                                     <Check className="h-3.5 w-3.5" /> Number (0-9)
                                                 </span>
                                                 <span
-                                                    className={`flex items-center gap-1.5 ${
-                                                        passwordValidation.hasSpecial
-                                                            ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                                                            : 'text-slate-400'
-                                                    }`}
+                                                    className={`flex items-center gap-1.5 ${passwordValidation.hasSpecial
+                                                        ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                                        : 'text-slate-400'
+                                                        }`}
                                                 >
                                                     <Check className="h-3.5 w-3.5" /> Special symbol
                                                 </span>
@@ -803,7 +798,13 @@ export default function Settings() {
                                                 }
                                                 required
                                                 placeholder="Re-enter your new password"
-                                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 pr-10 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                                                className={`h-11 w-full rounded-xl border px-3.5 pr-10 text-sm outline-none transition bg-white text-slate-900 dark:bg-slate-950 dark:text-white
+                                                    ${confirmStatus === 'mismatch'
+                                                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                        : confirmStatus === 'match'
+                                                            ? 'border-emerald-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                                            : 'border-slate-200 dark:border-slate-800 focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20'
+                                                    }`}
                                             />
                                             <button
                                                 type="button"
@@ -813,13 +814,25 @@ export default function Settings() {
                                                 {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                             </button>
                                         </div>
+                                        {confirmStatus === 'mismatch' && (
+                                            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-500">
+                                                <X className="h-3.5 w-3.5 shrink-0" />
+                                                Passwords do not match
+                                            </p>
+                                        )}
+                                        {confirmStatus === 'match' && (
+                                            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                                Passwords match
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="pt-2">
                                         <button
                                             type="submit"
-                                            disabled={savingPassword}
-                                            className="inline-flex items-center gap-2 rounded-xl bg-[#c99b43] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#b58735] disabled:opacity-50"
+                                            disabled={savingPassword || !isPasswordFormValid}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-[#c99b43] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#b58735] disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {savingPassword ? (
                                                 <>
@@ -833,6 +846,11 @@ export default function Settings() {
                                                 </>
                                             )}
                                         </button>
+                                        {!isPasswordFormValid && (passwordForm.new_password || passwordForm.confirm_password) && (
+                                            <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+                                                Complete all password requirements above to enable the button.
+                                            </p>
+                                        )}
                                     </div>
                                 </form>
                             </div>
@@ -952,11 +970,10 @@ export default function Settings() {
                                     <button
                                         type="button"
                                         onClick={() => handleSetTheme('light')}
-                                        className={`flex flex-col items-start rounded-2xl border-2 p-5 text-left transition-all ${
-                                            theme === 'light'
-                                                ? 'border-[#c99b43] bg-amber-50/40 shadow-md ring-2 ring-[#c99b43]/20'
-                                                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950'
-                                        }`}
+                                        className={`flex flex-col items-start rounded-2xl border-2 p-5 text-left transition-all ${theme === 'light'
+                                            ? 'border-[#c99b43] bg-amber-50/40 shadow-md ring-2 ring-[#c99b43]/20'
+                                            : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950'
+                                            }`}
                                     >
                                         <div className="flex items-center justify-between w-full">
                                             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-[#c99b43] dark:bg-amber-950/40">
@@ -980,11 +997,10 @@ export default function Settings() {
                                     <button
                                         type="button"
                                         onClick={() => handleSetTheme('dark')}
-                                        className={`flex flex-col items-start rounded-2xl border-2 p-5 text-left transition-all ${
-                                            theme === 'dark'
-                                                ? 'border-[#c99b43] bg-[#2a2215]/30 shadow-md ring-2 ring-[#c99b43]/20'
-                                                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950'
-                                        }`}
+                                        className={`flex flex-col items-start rounded-2xl border-2 p-5 text-left transition-all ${theme === 'dark'
+                                            ? 'border-[#c99b43] bg-[#2a2215]/30 shadow-md ring-2 ring-[#c99b43]/20'
+                                            : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950'
+                                            }`}
                                     >
                                         <div className="flex items-center justify-between w-full">
                                             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-[#f3cd7a] dark:bg-slate-800">
@@ -1133,8 +1149,13 @@ export default function Settings() {
                                                     type="text"
                                                     value={profileForm.first_name}
                                                     onChange={(e) =>
-                                                        setProfileForm((prev) => ({ ...prev, first_name: e.target.value }))
+                                                        setProfileForm((prev) => ({
+                                                            ...prev,
+                                                            first_name: e.target.value.replace(/[^A-Za-z\s]/g, ''),
+                                                        }))
                                                     }
+                                                    pattern="[A-Za-z ]+"
+                                                    maxLength={50}
                                                     placeholder="Your first name"
                                                     className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                                 />
@@ -1148,8 +1169,13 @@ export default function Settings() {
                                                     type="text"
                                                     value={profileForm.last_name}
                                                     onChange={(e) =>
-                                                        setProfileForm((prev) => ({ ...prev, last_name: e.target.value }))
+                                                        setProfileForm((prev) => ({
+                                                            ...prev,
+                                                            last_name: e.target.value.replace(/[^A-Za-z\s]/g, ''),
+                                                        }))
                                                     }
+                                                    pattern="[A-Za-z ]+"
+                                                    maxLength={50}
                                                     placeholder="Your last name"
                                                     className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                                 />
@@ -1180,8 +1206,14 @@ export default function Settings() {
                                                         type="tel"
                                                         value={profileForm.phone_number}
                                                         onChange={(e) =>
-                                                            setProfileForm((prev) => ({ ...prev, phone_number: e.target.value }))
+                                                            setProfileForm((prev) => ({
+                                                                ...prev,
+                                                                phone_number: e.target.value.replace(/[^0-9+]/g, '').replace(/(?!^)[+]/g, ''),
+                                                            }))
                                                         }
+                                                        pattern="(?:\+251[79][0-9]{8}|0[79][0-9]{8})"
+                                                        maxLength={13}
+                                                        inputMode="tel"
                                                         placeholder="+251 9..."
                                                         className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                                     />
@@ -1198,6 +1230,7 @@ export default function Settings() {
                                                     <input
                                                         type="date"
                                                         value={profileForm.date_of_birth}
+                                                        max={maxDateOfBirth}
                                                         onChange={(e) =>
                                                             setProfileForm((prev) => ({ ...prev, date_of_birth: e.target.value }))
                                                         }
@@ -1521,43 +1554,6 @@ export default function Settings() {
                                     </div>
                                 </div>
                             )}
-
-                            {/* Data Export */}
-                            <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-8">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Account Archive</h3>
-                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    Download a copy of your personal tenant records, bookings history, and security preferences.
-                                </p>
-
-                                <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-950/40">
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
-                                            Download Personal Archive (JSON)
-                                        </h4>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                            Includes profile data, contact details, active bookings, and security settings.
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleExportData}
-                                        disabled={exporting}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-[#c99b43] hover:text-[#c99b43] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 disabled:opacity-50"
-                                    >
-                                        {exporting ? (
-                                            <>
-                                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                                Preparing Archive...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Download className="h-3.5 w-3.5" />
-                                                Export JSON
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
 
                             {/* Cache & Danger Zone */}
                             <div className="rounded-3xl border border-red-200 bg-red-50/30 p-6 shadow-sm dark:border-red-900/40 dark:bg-red-950/10 sm:p-8 space-y-5">
