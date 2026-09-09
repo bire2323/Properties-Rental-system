@@ -15,6 +15,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   User,
+  Wallet,
   X,
 } from 'lucide-react'
 import { deleteBooking, listBookings, rejectBooking, approveBooking } from '../../api/bookingApi'
@@ -31,6 +32,7 @@ import {
   resolveBookingImage,
   resolveDocumentUrl,
 } from '../../lib/bookingDisplay'
+import { formatPaymentMethod, getPaymentStatusMeta } from '../../lib/paymentDisplay'
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -390,6 +392,7 @@ export default function OwnerBookings() {
                   <th className="px-6 py-4 font-semibold">Dates</th>
                   <th className="px-6 py-4 font-semibold">Total</th>
                   <th className="px-6 py-4 font-semibold">Payout</th>
+                  <th className="px-6 py-4 font-semibold">Payment</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 text-right font-semibold">Actions</th>
                 </tr>
@@ -424,6 +427,15 @@ export default function OwnerBookings() {
                     </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                       {formatAmount(booking.owner_payout_amount, booking.currency)}
+                    </td>
+                    <td className="px-6 py-4">
+                      {booking.latest_payment_status ? (
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPaymentStatusMeta(booking.latest_payment_status).tone}`}>
+                          {getPaymentStatusMeta(booking.latest_payment_status).label}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <BookingStatusBadge status={booking.status} size="sm" />
@@ -547,6 +559,17 @@ export default function OwnerBookings() {
                         {formatAmount(booking.owner_payout_amount, booking.currency)}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="mt-3">
+                    {booking.latest_payment_status ? (
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPaymentStatusMeta(booking.latest_payment_status).tone}`}>
+                        <Wallet className="h-3 w-3" />
+                        Payment {getPaymentStatusMeta(booking.latest_payment_status).label}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 dark:text-slate-500">No payment recorded</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -731,6 +754,39 @@ export default function OwnerBookings() {
                       value={`${Number(selected.platform_commission_rate ?? 0).toFixed(2)}%`}
                     />
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                    <Wallet className="h-4 w-4 text-[#c99b43]" />
+                    Payment
+                  </h3>
+                  {selected.latest_payment_status ? (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Status</span>
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPaymentStatusMeta(selected.latest_payment_status).tone}`}>
+                          {getPaymentStatusMeta(selected.latest_payment_status).label}
+                        </span>
+                      </div>
+                      <DetailRow
+                        label="Method"
+                        value={formatPaymentMethod(selected.latest_payment_method, selected.latest_payment_method_display)}
+                      />
+                      <DetailRow label="Transaction ref" value={selected.latest_payment_reference} />
+                      <DetailRow
+                        label="Provider ref"
+                        value={selected.latest_payment_provider_reference || '—'}
+                      />
+                      <DetailRow label="Amount" value={formatAmount(selected.total_amount, selected.currency)} />
+                      <DetailRow label="Attempts" value={selected.payment_attempt_count ?? 0} />
+                      <DetailRow label="Paid at" value={formatCreatedDate(selected.latest_payment_created_at)} />
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                      No payment recorded for this booking.
+                    </p>
+                  )}
                 </div>
 
                 {canOwnerReview(selected.status) && (

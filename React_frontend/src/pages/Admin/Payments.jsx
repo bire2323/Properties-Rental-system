@@ -3,45 +3,53 @@ import {
     ArrowDownRight,
     ArrowUpRight,
     Download,
-    MoreHorizontal,
     Search,
     Sparkles,
     WalletCards,
     CheckCircle2,
     XCircle,
     Clock3,
-    Building2,
 } from 'lucide-react'
 import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import { Select } from '../../components/ui'
 import { getAdminPayments } from '../../api/admin/adminApi'
+import { formatAmount, formatCreatedDate } from '../../lib/bookingDisplay'
+import { formatPaymentMethod, getPaymentStatusMeta } from '../../lib/paymentDisplay'
 
-const getStatusClasses = (status) => {
-    if (status === 'Successful') return 'bg-emerald-100 text-emerald-700'
-    if (status === 'Pending') return 'bg-amber-100 text-amber-700'
-    return 'bg-red-100 text-red-700'
-}
+const STATUS_OPTIONS = [
+    { value: '', label: 'All Status' },
+    { value: 'initiated', label: 'Initiated' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'successful', label: 'Successful' },
+    { value: 'failed', label: 'Failed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'refunded', label: 'Refunded' },
+    { value: 'partially_refunded', label: 'Partially Refunded' },
+]
 
 function Payments() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
-    const [statusFilter, setStatusFilter] = useState('All Status')
-    const [paymentMethodFilter, setPaymentMethodFilter] = useState('All Payment Methods')
+    const [statusFilter, setStatusFilter] = useState('')
+    const [paymentMethodFilter, setPaymentMethodFilter] = useState('')
     const [visibleCount, setVisibleCount] = useState(3)
     const [paymentRows, setPaymentRows] = useState([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const { isDark } = useTheme()
 
     useEffect(() => {
         const loadPayments = async () => {
             try {
                 setLoading(true)
+                setError(null)
                 const data = await getAdminPayments()
-                setPaymentRows(data)
-            } catch (error) {
-                console.error('Error loading payments:', error)
+                setPaymentRows(Array.isArray(data) ? data : [])
+            } catch (loadError) {
+                console.error('Error loading payments:', loadError)
+                setError(loadError?.message || 'Unable to load payments.')
                 setPaymentRows([])
             } finally {
                 setLoading(false)
@@ -51,53 +59,71 @@ function Payments() {
         loadPayments()
     }, [])
 
+    const methodOptions = useMemo(() => {
+        const seen = new Set()
+        const options = []
+        paymentRows.forEach((payment) => {
+            if (payment.payment_method && !seen.has(payment.payment_method)) {
+                seen.add(payment.payment_method)
+                options.push({
+                    value: payment.payment_method,
+                    label: formatPaymentMethod(payment.payment_method, payment.payment_method_display),
+                })
+            }
+        })
+        return [{ value: '', label: 'All Payment Methods' }, ...options]
+    }, [paymentRows])
+
     const totalRevenue = useMemo(() => {
-        return paymentRows.reduce((sum, payment) => {
-            const amount = Number(String(payment.amount).replace(/[^\d.-]/g, '')) || 0
-            return sum + amount
-        }, 0)
+        return paymentRows.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
     }, [paymentRows])
 
     const successfulPayments = useMemo(() => {
-        return paymentRows.filter((payment) => payment.status === 'Successful').reduce((sum, payment) => {
-            const amount = Number(String(payment.amount).replace(/[^\d.-]/g, '')) || 0
-            return sum + amount
-        }, 0)
+        return paymentRows
+            .filter((payment) => payment.status === 'successful')
+            .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
     }, [paymentRows])
 
     const pendingPayments = useMemo(() => {
-        return paymentRows.filter((payment) => payment.status === 'Pending').reduce((sum, payment) => {
-            const amount = Number(String(payment.amount).replace(/[^\d.-]/g, '')) || 0
-            return sum + amount
-        }, 0)
+        return paymentRows
+            .filter((payment) => ['initiated', 'pending'].includes(payment.status))
+            .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
     }, [paymentRows])
 
     const failedPayments = useMemo(() => {
-        return paymentRows.filter((payment) => payment.status === 'Failed').reduce((sum, payment) => {
-            const amount = Number(String(payment.amount).replace(/[^\d.-]/g, '')) || 0
-            return sum + amount
-        }, 0)
+        return paymentRows
+            .filter((payment) => ['failed', 'cancelled'].includes(payment.status))
+            .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
     }, [paymentRows])
 
     const statCards = [
-        { label: 'Total Revenue', value: `ETB ${totalRevenue.toLocaleString('en-US')}`, icon: WalletCards, tone: 'text-blue-600', bg: 'bg-blue-100 text-blue-600' },
-        { label: 'Successful Payments', value: `ETB ${successfulPayments.toLocaleString('en-US')}`, icon: CheckCircle2, tone: 'text-emerald-600', bg: 'bg-emerald-100 text-emerald-600' },
-        { label: 'Pending Payments', value: `ETB ${pendingPayments.toLocaleString('en-US')}`, icon: Clock3, tone: 'text-amber-600', bg: 'bg-amber-100 text-amber-600' },
-        { label: 'Failed Payments', value: `ETB ${failedPayments.toLocaleString('en-US')}`, icon: XCircle, tone: 'text-red-600', bg: 'bg-red-100 text-red-600' },
+        { label: 'Total Revenue', value: `ETB ${Math.round(totalRevenue).toLocaleString('en-US')}`, icon: WalletCards, tone: 'text-blue-600', bg: 'bg-blue-100 text-blue-600' },
+        { label: 'Successful Payments', value: `ETB ${Math.round(successfulPayments).toLocaleString('en-US')}`, icon: CheckCircle2, tone: 'text-emerald-600', bg: 'bg-emerald-100 text-emerald-600' },
+        { label: 'Pending Payments', value: `ETB ${Math.round(pendingPayments).toLocaleString('en-US')}`, icon: Clock3, tone: 'text-amber-600', bg: 'bg-amber-100 text-amber-600' },
+        { label: 'Failed Payments', value: `ETB ${Math.round(failedPayments).toLocaleString('en-US')}`, icon: XCircle, tone: 'text-red-600', bg: 'bg-red-100 text-red-600' },
     ]
 
     const filteredPayments = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase()
         return paymentRows.filter((payment) => {
-            const matchesSearch =
-                !searchTerm ||
-                payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                payment.payer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                payment.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                payment.method.toLowerCase().includes(searchTerm.toLowerCase())
+            const haystack = [
+                payment.transaction_reference,
+                String(payment.id || ''),
+                payment.payer,
+                payment.payer_email,
+                payment.booking_reference,
+                payment.property_name,
+                payment.renter,
+                payment.provider_reference,
+                formatPaymentMethod(payment.payment_method, payment.payment_method_display),
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase()
 
-            const matchesStatus = statusFilter === 'All Status' || payment.status === statusFilter
-            const matchesMethod =
-                paymentMethodFilter === 'All Payment Methods' || payment.method === paymentMethodFilter
+            const matchesSearch = !term || haystack.includes(term)
+            const matchesStatus = !statusFilter || payment.status === statusFilter
+            const matchesMethod = !paymentMethodFilter || payment.payment_method === paymentMethodFilter
 
             return matchesSearch && matchesStatus && matchesMethod
         })
@@ -132,7 +158,7 @@ function Payments() {
                         </button>
                     </div>
 
-                    {paymentRows.length > 0 && (
+                    {!error && paymentRows.length > 0 && (
                         <div className="mb-6 grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 md:grid-cols-2 xl:grid-cols-4">
                             {statCards.map((item) => {
                                 const Icon = item.icon
@@ -192,7 +218,7 @@ function Payments() {
                                             setStatusFilter(event.target.value)
                                             setVisibleCount(3)
                                         }}
-                                        options={['All Status', 'Successful', 'Pending', 'Failed']}
+                                        options={STATUS_OPTIONS}
                                         className={isDark ? 'border-slate-700 bg-slate-800 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}
                                     />
 
@@ -202,7 +228,7 @@ function Payments() {
                                             setPaymentMethodFilter(event.target.value)
                                             setVisibleCount(3)
                                         }}
-                                        options={['All Payment Methods', 'Visa Card', 'Mobile Money', 'Bank Transfer']}
+                                        options={methodOptions}
                                         className={isDark ? 'border-slate-700 bg-slate-800 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}
                                     />
                                 </div>
@@ -215,94 +241,106 @@ function Payments() {
                                             <tr>
                                                 <th className="px-6 py-4">Transaction ID</th>
                                                 <th className="px-6 py-4">Payer</th>
-                                                <th className="px-6 py-4">Type</th>
+                                                <th className="px-6 py-4">Booking</th>
                                                 <th className="px-6 py-4">Property</th>
                                                 <th className="px-6 py-4">Amount</th>
                                                 <th className="px-6 py-4">Method</th>
                                                 <th className="px-6 py-4">Status</th>
                                                 <th className="px-6 py-4">Date</th>
-                                                <th className="px-6 py-4 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className={`divide-y ${isDark ? 'divide-slate-700 bg-slate-900' : 'divide-slate-200 bg-white'}`}>
                                             {loading ? (
                                                 <tr>
-                                                    <td colSpan={9} className={`px-6 py-10 text-center text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    <td colSpan={8} className={`px-6 py-10 text-center text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                         Loading payments...
+                                                    </td>
+                                                </tr>
+                                            ) : error ? (
+                                                <tr>
+                                                    <td colSpan={8} className={`px-6 py-10 text-center text-sm ${isDark ? 'text-red-300' : 'text-red-500'}`}>
+                                                        {error}
                                                     </td>
                                                 </tr>
                                             ) : displayedPayments.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={9} className={`px-6 py-10 text-center text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    <td colSpan={8} className={`px-6 py-10 text-center text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                         No transactions found
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                displayedPayments.map((payment) => (
-                                                    <tr key={payment.id} className={`transition ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}>
-                                                        <td className={`px-4 py-3 text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{payment.id}</td>
-                                                        <td className="px-4 py-3">
-                                                            <div className="flex items-center gap-2.5">
-                                                                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isDark ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'}`}>
-                                                                    <Building2 className="h-3.5 w-3.5" />
+                                                displayedPayments.map((payment) => {
+                                                    const meta = getPaymentStatusMeta(payment.status)
+                                                    return (
+                                                        <tr key={payment.id} className={`transition ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}>
+                                                            <td className={`px-4 py-3 font-mono text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                                {payment.transaction_reference}
+                                                                {payment.provider_reference && (
+                                                                    <div className={`mt-0.5 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                                        ref {payment.provider_reference}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex items-center gap-2.5">
+                                                                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isDark ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'}`}>
+                                                                        {(payment.payer || '?').charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <div className={`truncate text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{payment.payer}</div>
+                                                                        {payment.payer_email && (
+                                                                            <div className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{payment.payer_email}</div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <div className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{payment.payer}</div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{payment.type}</td>
-                                                        <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{payment.property}</td>
-                                                        <td className={`px-4 py-3 text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{payment.amount}</td>
-                                                        <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{payment.method}</td>
-                                                        <td className="px-4 py-3">
-                                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(payment.status)}`}>
-                                                                {payment.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                            <div>{payment.date}</div>
-                                                            <div className={`mt-0.5 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{payment.time}</div>
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <div className="flex items-center justify-end">
-                                                                <button
-                                                                    type="button"
-                                                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md border ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
-                                                                    aria-label="Open payment actions"
-                                                                >
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
+                                                            </td>
+                                                            <td className={`px-4 py-3 font-mono text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{payment.booking_reference}</td>
+                                                            <td className={`max-w-[14rem] truncate px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{payment.property_name}</td>
+                                                            <td className={`px-4 py-3 text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                                                {formatAmount(payment.amount, payment.currency)}
+                                                            </td>
+                                                            <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                                {formatPaymentMethod(payment.payment_method, payment.payment_method_display)}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.tone}`}>
+                                                                    {meta.label}
+                                                                </span>
+                                                            </td>
+                                                            <td className={`px-4 py-3 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                                {formatCreatedDate(payment.created_at)}
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })
                                             )}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
-                            <div className={`mt-4 flex items-center justify-end gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {hasMore && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setVisibleCount((count) => Math.min(count + 3, filteredPayments.length))}
-                                        className={`rounded-lg border px-3 py-2 font-medium transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
-                                    >
-                                        View more
-                                    </button>
-                                )}
-                                {hasLess && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setVisibleCount(3)}
-                                        className={`rounded-lg border px-3 py-2 font-medium transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
-                                    >
-                                        View less
-                                    </button>
-                                )}
-                            </div>
+                            {!error && filteredPayments.length > 0 && (
+                                <div className={`mt-4 flex items-center justify-end gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {hasMore && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setVisibleCount((count) => Math.min(count + 3, filteredPayments.length))}
+                                            className={`rounded-lg border px-3 py-2 font-medium transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                                        >
+                                            View more
+                                        </button>
+                                    )}
+                                    {hasLess && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setVisibleCount(3)}
+                                            className={`rounded-lg border px-3 py-2 font-medium transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                                        >
+                                            View less
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </main>

@@ -29,13 +29,19 @@ from . import services
 
 
 def _payment_payload(payment):
+    booking = payment.booking
+    property_obj = getattr(booking, "property", None)
+    renter = getattr(booking, "renter", None)
     return {
         "id": payment.pk,
         "transaction_reference": payment.transaction_reference,
         "tx_ref": payment.tx_ref,
-        "booking": payment.booking_id,
-        "booking_reference": payment.booking.booking_reference,
-        "booking_status": payment.booking.status,
+        "booking": booking.pk,
+        "booking_reference": booking.booking_reference,
+        "booking_status": booking.status,
+        "booking_property_name": getattr(property_obj, "property_name", None) or "",
+        "renter_name": f"{renter.get_full_name() or renter.email}" if renter else "",
+        "renter_email": renter.email if renter else "",
         "payment_method": payment.payment_method,
         "amount": float(payment.amount),
         "currency": payment.currency,
@@ -59,7 +65,9 @@ class PaymentListCreateAPIView(APIView):
     permission_classes = [IsAuthenticatedCookie]
 
     def _visible_queryset(self, user):
-        qs = PaymentTransaction.objects.select_related("booking").order_by("-created_at")
+        qs = PaymentTransaction.objects.select_related(
+            "booking", "booking__property", "booking__renter", "payer"
+        ).order_by("-created_at")
         if user.role == User.Role.ADMIN:
             return qs
         if user.role == User.Role.OWNER:
@@ -150,7 +158,9 @@ class PaymentListCreateAPIView(APIView):
 
 def _get_owned_payment(request, pk):
     try:
-        payment = PaymentTransaction.objects.select_related("booking").get(pk=pk)
+        payment = PaymentTransaction.objects.select_related(
+            "booking", "booking__property", "booking__renter", "payer"
+        ).get(pk=pk)
     except PaymentTransaction.DoesNotExist:
         return None
     if request.user.role != User.Role.ADMIN:
