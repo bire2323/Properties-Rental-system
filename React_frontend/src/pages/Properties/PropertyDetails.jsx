@@ -11,7 +11,7 @@ import { getImageUrl } from '../../lib/utils'
 import { getFeatureIcon } from '../../lib/featureIcons'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { getAllProperties, getPropertyById, addFavorite, removeFavorite, rateProperty } from '../../api/property/propertyApi'
+import { getAllProperties, getPropertyById, addFavorite, removeFavorite, rateProperty, submitPropertyReview } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 import ShareButton from '../../components/common/ShareButton'
 
@@ -90,6 +90,7 @@ function mapPropertyToCard(property) {
     mileage: detail.mileage || '',
     fuel_type: detail.fuel_type || '',
     seating_capacity: detail.seating_capacity || '',
+    reviews: property.reviews || [],
   }
 }
 
@@ -122,11 +123,15 @@ function PropertyDetails() {
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false)
   const [hoverRating, setHoverRating] = useState(0)
   const [isRatingLoading, setIsRatingLoading] = useState(false)
+  const [reviewText, setReviewText] = useState('')
+  const [isReviewLoading, setIsReviewLoading] = useState(false)
+  const [reviewError, setReviewError] = useState('')
   const [selectedImage, setSelectedImage] = useState(0)
   const [zoomOrigin, setZoomOrigin] = useState('50% 50%')
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [similarProperties, setSimilarProperties] = useState([])
   const [similarPropertiesLoading, setSimilarPropertiesLoading] = useState(false)
+  const [showReviewDrawer, setShowReviewDrawer] = useState(false)
   const { user } = useAuth()
 
   // ─── Fetch Property ──────────────────────────────────────────────
@@ -264,6 +269,28 @@ function PropertyDetails() {
       console.error('Failed to rate property', err)
     } finally {
       setIsRatingLoading(false)
+    }
+  }
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault()
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    if (!reviewText.trim() || isReviewLoading) return
+
+    try {
+      setIsReviewLoading(true)
+      setReviewError('')
+      await submitPropertyReview(property.id, reviewText)
+      const data = await getPropertyById(property.id)
+      if (data) setProperty(mapPropertyToCard(data))
+      setReviewText('')
+    } catch (err) {
+      setReviewError(err.message || 'Failed to save your review.')
+    } finally {
+      setIsReviewLoading(false)
     }
   }
 
@@ -568,34 +595,42 @@ function PropertyDetails() {
                       {property.address}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 justify-end">
-                      <Star className="h-5 w-5 fill-[#c99b43] text-[#c99b43]" />
-                      <span className="text-lg font-semibold text-slate-900 dark:text-white">
-                        {property.rating}
-                      </span>
+                  <div className="flex flex-col items-end gap-2">
+                    {/* Average rating display */}
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-[#c99b43] text-[#c99b43]" />
+                      <span className="text-base font-bold text-slate-900 dark:text-white">{Number(property.rating).toFixed(1)}</span>
+                      <span className="text-xs text-slate-400">/ 5</span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                      {property.rating_summary?.rating_count || 0} ratings
-                    </p>
-                    <div className="flex flex-col items-end">
-                      <p className="text-xs text-slate-500 mb-1">
+                    <p className="text-xs text-slate-500">{property.rating_summary?.rating_count || 0} ratings</p>
+                    {/* Interactive user rating stars (compact) */}
+                    <div className="flex flex-col items-end gap-1">
+                      <p className="text-[11px] text-slate-400">
                         {property.rating_summary?.user_rating ? 'Your rating:' : 'Rate this:'}
                       </p>
                       <div className="flex items-center gap-0.5" onMouseLeave={() => setHoverRating(0)}>
                         {[1, 2, 3, 4, 5].map((star) => (
                           <Star
                             key={star}
-                            className={`h-4 w-4 cursor-pointer transition-colors ${(hoverRating || property.rating_summary?.user_rating) >= star
-                              ? 'fill-[#c99b43] text-[#c99b43]'
-                              : 'text-slate-300 dark:text-slate-600'
-                              }`}
+                            className={`h-3.5 w-3.5 cursor-pointer transition-colors ${
+                              (hoverRating || property.rating_summary?.user_rating) >= star
+                                ? 'fill-[#c99b43] text-[#c99b43]'
+                                : 'text-slate-300 dark:text-slate-600'
+                            }`}
                             onMouseEnter={() => setHoverRating(star)}
                             onClick={() => handleRating(star)}
                           />
                         ))}
                       </div>
                     </div>
+                    {/* View Reviews button */}
+                    <button
+                      onClick={() => setShowReviewDrawer(true)}
+                      className="mt-1 inline-flex items-center gap-1.5 rounded-xl border border-[#c99b43] px-3 py-1.5 text-xs font-semibold text-[#c99b43] transition hover:bg-[#c99b43] hover:text-white"
+                    >
+                      <Star className="h-3 w-3" />
+                      View Reviews ({property.reviews.length})
+                    </button>
                   </div>
                 </div>
 
@@ -706,6 +741,9 @@ function PropertyDetails() {
                     </p>
                   </div>
                 </div>
+
+                {/* Reviews section removed — opens in side drawer */}
+
 
                 {/* ─── Additional Info ────────────────────────────────── */}
                 <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2">
@@ -921,6 +959,108 @@ function PropertyDetails() {
       )}
 
       <Footer />
+
+      {/* ─── Reviews Side Drawer ─── */}
+      {showReviewDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowReviewDrawer(false)}
+          />
+          {/* Drawer panel */}
+          <div
+            className="relative z-10 flex h-full w-full max-w-md flex-col bg-white shadow-2xl dark:bg-slate-950"
+            style={{ animation: 'slideInRight 0.28s cubic-bezier(0.22,1,0.36,1)' }}
+          >
+            {/* Drawer header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Reviews</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {property.reviews.length} {property.reviews.length === 1 ? 'review' : 'reviews'} · ⭐ {Number(property.rating).toFixed(1)} / 5
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReviewDrawer(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Review list */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+              {property.reviews.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Star className="h-10 w-10 text-slate-200 dark:text-slate-700 mb-3" />
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No reviews yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Be the first to share your experience below</p>
+                </div>
+              ) : (
+                property.reviews.map((review) => {
+                  const initials = (review.user_name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                  return (
+                    <div key={review.id} className="flex gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#c99b43] to-[#e6b955] text-xs font-bold text-white shadow-sm">
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white">{review.user_name}</p>
+                          <p className="text-[11px] text-slate-400">
+                            {new Date(review.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{review.review_text}</p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Write a review (pinned at bottom) */}
+            <div className="border-t border-slate-100 bg-gradient-to-br from-[#fffbf0] to-white px-5 py-4 dark:border-slate-800 dark:from-[#1a1608] dark:to-slate-950">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#c99b43] mb-2">Write a Review</p>
+              <form onSubmit={async (e) => { await handleReviewSubmit(e); }}>
+                <div className="relative">
+                  <textarea
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    placeholder={user ? 'Share your experience...' : 'Sign in to write a review'}
+                    disabled={!user || isReviewLoading}
+                    maxLength={500}
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  />
+                  <span className="absolute bottom-2 right-3 text-[10px] text-slate-400">{reviewText.length}/500</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  {reviewError
+                    ? <p className="text-xs text-red-500">⚠ {reviewError}</p>
+                    : <span />
+                  }
+                  <Button
+                    type="submit"
+                    disabled={!user || !reviewText.trim() || isReviewLoading}
+                    className="shrink-0 rounded-xl bg-[#c99b43] px-4 py-2 text-xs font-semibold text-white hover:bg-[#b48738] disabled:opacity-50"
+                  >
+                    {isReviewLoading ? 'Saving...' : 'Submit'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
