@@ -1,65 +1,58 @@
 import React from 'react';
 import { useAuth } from '../../../../hooks/useAuth';
-import { Button } from '../../../../components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 
 export default function AccountSettings() {
     const { user } = useAuth();
 
-    const formatDate = (dateString) => {
-        if (!dateString) return 'Not available';
-        const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined, options);
-    };
+    const formatDate = (d) => d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 
-    const handleDeleteAccount = () => {
-        if (window.confirm("Are you sure you want to deactivate or delete your account? This action cannot be undone.")) {
-            alert("Future implementation: Account deletion API required.");
+    const handleDelete = () => {
+        if (window.confirm('Are you sure? This action cannot be undone.')) {
+            alert('Future implementation: Account deletion API required.');
         }
     };
 
+    const rows = [
+        { label: 'Account ID',   value: user?.id || '—' },
+        { label: 'Role',         value: user?.role || 'Owner' },
+        { label: 'Auth',         value: user?.auth_provider || 'Email' },
+        { label: 'Member Since', value: formatDate(user?.owner_profile?.created_at) },
+    ];
+
     return (
-        <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="px-1">
-                <h3 className="text-base md:text-lg font-medium text-slate-900 dark:text-white">Account Info</h3>
-                <p className="mt-1 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                    View basic account details and manage account deletion.
-                </p>
+        <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 space-y-2.5">
+            {/* Info card */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
+                <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-800 dark:text-white">Account Info</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500">Details &amp; permissions</p>
+                </div>
+                <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {rows.map(({ label, value }) => (
+                        <div key={label} className="flex items-center justify-between px-4 py-2">
+                            <dt className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</dt>
+                            <dd className="text-[11px] font-semibold capitalize text-slate-800 dark:text-slate-200">{value}</dd>
+                        </div>
+                    ))}
+                </dl>
             </div>
 
-            <div className="space-y-4 md:space-y-6">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <dl className="divide-y divide-slate-200 dark:divide-slate-800">
-                        <div className="grid grid-cols-1 py-3 md:py-4 sm:grid-cols-3 sm:gap-4">
-                            <dt className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Account ID</dt>
-                            <dd className="mt-1 text-xs md:text-sm text-slate-900 dark:text-white sm:col-span-2 sm:mt-0">{user?.id || '—'}</dd>
-                        </div>
-                        <div className="grid grid-cols-1 py-3 md:py-4 sm:grid-cols-3 sm:gap-4">
-                            <dt className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Role</dt>
-                            <dd className="mt-1 text-xs md:text-sm text-slate-900 dark:text-white sm:col-span-2 sm:mt-0 capitalize">{user?.role || 'Owner'}</dd>
-                        </div>
-                        <div className="grid grid-cols-1 py-3 md:py-4 sm:grid-cols-3 sm:gap-4">
-                            <dt className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Authentication</dt>
-                            <dd className="mt-1 text-xs md:text-sm text-slate-900 dark:text-white sm:col-span-2 sm:mt-0 capitalize">{user?.auth_provider || 'Email'}</dd>
-                        </div>
-                        <div className="grid grid-cols-1 py-3 md:py-4 sm:grid-cols-3 sm:gap-4">
-                            <dt className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Account Created</dt>
-                            <dd className="mt-1 text-xs md:text-sm text-slate-900 dark:text-white sm:col-span-2 sm:mt-0">
-                                {formatDate(user?.owner_profile?.created_at)}
-                            </dd>
-                        </div>
-                    </dl>
-                </div>
-
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-6 dark:border-red-900/50 dark:bg-red-900/10">
-                    <h4 className="text-sm md:text-base font-semibold text-red-800 dark:text-red-300">Danger Zone</h4>
-                    <p className="mt-1 md:mt-2 text-xs md:text-sm text-red-700 dark:text-red-400 max-w-xl">
-                        Permanently remove your account and all of your content from the platform. 
-                        This action is not reversible, so please continue with caution.
-                    </p>
-                    <div className="mt-4 md:mt-5 flex gap-4">
-                        <Button variant="destructive" onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800 text-xs md:text-sm h-8 md:h-10">
+            {/* Danger zone */}
+            <div className="rounded-2xl border border-red-200/60 bg-red-50/50 p-3.5 dark:border-red-900/30 dark:bg-red-900/10">
+                <div className="flex items-start gap-2.5">
+                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                        <AlertTriangle className="h-3 w-3 text-red-500 dark:text-red-400" />
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-bold text-red-800 dark:text-red-300">Danger Zone</p>
+                        <p className="mt-0.5 text-[9px] text-red-600 dark:text-red-400 leading-relaxed">
+                            Permanently remove your account and all content. This is irreversible.
+                        </p>
+                        <button onClick={handleDelete}
+                            className="mt-2.5 rounded-lg bg-red-600 px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800">
                             Delete Account
-                        </Button>
+                        </button>
                     </div>
                 </div>
             </div>

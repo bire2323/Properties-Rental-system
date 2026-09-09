@@ -46,6 +46,13 @@ class ProfileDetailSerializer(ProfileSerializer):
 class OwnerProfileSerializer(serializers.ModelSerializer):
     """Serialize OwnerProfile model."""
 
+    verification_documents = serializers.SerializerMethodField()
+
+    def get_verification_documents(self, obj):
+        return OwnerVerificationDocumentSerializer(
+            obj.verification_documents.all(), many=True, context=self.context
+        ).data
+
     class Meta:
         model = OwnerProfile
         fields = (
@@ -55,6 +62,7 @@ class OwnerProfileSerializer(serializers.ModelSerializer):
             "approved_at",
             "created_at",
             "updated_at",
+            "verification_documents",
         )
         read_only_fields = (
             "verification_status",

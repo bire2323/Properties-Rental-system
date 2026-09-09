@@ -297,6 +297,14 @@ export async function getTestimonials() {
 }
 
 /**
+ * GET /api/reviews/owner/
+ * Returns tenant reviews for properties owned by the authenticated owner.
+ */
+export async function getOwnerReviews() {
+    return request('/api/reviews/owner/', { method: 'GET' })
+}
+
+/**
  * POST /api/interactions/properties/:id/rating/
  * Rates a property (1-5 stars) for the authenticated user.
  */
