@@ -595,11 +595,10 @@ function Navbar() {
                     navigateTo('/tenant/favorites')
                   }
                 }}
-                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 hover:scale-105 ${
-                  location.pathname.includes('favorites')
+                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 hover:scale-105 ${location.pathname.includes('favorites')
                     ? 'bg-[#c99b43]/15 text-[#c99b43] dark:bg-[#c99b43]/20 dark:text-[#f3c96d]'
                     : 'text-slate-700 hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-100 dark:hover:bg-[#c99b43]/10 dark:hover:text-[#f3c96d]'
-                }`}
+                  }`}
                 aria-label="Favorites"
                 title="Favorites"
               >
@@ -775,7 +774,7 @@ function Navbar() {
                             setAuthDropdownOpen(false)
                             navigate('/login')
                           }}
-                          className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                         >
                           <User size={15} />
                           <span>Sign In</span>
@@ -786,7 +785,7 @@ function Navbar() {
                             setAuthDropdownOpen(false)
                             navigate('/register')
                           }}
-                          className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[#c99b43]/10 hover:text-[#c99b43] dark:text-slate-200 dark:hover:bg-[#c99b43]/20 dark:hover:text-[#f3c96d]"
                         >
                           <User size={15} />
                           <span>Sign Up</span>

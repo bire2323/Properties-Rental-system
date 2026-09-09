@@ -211,6 +211,50 @@ class ChapaPaymentTests(TransactionTestCase):
         self.assertEqual(booking.status, Booking.BookingStatus.APPROVED)
         self.assertEqual(len(mail.outbox), 0)
 
+    # ─── Lookup reconciliation (browser return) ─────────────────────────
+
+    def test_lookup_triggers_server_side_verification_and_confirms(self):
+        """Returning from Chapa, /lookup/ verifies server-side so the renter is
+        not stranded waiting on the webhook to arrive."""
+        booking = self._booking()
+        payment = self._payment(booking=booking)
+        with patch("payments.services.chapa_verify", side_effect=_success_verify):
+            res = self._client(self.renter).get(
+                f"/api/payments/lookup/?tx_ref={payment.tx_ref}", format="json"
+            )
+        self.assertEqual(res.status_code, 200)
+        payment.refresh_from_db()
+        booking.refresh_from_db()
+        self.assertEqual(payment.status, PaymentTransaction.PaymentStatus.SUCCESSFUL)
+        self.assertEqual(booking.status, Booking.BookingStatus.CONFIRMED)
+        self.assertEqual(res.data["booking_status"], Booking.BookingStatus.CONFIRMED)
+        self.assertEqual(res.data["payment_status"], PaymentTransaction.PaymentStatus.SUCCESSFUL)
+
+    def test_lookup_still_resolves_when_verification_fails(self):
+        """If Chapa reports the payment failed (or is temporarily unavailable),
+        /lookup/ still returns the resolved payment so the frontend can render
+        the authoritative failed/processing state instead of hanging."""
+        booking = self._booking()
+        payment = self._payment(booking=booking)
+        with patch("payments.services.chapa_verify", return_value={"status": "failed", "amount": "300.00", "currency": "ETB"}):
+            res = self._client(self.renter).get(
+                f"/api/payments/lookup/?tx_ref={payment.tx_ref}", format="json"
+            )
+        self.assertEqual(res.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, PaymentTransaction.PaymentStatus.FAILED)
+        self.assertEqual(res.data["payment_status"], PaymentTransaction.PaymentStatus.FAILED)
+        self.assertEqual(res.data["booking_status"], Booking.BookingStatus.APPROVED)
+
+    def test_lookup_requires_ownership(self):
+        """Another renter must not be able to resolve someone else's payment."""
+        booking = self._booking()
+        payment = self._payment(booking=booking)
+        res = self._client(self.other).get(
+            f"/api/payments/lookup/?tx_ref={payment.tx_ref}", format="json"
+        )
+        self.assertEqual(res.status_code, 404)
+
     # ─── Amount / currency mismatch ─────────────────────────────────────
 
     def test_amount_mismatch_does_not_confirm(self):

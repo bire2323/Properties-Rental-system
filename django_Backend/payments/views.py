@@ -189,11 +189,18 @@ class PaymentLookupAPIView(APIView):
     """GET /api/payments/lookup/?tx_ref=... — resolve a booking from a transaction reference.
 
     This is the reconciliation entry point the frontend hits when the renter
-    returns from Chapa's hosted checkout. It ONLY reads local DB state — it
-    never verifies with Chapa and never confirms anything — so the Chapa
-    browser-return ``status`` query parameter is never trusted here or in React.
-    The authoritative confirmation happens exclusively through the webhook /
-    callback / verify flow.
+    returns from Chapa's hosted checkout. It ONLY returns local DB state — it
+    never trusts the Chapa browser-return ``status`` query parameter (that is
+    not proof of payment). The authoritative confirmation happens exclusively
+    through server-side Chapa verification.
+
+    To avoid stranding the renter on the return page when the Chapa webhook is
+    slow or lost (common with free ngrok tunnels in test mode), this view also
+    triggers an authoritative server-side Chapa verification for the resolved
+    payment before handing off to PaymentCheckout. Any verification error is
+    deliberately swallowed here so an unavailable gateway never blocks the
+    handoff — PaymentCheckout performs the definitive verification and renders
+    the authoritative status.
     """
 
     authentication_classes = [CookieJWTAuthentication]
@@ -214,6 +221,16 @@ class PaymentLookupAPIView(APIView):
 
         if request.user.role != User.Role.ADMIN and payment.payer_id != request.user.pk:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Trigger an authoritative server-side verification so the return page is
+        # not gated on the webhook arriving. Swallow errors: the definitive
+        # outcome (confirmed / failed / still processing) is rendered by
+        # PaymentCheckout via /verify/ and its status polling.
+        try:
+            services.verify_and_confirm(payment)
+            payment.refresh_from_db()
+        except (services.ChapaError, ValueError):
+            payment.refresh_from_db()
 
         booking = payment.booking
         return Response(

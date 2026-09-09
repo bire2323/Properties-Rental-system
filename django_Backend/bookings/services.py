@@ -381,6 +381,7 @@ def _save_applicant_documents(applicant, property_obj, applicant_documents):
     from .models import BookingApplicantDocument
     from django.core.files.uploadedfile import UploadedFile
 
+    saved_count = 0
     for entry in applicant_documents or []:
         doc = None
         document_type = ""

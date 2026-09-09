@@ -274,17 +274,7 @@ def _record_alerts(payment, *, description, metadata):
 
 
 def verify_and_confirm(payment):
-    """Verify a payment with Chapa and, if legitimate, confirm the booking.
-
-    Idempotent: if the booking/payment are already confirmed/successful the
-    transaction is a no-op. Returns the booking on success, or raises
-    ChapaError / ValueError otherwise.
-
-    Note: the FAILED/mismatch state is written inside an atomic block that
-    commits NORMALLY (no exception escapes it), and the ValueError is raised
-    only AFTER that block commits -- otherwise the exception would roll back
-    the failure state we just recorded.
-    """
+    
     # Idempotency fast-path: already confirmed, do nothing (webhook + callback
     # both arriving must produce a single confirmation).
     if (
