@@ -307,11 +307,11 @@ function Navbar() {
           {/* ─── Top row ─────────────────────────────────────────────── */}
           <div className="relative z-[60] flex min-h-20 items-center justify-between">
             {/* Left: mobile menu + logo */}
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 transition hover:bg-[#c99b43]/10 lg:hidden dark:text-slate-100 dark:hover:bg-white/10"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-700 transition hover:bg-[#c99b43]/10 lg:hidden dark:text-slate-100 dark:hover:bg-white/10"
                 aria-label="Open navigation menu"
                 aria-haspopup="dialog"
                 aria-controls="mobile-nav-drawer"
@@ -319,7 +319,7 @@ function Navbar() {
               >
                 <Menu size={20} />
               </button>
-              <button type="button" onClick={() => navigateTo('/')} className="flex shrink-0 items-center gap-3 transition-transform duration-200 hover:scale-[1.02]">
+              <button type="button" onClick={() => navigateTo('/')} className="flex min-w-0 items-center gap-2 transition-transform duration-200 hover:scale-[1.02] lg:gap-3">
                 {siteSettingsStatus === 'loading' ? (
                   <BrandSkeleton />
                 ) : siteSettingsStatus === 'success' ? (
@@ -336,7 +336,7 @@ function Navbar() {
                         <Building2 size={22} />
                       </span>
                     )}
-                    <span className="max-w-[8rem] truncate text-base font-semibold tracking-tight text-[#0b2141] sm:max-w-[11rem] sm:text-lg lg:max-w-[14rem] dark:text-[#f3c96d]">
+                    <span className="min-w-0 max-w-[8rem] truncate text-base font-semibold tracking-tight text-[#0b2141] sm:max-w-[11rem] sm:text-lg lg:max-w-[14rem] dark:text-[#f3c96d]">
                       <span className="bg-[linear-gradient(135deg,#0b2141,#c99b43)] bg-clip-text text-transparent dark:bg-[linear-gradient(135deg,#f7db96,#c99b43)]">
                         {siteName || 'Home'}
                       </span>
@@ -549,7 +549,7 @@ function Navbar() {
             </nav>
 
             {/* Right: search toggle, theme, favorites, user */}
-            <div className="flex items-center gap-1.5 lg:gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
               <button
                 type="button"
                 onClick={() => setSearchOpen((open) => !open)}
