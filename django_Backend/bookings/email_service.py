@@ -188,12 +188,26 @@ def send_booking_cancelled_email(booking, *, cancelled_for, reason=""):
 
 
 def send_booking_confirmed_email(booking):
+    # The renter is told the booking is confirmed; the owner is told the
+    # payment was received and the amount they will receive (payout). These
+    # are separate templates because tenant-facing mail never includes
+    # owner payout amounts.
     _dispatch(
         booking,
         recipients=_tenant_destination_emails(booking),
         template_name="confirmed",
         subject=_subject_line("confirmed", booking),
         context={"cta_url": f"{settings.FRONTEND_BASE_URL.rstrip('/')}/tenant/bookings"},
+    )
+    _dispatch(
+        booking,
+        recipients=_owner_destination_emails(booking),
+        template_name="confirmed_owner",
+        subject=_subject_line("confirmed", booking),
+        context={
+            "owner_payout": f"{booking.currency} {booking.owner_payout_amount}",
+            "cta_url": f"{settings.FRONTEND_BASE_URL.rstrip('/')}/owner/bookings",
+        },
     )
 
 

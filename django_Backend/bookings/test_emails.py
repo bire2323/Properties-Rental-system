@@ -188,16 +188,26 @@ class BookingEmailTests(TransactionTestCase):
         )
         confirm_booking_from_payment(payment)
         self.assertEqual(booking.status, Booking.BookingStatus.CONFIRMED)
-        self.assertEqual(len(mail.outbox), 1)
-        message = mail.outbox[0]
-        self.assertIn("confirmed", message.subject.lower())
-        self.assertEqual(message.to, ["renter@example.com"])
-        body = message.body
-        html = "".join(c[0] for c in message.alternatives if c[1] == "text/html") or ""
+        # Two mails: renter gets the "confirmed" mail, owner gets the
+        # owner-facing "payment received" mail.
+        self.assertEqual(len(mail.outbox), 2)
+        by_recipient = {tuple(m.to): m for m in mail.outbox}
+        renter_mail = by_recipient[("renter@example.com",)]
+        owner_mail = by_recipient[("owner@example.com",)]
+        for message in (renter_mail, owner_mail):
+            self.assertIn("confirmed", message.subject.lower())
+        body = renter_mail.body
+        html = "".join(c[0] for c in renter_mail.alternatives if c[1] == "text/html") or ""
         for text in (body, html):
-            # Only after authoritative verification may the email claim received.
+            # Only after authoritative verification may the mail claim received.
             self.assertIn("payment received", text.lower())
             self.assertIn("confirmed", text.lower())
+        # Owner-facing mail never leaks to the tenant: it carries the payout.
+        owner_body = owner_mail.body
+        owner_html = "".join(c[0] for c in owner_mail.alternatives if c[1] == "text/html") or ""
+        for text in (owner_body, owner_html):
+            self.assertIn("your payout", text.lower())
+            self.assertIn("total paid by tenant", text.lower())
 
     def test_no_confirmation_email_for_unverified_payment(self):
         booking = self._booking(status=Booking.BookingStatus.APPROVED)

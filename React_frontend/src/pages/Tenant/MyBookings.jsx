@@ -654,7 +654,7 @@ export default function MyBookings() {
 
       {/* BOOKINGS DISPLAY: GRID VIEW */}
       {!loading && !error && filteredBookings.length > 0 && viewMode === 'grid' && (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredBookings.map((booking, index) => {
             const duration = calculateDuration(booking.start_date, booking.end_date, booking.rental_type)
 
@@ -664,12 +664,12 @@ export default function MyBookings() {
                 initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: reduceMotion ? 0 : Math.min(index * 0.04, 0.25) }}
-                className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-[#c99b43]/40 hover:shadow-md dark:border-slate-800 dark:bg-slate-950"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-[#c99b43]/40 hover:shadow-md dark:border-slate-800 dark:bg-slate-950"
               >
                 {/* Header card image and top pills */}
-                <div className="relative h-44 w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
+                <div className="relative h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
                   <img
-                    src={resolveBookingImage(null, booking.listing_type)}
+                    src={resolveBookingImage(booking.property_image, booking.listing_type)}
                     alt={booking.property_name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
@@ -692,6 +692,9 @@ export default function MyBookings() {
                       )}
                       {formatListingType(booking.listing_type)}
                     </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm">
+                      {formatAmount(booking.total_amount, booking.currency)}
+                    </span>
                   </div>
 
                   <div className="absolute top-3 right-3">
@@ -701,11 +704,11 @@ export default function MyBookings() {
                   {/* Bottom Image Overlay text: Property Name & Duration */}
                   <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="truncate text-base sm:text-lg font-bold text-white drop-shadow-sm">
+                      <h3 className="truncate text-sm sm:text-base font-bold text-white drop-shadow-sm">
                         {booking.property_name}
                       </h3>
                       {duration && (
-                        <span className="text-xs text-slate-200/90 drop-shadow-xs">
+                        <span className="text-[11px] text-slate-200/90 drop-shadow-xs">
                           Duration: {duration}
                         </span>
                       )}
@@ -714,7 +717,7 @@ export default function MyBookings() {
                 </div>
 
                 {/* Card Body */}
-                <div className="flex flex-1 flex-col justify-between p-5 space-y-4">
+                <div className="flex flex-1 flex-col justify-between p-4 space-y-3">
                   {/* Reference & Created Date */}
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <button
@@ -754,7 +757,7 @@ export default function MyBookings() {
 
                   {/* Next Step Informational Banner */}
                   <div
-                    className={`rounded-xl p-2.5 text-xs font-medium ${
+                    className={`rounded-xl p-2 text-xs font-medium ${
                       booking.status === 'approved'
                         ? 'border border-[#c99b43]/30 bg-[#c99b43]/10 text-[#966718] dark:text-[#f3c96d]'
                         : booking.status === 'pending'
@@ -772,7 +775,7 @@ export default function MyBookings() {
                     <button
                       type="button"
                       onClick={() => setSelected(booking)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                       <Eye className="h-4 w-4" />
                       Details
@@ -782,7 +785,7 @@ export default function MyBookings() {
                       <button
                         type="button"
                         onClick={() => navigate(`/bookings/${booking.id}/payment`)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#c99b43] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:bg-[#b08838]"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#c99b43] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#b08838]"
                       >
                         <CreditCard className="h-4 w-4" />
                         Pay Now
@@ -793,7 +796,7 @@ export default function MyBookings() {
                       <button
                         type="button"
                         onClick={() => setCancelModalBooking(booking)}
-                        className="ml-auto inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950/40"
+                        className="ml-auto inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950/40"
                       >
                         <X className="h-4 w-4" />
                         Cancel
@@ -818,7 +821,7 @@ export default function MyBookings() {
               <div className="flex items-center gap-4 min-w-0">
                 <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900">
                   <img
-                    src={resolveBookingImage(null, booking.listing_type)}
+                    src={resolveBookingImage(booking.property_image, booking.listing_type)}
                     alt={booking.property_name}
                     className="h-full w-full object-cover"
                     onError={(e) => {
@@ -951,7 +954,7 @@ export default function MyBookings() {
                 {/* Hero property banner */}
                 <div className="relative h-40 w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-900">
                   <img
-                    src={resolveBookingImage(null, selected.listing_type)}
+                    src={resolveBookingImage(selected.property_image, selected.listing_type)}
                     alt={selected.property_name}
                     className="h-full w-full object-cover"
                     onError={(e) => {

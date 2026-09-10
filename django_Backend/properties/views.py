@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
@@ -12,6 +13,7 @@ from accounts.models import Notification
 from site_settings.models import SiteSettings
 from audit.models import AuditLog
 from audit.services import audit_event
+from properties.services.subscriptions import can_create_listing
 from .models import Property, Feature, Company, CompanyVerificationDocument, ListingType, Region, City, Category
 from .permissions import PropertyPermission, CompanyPermission, CompanyDocumentPermission, AdminRolePermission
 from .serializers import (
@@ -556,6 +558,11 @@ class PropertyViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def perform_create(self, serializer):
+        company = serializer.validated_data.get('company')
+        allowed, msg = can_create_listing(self.request.user, company=company)
+        if not allowed:
+            raise PermissionDenied(msg)
+            
         property_obj = serializer.save(owner=self.request.user)
         site_settings = SiteSettings.objects.filter(pk=1).first()
 
@@ -609,7 +616,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
             )
 
     def perform_update(self, serializer):
+        previous_state = {
+            "status": serializer.instance.status,
+            "is_available": serializer.instance.is_available,
+        }
         instance = serializer.save()
+        new_state = {
+            "status": instance.status,
+            "is_available": instance.is_available,
+        }
         audit_event(
             actor=self.request.user,
             action="PROPERTY_UPDATED",
@@ -620,6 +635,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
             target_id=instance.pk,
             target_display=instance.property_name,
             description=f"Owner {self.request.user.get_full_name().strip() or self.request.user.email} updated {'house' if instance.listing_type == ListingType.HOUSE else 'vehicle'} listing '{instance.property_name}'.",
+            previous_state=previous_state,
+            new_state=new_state,
             metadata={"property_name": instance.property_name, "listing_type": instance.listing_type},
             request=self.request,
         )

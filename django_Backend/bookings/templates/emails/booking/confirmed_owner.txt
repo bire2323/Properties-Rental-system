@@ -1,0 +1,14 @@
+Payment received — booking confirmed
+
+A tenant payment has been verified for your listing {{ property_name }} (reference {{ booking_reference }}). The booking is now confirmed.
+
+Booking reference: {{ booking_reference }}
+Tenant: {{ tenant_name }}
+Check-in: {{ start_date }}
+Check-out: {{ end_date }}
+Total paid by tenant: {{ total_amount }}
+Your payout: {{ owner_payout }}
+
+View my bookings: {{ cta_url }}
+
+This is a system-generated email about your booking on {{ site_name }}.

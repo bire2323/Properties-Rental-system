@@ -502,6 +502,59 @@ class Subscription(models.Model):
         related_name='subscriptions',
         help_text="The subscription plan."
     )
+    # Purchased-term snapshot.
+    # Preserves the exact terms the owner paid for, so later edits to the
+    # SubscriptionPlan (price, limits, discount) never retroactively change an
+    # existing subscription's entitlements during its paid period.
+    # NULL/empty means "fall back to the current plan definition".
+    purchased_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Plan name snapshot taken at activation."
+    )
+    purchased_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Price actually paid at activation."
+    )
+    purchased_currency = models.CharField(
+        max_length=3,
+        choices=Currency.choices,
+        blank=True,
+        default="",
+        help_text="Currency actually paid at activation."
+    )
+    purchased_billing_cycle = models.CharField(
+        max_length=20,
+        choices=SubscriptionPlan.BillingCycle.choices,
+        blank=True,
+        default="",
+        help_text="Billing cycle purchased at activation."
+    )
+    purchased_max_listings = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Listing limit snapshot. NULL falls back to the current plan."
+    )
+    purchased_featured_listing_limit = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Featured listing limit snapshot. NULL falls back to the current plan."
+    )
+    purchased_commission_rate_discount = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal('0.00')),
+            MaxValueValidator(Decimal('100.00'))
+        ],
+        help_text="Commission discount snapshot (percentage)."
+    )
     status = models.CharField(
         max_length=20,
         choices=SubscriptionStatus.choices,

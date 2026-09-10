@@ -305,6 +305,15 @@ class BookingSerializer(serializers.ModelSerializer):
     latest_payment_method_display = serializers.SerializerMethodField()
 
     applicant_details = BookingApplicantDetailsSerializer(read_only=True)
+    property_image = serializers.SerializerMethodField()
+
+    def get_property_image(self, obj):
+        value = obj.property_image
+        if not value:
+            image = obj.property.images.first()
+            if image:
+                value = image.image.url
+        return value or ""
 
     def get_latest_payment_status_display(self, obj):
         value = getattr(obj, "latest_payment_status", None)
@@ -335,6 +344,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "booking_reference",
             "property",
             "property_name",
+            "property_image",
             "listing_type",
             "renter",
             "renter_email",

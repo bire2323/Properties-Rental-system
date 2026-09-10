@@ -112,3 +112,21 @@ export async function refreshToken() {
         method: 'POST',
     })
 }
+
+export const api = {
+    get(endpoint) {
+        return request(endpoint, { method: 'GET' })
+    },
+    post(endpoint, body = {}) {
+        return request(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        })
+    },
+    patch(endpoint, body = {}) {
+        return request(endpoint, {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        })
+    },
+}

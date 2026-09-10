@@ -269,7 +269,7 @@ export default function PaymentCheckout() {
   if (!booking) return null
 
   const base = {
-    image: resolveBookingImage(null, booking.listing_type),
+    image: resolveBookingImage(booking.property_image, booking.listing_type),
     listingType: formatListingType(booking.listing_type),
     rentalType: formatRentalType(booking.rental_type),
     isCar: booking.listing_type === 'car',

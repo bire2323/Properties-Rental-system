@@ -502,10 +502,10 @@ export default function OwnerBookings() {
               transition={{ delay: reduceMotion ? 0 : Math.min(i * 0.04, 0.3) }}
               className="flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"
             >
-              <div className="flex items-start gap-4 p-5">
+              <div className="flex items-start gap-4 p-4">
                 <div className="h-20 w-24 shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-900">
                   <img
-                    src={resolveBookingImage(null, booking.listing_type)}
+                    src={resolveBookingImage(booking.property_image, booking.listing_type)}
                     alt={booking.property_name}
                     className="h-full w-full object-cover"
                     onError={(e) => {
@@ -522,7 +522,7 @@ export default function OwnerBookings() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{i + 1}</span>
-                        <p className="truncate text-lg font-semibold text-slate-900 dark:text-white">
+                        <p className="truncate text-base font-semibold text-slate-900 dark:text-white">
                           {booking.property_name}
                         </p>
                       </div>
@@ -533,12 +533,12 @@ export default function OwnerBookings() {
                     <BookingStatusBadge status={booking.status} size="sm" />
                   </div>
 
-                  <div className="mt-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <div className="mt-2.5 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                     <User className="h-4 w-4 text-[#c99b43]" />
                     <span className="truncate">{booking.renter_email || 'Renter'}</span>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarDays className="h-4 w-4" />
                       {formatDisplayDate(booking.start_date)}
@@ -546,16 +546,16 @@ export default function OwnerBookings() {
                     </span>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between gap-2 text-sm">
+                  <div className="mt-2.5 flex items-center justify-between gap-2 text-xs">
                     <div>
-                      <p className="text-xs text-slate-400">Total</p>
-                      <p className="font-semibold text-slate-900 dark:text-white">
+                      <p className="text-[10px] text-slate-400">Total</p>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
                         {formatAmount(booking.total_amount, booking.currency)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-slate-400">Payout</p>
-                      <p className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      <p className="text-[10px] text-slate-400">Payout</p>
+                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                         {formatAmount(booking.owner_payout_amount, booking.currency)}
                       </p>
                     </div>
@@ -574,11 +574,11 @@ export default function OwnerBookings() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800/60">
+              <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2 dark:border-slate-800/60">
                 <button
                   type="button"
                   onClick={() => setSelected(booking)}
-                  className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
+                  className="inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
                 >
                   View details
                   <ChevronRight className="h-4 w-4" />
@@ -667,7 +667,7 @@ export default function OwnerBookings() {
                 <div className="flex items-center gap-3">
                   <div className="h-14 w-16 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900">
                     <img
-                      src={resolveBookingImage(null, selected.listing_type)}
+                      src={resolveBookingImage(selected.property_image, selected.listing_type)}
                       alt={selected.property_name}
                       className="h-full w-full object-cover"
                     />

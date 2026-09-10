@@ -299,3 +299,89 @@ class OwnerPayout(models.Model):
         recipient = self.owner.email if self.owner else self.company.name
         return f"{self.payout_reference} - {self.amount} {self.currency} to {recipient} ({self.status})"
 
+
+class SubscriptionPayment(models.Model):
+    """
+    Represents a payment made for an owner subscription.
+    """
+    transaction_reference = models.CharField(
+        max_length=50,
+        unique=True,
+        editable=False,
+        help_text="Unique transaction identifier."
+    )
+
+    subscription = models.ForeignKey(
+        "properties.Subscription",
+        on_delete=models.CASCADE,
+        related_name="payments",
+        help_text="The subscription this payment is for."
+    )
+    
+    payer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subscription_payments",
+        help_text="The user making the payment."
+    )
+
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentTransaction.PaymentMethod.choices,
+        help_text="Payment method used."
+    )
+    
+    tx_ref = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Provider transaction reference (e.g., Chapa tx_ref)."
+    )
+    provider_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Reference from the external payment provider."
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text="Amount charged."
+    )
+    currency = models.CharField(
+        max_length=3,
+        help_text="Currency for this transaction."
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=PaymentTransaction.PaymentStatus.choices,
+        default=PaymentTransaction.PaymentStatus.INITIATED,
+        help_text="Current payment status."
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['subscription', 'status']),
+            models.Index(fields=['payer', 'status']),
+            models.Index(fields=['status']),
+        ]
+        ordering = ['-created_at']
+        verbose_name = 'Subscription Payment'
+        verbose_name_plural = 'Subscription Payments'
+
+    def save(self, *args, **kwargs):
+        if not self.transaction_reference:
+            self.transaction_reference = f"SUBTXN-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.transaction_reference} - {self.amount} {self.currency} ({self.status})"
+
+

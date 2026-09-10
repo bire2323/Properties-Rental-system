@@ -40,6 +40,7 @@ class Booking(models.Model):
 
     booking_reference = models.CharField(max_length=20, unique=True, editable=False)
     property = models.ForeignKey("properties.Property", on_delete=models.CASCADE, related_name="bookings")
+    property_image = models.CharField(max_length=500, blank=True, default="", help_text="Snapshot of the property's main image at booking time.")
     renter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bookings_as_renter")
     rental_type = models.CharField(max_length=20, choices=RentalType.choices, default=RentalType.FIXED_TERM)
     start_date = models.DateField(help_text="Move-in or pickup date.")

@@ -274,7 +274,8 @@ function buildUpdatePayload(form) {
     fd.append('rental_unit', form.rental_unit)
     if (form.security_deposit) fd.append('security_deposit', parseFloat(form.security_deposit).toFixed(2))
     fd.append('is_available', form.is_available)
-    fd.append('status', "active")
+    fd.append('status', form.status)
+    if (form.category) fd.append('category', form.category)
     if (form.company) fd.append('company', form.company)
     if (form.address?.trim()) fd.append('address', form.address.trim())
     if (form.city) fd.append('city', form.city)
@@ -427,6 +428,7 @@ export default function EditProperty() {
                     security_deposit: data.security_deposit || '',
                     is_available: data.is_available ?? true,
                     status: data.status || 'active',
+                    category: data.category?.id || '',
                     ownership: data.company ? 'company' : 'personal',
                     company: data.company?.id || null,
                     address: data.address || '',

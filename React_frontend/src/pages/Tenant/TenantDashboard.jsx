@@ -278,7 +278,7 @@ export default function TenantDashboard() {
             {/* Image Banner */}
             <div className="relative h-48 w-full shrink-0 overflow-hidden rounded-2xl bg-slate-100 sm:h-56 lg:h-44 lg:w-72 dark:bg-slate-900">
               <img
-                src={resolveBookingImage(null, spotlightBooking.listing_type)}
+                src={resolveBookingImage(spotlightBooking.property_image, spotlightBooking.listing_type)}
                 alt={spotlightBooking.property_name}
                 className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                 onError={(e) => {
@@ -492,7 +492,7 @@ export default function TenantDashboard() {
                 <div className="flex items-center gap-4 min-w-0">
                   <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-900">
                     <img
-                      src={resolveBookingImage(null, booking.listing_type)}
+                      src={resolveBookingImage(booking.property_image, booking.listing_type)}
                       alt={booking.property_name}
                       className="h-full w-full object-cover transition-transform group-hover:scale-105"
                       onError={(e) => {

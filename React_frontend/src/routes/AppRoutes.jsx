@@ -14,6 +14,7 @@ import Verification from '../pages/Admin/Verification'
 import VerificationDetail from '../pages/Admin/VerificationDetail'
 import Reports from '../pages/Admin/Reports'
 import Payments from '../pages/Admin/Payments'
+import SubscriptionPlans from '../pages/Admin/SubscriptionPlans'
 import AdminSetting from '../pages/Admin/AdminSetting'
 import AdminProfile from '../pages/Admin/AdminProfile'
 import Notification from '../pages/Admin/Notification'
@@ -26,6 +27,8 @@ import OwnerBookings from '../pages/Owner/OwnerBookings'
 import OwnerFavorites from '../pages/Owner/OwnerFavorites'
 import OwnerMessages from '../pages/Owner/OwnerMessages'
 import OwnerPayments from '../pages/Owner/OwnerPayments'
+import Subscription from '../pages/Owner/Subscription'
+import SubscriptionResult from '../pages/Owner/SubscriptionResult'
 import OwnerProperties from '../pages/Owner/OwnerProperties'
 import OwnerReviews from '../pages/Owner/OwnerReviews'
 import OwnerSettings from '../pages/Owner/OwnerSettings'
@@ -143,6 +146,8 @@ function AppRoutes() {
 
                     <Route path="bookings" element={<OwnerBookings />} />
                     <Route path="favorites" element={<OwnerFavorites />} />
+                    <Route path="subscriptions" element={<Subscription />} />
+                    <Route path="subscriptions/result" element={<SubscriptionResult />} />
                     <Route path="payments" element={<OwnerPayments />} />
                     <Route path="messages" element={<OwnerMessages />} />
                     <Route path="reports" element={<Navigate to="/owner/reviews" replace />} />
@@ -235,6 +240,14 @@ function AppRoutes() {
                     element={
                         <AdminRoute>
                             <Payments />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/subscriptions"
+                    element={
+                        <AdminRoute>
+                            <SubscriptionPlans />
                         </AdminRoute>
                     }
                 />

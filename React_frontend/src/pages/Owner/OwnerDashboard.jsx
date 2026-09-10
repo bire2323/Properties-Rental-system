@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import {
     ArrowRight, Building2, CalendarCheck, DollarSign, Home,
     Plus, Sparkles, Inbox, TrendingUp, ChevronRight, LayoutGrid,
-    Clock, CheckCircle2, XCircle, Zap
+    Clock, CheckCircle2, XCircle, Zap, Wallet, ShieldCheck
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getAllProperties } from '../../api/property/propertyApi'
 import { listBookings } from '../../api/bookingApi'
+import { subscriptionApi } from '../../api/subscriptionApi'
 import StatCard from './components/StatCard'
 import PropertyGrid from './components/PropertyGrid'
 import LoadingSkeleton from './components/LoadingSkeleton'
@@ -51,6 +52,81 @@ function QuickAction({ icon, label, sub, onClick, primary }) {
     )
 }
 
+function SubscriptionBanner({ subscription, propertiesCount, onManage, onUpgrade }) {
+    const freePlan = !subscription?.plan
+    const name = subscription?.plan?.name || 'Free'
+    const showActive = subscription?.status === 'active' || subscription?.status === 'trialing'
+    const limit = subscription?.plan?.max_listings
+    const used = propertiesCount ?? 0
+    const pct = limit == null ? 0 : Math.min(100, Math.round((used / Math.max(1, limit)) * 100))
+    const textClass = showActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#c99b43]'
+    const periodEnd = subscription?.current_period_end
+        ? new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : null
+
+    return (
+        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-200/70 bg-white/70 p-5 sm:p-6 shadow-sm backdrop-blur-sm dark:border-amber-900/30 dark:bg-slate-900/60">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#c99b43]/10 blur-3xl" />
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-4">
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-md ${showActive ? 'bg-gradient-to-br from-emerald-400 to-emerald-600' : 'bg-gradient-to-br from-[#c99b43] to-[#e8bb6a]'}`}>
+                        {showActive ? <ShieldCheck className="h-6 w-6 text-white" /> : <Sparkles className="h-6 w-6 text-white" />}
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{name} Plan</p>
+                            {freePlan ? (
+                                <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    Basic
+                                </span>
+                            ) : (
+                                <span className={`rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${textClass} dark:bg-emerald-950/50`}>
+                                    {showActive ? 'Active' : subscription?.status || 'Inactive'}
+                                </span>
+                            )}
+                        </div>
+                        {freePlan ? (
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                Post up to 5 listings for free · Upgrade to unlock more
+                            </p>
+                        ) : (
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                {limit == null ? 'Unlimited listings' : `${used}/${limit} listings used`}
+                                {periodEnd ? ` · Renews ${periodEnd}` : ''}
+                            </p>
+                        )}
+                        {!freePlan && limit != null && (
+                            <div className="mt-2 h-1.5 w-44 overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800">
+                                <div className={`h-full rounded-full ${showActive ? 'bg-emerald-500' : 'bg-[#c99b43]'}`} style={{ width: `${pct}%` }} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        type="button"
+                        onClick={onManage}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#c99b43]/40 px-4 py-2.5 text-sm font-semibold text-[#b98227] transition hover:bg-[#c99b43]/5 dark:text-[#f3c96d]"
+                    >
+                        <Wallet className="h-4 w-4" />
+                        {freePlan ? 'View Plans' : 'Manage'}
+                    </button>
+                    {!freePlan && (
+                        <button
+                            type="button"
+                            onClick={onUpgrade}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#c99b43] to-[#e8bb6a] px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-amber-300/30 transition-all hover:-translate-y-0.5 dark:shadow-amber-900/30"
+                        >
+                            <Zap className="h-4 w-4" />
+                            Upgrade
+                        </button>
+                    )}
+                </div>
+            </div>
+        </section>
+    )
+}
+
 export default function OwnerDashboard() {
     const navigate = useNavigate()
     const { user } = useAuth()
@@ -59,6 +135,22 @@ export default function OwnerDashboard() {
     const [error, setError] = useState(null)
     const [bookings, setBookings] = useState([])
     const [bookingsLoading, setBookingsLoading] = useState(true)
+    const [subscription, setSubscription] = useState(null)
+    const [subscriptionLoading, setSubscriptionLoading] = useState(true)
+
+    useEffect(() => {
+        async function loadSubscription() {
+            try {
+                const sub = await subscriptionApi.getMySubscription()
+                setSubscription(sub)
+            } catch {
+                setSubscription(null)
+            } finally {
+                setSubscriptionLoading(false)
+            }
+        }
+        loadSubscription()
+    }, [])
 
     useEffect(() => {
         async function loadProperties() {
@@ -168,6 +260,15 @@ export default function OwnerDashboard() {
                     </div>
                 </div>
             </section>
+
+            {!subscriptionLoading && (
+                <SubscriptionBanner
+                    subscription={subscription}
+                    propertiesCount={totalProperties}
+                    onManage={() => navigate('/owner/subscriptions')}
+                    onUpgrade={() => navigate('/owner/subscriptions')}
+                />
+            )}
 
             {/* STAT CARDS */}
             <section>

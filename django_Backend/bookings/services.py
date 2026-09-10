@@ -30,15 +30,27 @@ def _quantize(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def get_platform_commission_rate(listing_type: str) -> Decimal:
+def get_platform_commission_rate(property_obj) -> Decimal:
     settings = SiteSettings.objects.order_by("pk").first()
-    if listing_type == ListingType.HOUSE:
-      if settings and settings.house_commission_percent is not None:
-        return Decimal(settings.house_commission_percent)
-    elif listing_type == ListingType.CAR:
+    base_rate = Decimal("5.00")
+    
+    if property_obj.listing_type == ListingType.HOUSE:
+        if settings and settings.house_commission_percent is not None:
+            base_rate = Decimal(settings.house_commission_percent)
+    elif property_obj.listing_type == ListingType.CAR:
         if settings and settings.car_vehicle_commission_percent is not None:
-            return Decimal(settings.car_vehicle_commission_percent)
-    return Decimal("5.00")
+            base_rate = Decimal(settings.car_vehicle_commission_percent)
+            
+    from properties.services.subscriptions import get_commission_discount
+    discount_percent = get_commission_discount(owner=property_obj.owner, company=property_obj.company)
+    
+    if discount_percent > 0:
+        multiplier = Decimal("1.00") - (Decimal(discount_percent) / Decimal("100.00"))
+        final_rate = base_rate * multiplier
+        # Since it's a rate, quantize to 2 decimal places
+        return final_rate.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        
+    return base_rate
 
 
 def calculate_rental_units(start_date: date, end_date: date | None, rental_unit: str) -> int:
@@ -91,7 +103,7 @@ def calculate_financial_snapshot(property_obj, start_date, end_date, rental_type
     """
     base_price = calculate_base_price(property_obj, start_date, end_date, rental_type)
     security_deposit = Decimal(property_obj.security_deposit or 0)
-    commission_rate = get_platform_commission_rate(property_obj.listing_type)
+    commission_rate = get_platform_commission_rate(property_obj)
     platform_fee_amount = _quantize(base_price * commission_rate / Decimal("100"))
     owner_payout_amount = _quantize(base_price - platform_fee_amount)
     total_amount = _quantize(base_price + security_deposit)
@@ -331,8 +343,10 @@ def create_booking(*, renter, property_id, rental_type, start_date, end_date, ap
         financials = calculate_financial_snapshot(
             property_obj, start_date, end_date, rental_type
         )
+        main_image = property_obj.images.first()
         booking = Booking(
             property=property_obj,
+            property_image=main_image.image.url if main_image else "",
             renter=renter,
             rental_type=rental_type,
             start_date=start_date,

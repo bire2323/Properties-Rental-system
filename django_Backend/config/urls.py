@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/accounts/', include('accounts.urls')),
     path('api/properties/', include('properties.urls')),
+    path('api/subscriptions/', include('properties.subscription_urls')),
     path('api/bookings/', include('bookings.urls')),
     path('api/companies/', include('properties.company_urls')),
     path('api/interactions/', include('interactions.urls')),
