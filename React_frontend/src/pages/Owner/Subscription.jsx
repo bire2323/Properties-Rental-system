@@ -29,6 +29,7 @@ import { formatAmount } from '../../lib/bookingDisplay'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 const TIER_META = {
+  Free: { icon: Sparkles, tint: 'text-emerald-400', accent: 'from-emerald-400 to-teal-400', ring: 'ring-emerald-300/40 dark:ring-emerald-600/40' },
   Basic: { icon: Star, tint: 'text-slate-400', accent: 'from-slate-400 to-slate-500', ring: 'ring-slate-300/40 dark:ring-slate-600/40' },
   Premium: { icon: Crown, tint: 'text-[#c99b43]', accent: 'from-[#c99b43] to-[#e8bb6a]', ring: 'ring-[#c99b43]/40' },
   Business: { icon: Rocket, tint: 'text-emerald-500', accent: 'from-emerald-500 to-teal-500', ring: 'ring-emerald-400/40' },
@@ -301,7 +302,7 @@ export default function Subscription({ view = 'overview' }) {
             ) : (
               <>
                 <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
-                  Free plan <span className="text-[#f3c96d]">— 1 listing</span>
+                  Free plan <span className="text-[#f3c96d]">— 5 listings</span>
                 </h2>
                 <p className="mt-1 text-sm text-slate-300">
                   Subscribe to a plan to list more properties and unlock commission discounts.
@@ -313,13 +314,13 @@ export default function Subscription({ view = 'overview' }) {
           <div className="w-full max-w-sm lg:w-96">
             <div className="flex items-center justify-between text-xs font-semibold">
               <span className="text-slate-300">
-                {activePlan ? `${used} / ${listingLimitLabel(activePlan)} listings used` : `${used} / 1 listing used`}
+                {activePlan ? `${used} / ${listingLimitLabel(activePlan)} listings used` : `${used} / 5 listings used`}
               </span>
               <span className="text-[#f3c96d]">
-                {activePlan && limit ? `${Math.min(100, Math.round((used / limit) * 100))}%` : used >= 1 ? '100%' : '0%'}
+                {activePlan && limit ? `${Math.min(100, Math.round((used / limit) * 100))}%` : used >= 5 ? '100%' : '0%'}
               </span>
             </div>
-            <ProgressBar value={used} max={activePlan && limit ? limit : Math.max(1, used ? used : 1)} className="mt-2" />
+            <ProgressBar value={used} max={activePlan && limit ? limit : Math.max(5, used)} className="mt-2" />
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 type="button"
@@ -369,7 +370,7 @@ export default function Subscription({ view = 'overview' }) {
         <BenefitCard
           icon={<BadgeDollarSign className="h-5 w-5" />}
           label="Listings"
-          value={activePlan ? listingLimitLabel(activePlan) : '1'}
+          value={activePlan ? listingLimitLabel(activePlan) : '5'}
           sub={activePlan ? `${used} currently used` : 'Free plan'} 
         />
         <BenefitCard

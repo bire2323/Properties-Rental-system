@@ -47,7 +47,7 @@ export default function SubscriptionResult() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
-  const txRef = searchParams.get('tx_ref') || searchParams.get('trx_ref') || ''
+  const txRef = searchParams.get('tx_ref') || searchParams.get('trx_ref') || searchParams.get('reference') || ''
 
   const [state, setState] = useState('checking') // checking | activated | failed | resolved
   const [subscription, setSubscription] = useState(null)

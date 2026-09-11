@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/companies/', include('properties.company_urls')),
     path('api/interactions/', include('interactions.urls')),
     path('api/reviews/', include('Review.urls')),
+    path('api/testimonials/', include('testimonials.urls')),
     path('api/site-settings/', include('site_settings.urls')),
     path('api/audit/', include('audit.urls')),
     path('api/payments/', include('payments.urls')),

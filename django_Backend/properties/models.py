@@ -22,6 +22,7 @@ class ListingStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     ACTIVE = "active", "Active"
     INACTIVE = "inactive", "Inactive"
+    RENTED = "rented", "Rented"
     REJECTED = "rejected", "Rejected"
 
 

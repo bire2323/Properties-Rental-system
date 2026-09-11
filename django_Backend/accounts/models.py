@@ -1,6 +1,9 @@
+from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+import uuid
 
 
 class UserManager(BaseUserManager):
@@ -410,3 +413,54 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.type} - {self.title}"
+
+
+class LoginOTP(models.Model):
+    """
+    Email OTP challenge required to complete a manual (email/password) login.
+
+    A challenge is created when valid credentials are submitted; the account is
+    only authenticated (cookies issued) after the emailed code is verified.
+    """
+
+    OTP_LIFETIME_MINUTES = 5
+    MAX_ATTEMPTS = 5
+
+    # UUID doubles as the opaque token the browser sends back for verification,
+    # so an attacker cannot guess or enumerate other pending challenges.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="login_otps",
+    )
+    # The code is never stored in plain text.
+    code_hash = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveIntegerField(default=0)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"OTP for {self.user.email} (expires {self.expires_at: %Y-%m-%d %H:%M})"
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def is_locked(self):
+        return self.attempts >= self.MAX_ATTEMPTS
+
+    def verify(self, code):
+        """Validate the submitted code, tracking failures. Returns bool."""
+        if self.used_at is not None or self.is_expired() or self.is_locked():
+            return False
+        if check_password(str(code), self.code_hash):
+            self.used_at = timezone.now()
+            self.save(update_fields=["used_at"])
+            return True
+        self.attempts += 1
+        self.save(update_fields=["attempts"])
+        return False

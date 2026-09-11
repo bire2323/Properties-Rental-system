@@ -1,6 +1,9 @@
+from datetime import timedelta
+from decimal import Decimal
+
 from django.utils import timezone
-from properties.models import Subscription, SubscriptionPlan, Property, ListingType
-from django.db.models import Q
+
+from properties.models import Subscription, SubscriptionPlan, Property
 
 def get_active_subscription(owner, company=None):
     """
@@ -61,10 +64,55 @@ def can_create_listing(owner, company=None):
         # Unlimited plan
         return True, None
     else:
-        default_limit = 1
+        default_limit = 5
         if current_count >= default_limit:
             return False, f"You have reached the default limit of {default_limit} listings. Please subscribe to a plan to add more."
         return True, None
+
+
+def assign_free_subscription(user, company=None):
+    """
+    Assign the active Free plan (0 ETB) to the given user or company.
+    This is used when an owner registers so they immediately have a usable
+    listing quota without a paid checkout.
+
+    No-op (returns None) when the user/company already has an active or
+    trialing subscription, so existing paid subscribers are never downgraded.
+    """
+    if get_active_subscription(user, company):
+        return None
+
+    plan_qs = SubscriptionPlan.objects.filter(
+        name="Free",
+        is_active=True,
+        price=Decimal("0.00"),
+        billing_cycle=SubscriptionPlan.BillingCycle.MONTHLY,
+    )
+    if company:
+        plan_qs = plan_qs.filter(target_type=SubscriptionPlan.TargetType.COMPANY)
+    else:
+        plan_qs = plan_qs.filter(target_type=SubscriptionPlan.TargetType.INDIVIDUAL)
+
+    plan = plan_qs.first()
+    if not plan:
+        return None
+
+    now = timezone.now()
+    return Subscription.objects.create(
+        user=None if company else user,
+        company=company,
+        plan=plan,
+        purchased_name=plan.name,
+        purchased_price=plan.price,
+        purchased_currency=plan.currency,
+        purchased_billing_cycle=plan.billing_cycle,
+        purchased_max_listings=plan.max_listings,
+        purchased_featured_listing_limit=plan.featured_listing_limit,
+        purchased_commission_rate_discount=plan.commission_rate_discount,
+        status=Subscription.SubscriptionStatus.ACTIVE,
+        current_period_start=now,
+        current_period_end=now + timedelta(days=36500),
+    )
 
 def get_commission_discount(owner, company=None):
     """

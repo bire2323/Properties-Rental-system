@@ -55,7 +55,7 @@ function mapPropertyToCard(property) {
     baths,
     area,
     type: typeDisplay,
-    status: property.status === 'active' ? 'For Rent' : 'Not Available',
+    status: property.status === 'active' ? 'For Rent' : property.status === 'rented' ? 'Rented' : 'Not Available',
     is_favorite: property.is_favorite || false,
     rating_summary: property.rating_summary || { average_rating: 4.5, rating_count: 0, user_rating: null },
     rating: property.rating_summary?.average_rating || 4.5,
@@ -301,7 +301,7 @@ function PropertyDetails() {
 
         {/* Top Navigation skeleton */}
         <section className="border-b border-slate-200 bg-white py-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-screen-2xl lg:mx-10 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <div className="h-9 w-40 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
               <div className="flex items-center gap-2">
@@ -313,7 +313,7 @@ function PropertyDetails() {
         </section>
 
         <section className="bg-white py-8 dark:bg-slate-900">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-screen-2xl lg:mx-10 px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row">
               {/* Main image skeleton */}
               <div className="relative flex-1 lg:flex-[2]">
@@ -392,7 +392,7 @@ function PropertyDetails() {
 
       {/* ─── Top Navigation ────────────────────────────────────────── */}
       <section className="border-b border-slate-200 bg-white py-4 dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-screen-2xl lg:mx-10 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Button
               variant="outline"
@@ -489,7 +489,7 @@ function PropertyDetails() {
       </section> */}
 
       <section className="bg-slate-50/70 py-10 dark:bg-slate-950">
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 lg:mx-10">
           <div className="flex flex-col gap-4 lg:flex-row">
             {/* ─── Main Image ────────────────────────────────────────────── */}
             <div
@@ -612,11 +612,10 @@ function PropertyDetails() {
                         {[1, 2, 3, 4, 5].map((star) => (
                           <Star
                             key={star}
-                            className={`h-3.5 w-3.5 cursor-pointer transition-colors ${
-                              (hoverRating || property.rating_summary?.user_rating) >= star
-                                ? 'fill-[#c99b43] text-[#c99b43]'
-                                : 'text-slate-300 dark:text-slate-600'
-                            }`}
+                            className={`h-3.5 w-3.5 cursor-pointer transition-colors ${(hoverRating || property.rating_summary?.user_rating) >= star
+                              ? 'fill-[#c99b43] text-[#c99b43]'
+                              : 'text-slate-300 dark:text-slate-600'
+                              }`}
                             onMouseEnter={() => setHoverRating(star)}
                             onClick={() => handleRating(star)}
                           />

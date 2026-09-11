@@ -1,6 +1,24 @@
 import { useNavigate } from 'react-router-dom'
 import { MapPin, DollarSign, Eye, Pencil, Trash2 } from 'lucide-react'
 
+function getStatusMeta(status) {
+    if (status === 'rented') {
+        return {
+            label: 'Rented',
+            cls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
+        }
+    }
+    return status === 'active'
+        ? {
+            label: 'Available',
+            cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200',
+        }
+        : {
+            label: 'Unavailable',
+            cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+        }
+}
+
 export default function PropertyList({ properties, onDelete }) {
     const navigate = useNavigate()
 
@@ -29,8 +47,8 @@ export default function PropertyList({ properties, onDelete }) {
                             </div>
                             {/* Mobile Status Badge */}
                             <div className="lg:hidden shrink-0">
-                                <span className={property.status === 'active' ? 'rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>
-                                    {property.status === 'active' ? 'Available' : 'Unavailable'}
+                                <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${getStatusMeta(property.status).cls}`}>
+                                    {getStatusMeta(property.status).label}
                                 </span>
                             </div>
                         </div>
@@ -46,8 +64,8 @@ export default function PropertyList({ properties, onDelete }) {
 
                         {/* Desktop Status */}
                         <div className="hidden lg:flex items-center">
-                            <span className={property.status === 'active' ? 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>
-                                {property.status === 'active' ? 'Available' : 'Unavailable'}
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusMeta(property.status).cls}`}>
+                                {getStatusMeta(property.status).label}
                             </span>
                         </div>
 
@@ -62,14 +80,20 @@ export default function PropertyList({ properties, onDelete }) {
                             </button>
                             <button
                                 type="button"
+                                title={property.status === 'rented' ? 'This property is rented and cannot be edited' : 'Edit'}
+                                disabled={property.status === 'rented'}
                                 onClick={() => navigate(`/owner/properties/${property.id}/edit`)}
-                                className="rounded-lg lg:rounded-2xl border border-slate-200 p-2 lg:px-4 lg:py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+                                className={`rounded-lg lg:rounded-2xl border p-2 lg:px-4 lg:py-2 text-sm font-semibold transition ${property.status === 'rented'
+                                    ? 'cursor-not-allowed border-slate-200 text-slate-300 opacity-50 dark:border-slate-800 dark:text-slate-600'
+                                    : 'border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800'}`}
                             >
                                 <Pencil className="h-4 w-4 lg:h-5 lg:w-5" />
                             </button>
                             <button
                                 type="button"
+                                title={property.status === 'rented' ? 'This property is rented and cannot be deleted' : 'Delete'}
                                 onClick={async () => {
+                                    if (property.status === 'rented') return
                                     const ok = window.confirm(`Delete property \"${property.property_name}\"?`)
                                     if (!ok) return
                                     try {
@@ -78,7 +102,10 @@ export default function PropertyList({ properties, onDelete }) {
                                         alert(err.message || 'Unable to delete')
                                     }
                                 }}
-                                className="rounded-lg lg:rounded-2xl border border-red-200 p-2 lg:px-4 lg:py-2 text-sm font-semibold text-red-600"
+                                disabled={property.status === 'rented'}
+                                className={`rounded-lg lg:rounded-2xl border p-2 lg:px-4 lg:py-2 text-sm font-semibold ${property.status === 'rented'
+                                    ? 'cursor-not-allowed border-slate-200 text-slate-300 opacity-50 dark:border-slate-800 dark:text-slate-600'
+                                    : 'border-red-200 text-red-600'}`}
                             >
                                 <Trash2 className="h-4 w-4 lg:h-5 lg:w-5" />
                             </button>

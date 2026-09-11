@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+import { apiFetch } from '../apiClient'
 
 /**
  * Submit the "Become Owner" form using native fetch API
@@ -9,9 +9,8 @@ export const becomeOwner = async (formData) => {
     // ✅ No need to get token from localStorage – cookies are sent automatically
     // ✅ No need to set Authorization header – cookies handle authentication
 
-    const response = await fetch(`${API_BASE_URL}/api/accounts/become-owner/`, {
+    const response = await apiFetch('/api/accounts/become-owner/', {
         method: 'POST',
-        credentials: 'include', // 👈 CRITICAL: Send HTTP‑only cookies
         body: formData,
         // ⚠️ Do NOT set 'Content-Type' header – browser handles it for FormData
     })

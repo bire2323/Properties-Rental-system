@@ -1,6 +1,7 @@
 from rest_framework import views, status, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal
 from properties.models import SubscriptionPlan, Subscription
 from properties.services.subscriptions import get_active_subscription
 from properties.subscription_serializers import (
@@ -20,7 +21,10 @@ class SubscriptionPlanListView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        plans = SubscriptionPlan.objects.filter(is_active=True)
+        plans = SubscriptionPlan.objects.filter(
+            is_active=True,
+            price__gt=Decimal("0.00"),
+        )
         serializer = SubscriptionPlanSerializer(plans, many=True)
         return Response(serializer.data)
 
@@ -29,9 +33,9 @@ class AdminSubscriptionPlanViewSet(viewsets.ModelViewSet):
     """
     Admin-only management of subscription plans.
     - List/create/update plans.
-    - Deletion is intentionally NOT supported: plans referenced by existing
-      subscriptions (or with a purchase history) must be deactivated via
-      ``is_active = False`` instead so historical records remain intact.
+    - Delete plans that have no subscription history. Plans referenced by
+      existing subscriptions (or with a purchase history) must be deactivated
+      via ``is_active = False`` instead so historical records remain intact.
     """
 
     serializer_class = AdminSubscriptionPlanSerializer
@@ -123,19 +127,39 @@ class AdminSubscriptionPlanViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         plan = self.get_object()
-        active_subscriptions = plan.subscriptions.filter(
-            status__in=[Subscription.SubscriptionStatus.ACTIVE, Subscription.SubscriptionStatus.TRIALING]
-        ).count()
-        return Response(
-            {
-                "detail": (
-                    "Plans cannot be deleted because SubscriptionPlan records are referenced by "
-                    "existing Subscription history. Set is_active = False instead to stop new "
-                    f"purchases. ({active_subscriptions} active subscription(s) currently reference this plan.)"
-                )
-            },
-            status=status.HTTP_400_BAD_REQUEST,
+        subscription_count = plan.subscriptions.count()
+        if subscription_count > 0:
+            return Response(
+                {
+                    "detail": (
+                        f"This plan cannot be deleted because it is referenced by "
+                        f"{subscription_count} existing subscription record(s). "
+                        "Set is_active = False instead to stop new purchases while "
+                        "preserving your subscription history."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        plan_name = plan.name
+        plan.delete()
+
+        audit_event(
+            actor=request.user,
+            action="SUBSCRIPTION_PLAN_DELETED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="subscription_plan",
+            target_id="",
+            target_display=plan_name,
+            description=f"Admin deleted subscription plan '{plan_name}'.",
+            metadata={"plan_name": plan_name},
+            request=request,
         )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class MySubscriptionView(views.APIView):
     permission_classes = [IsAuthenticated]
 
@@ -158,6 +182,12 @@ class SubscribeView(views.APIView):
             plan = SubscriptionPlan.objects.get(id=plan_id, is_active=True)
         except SubscriptionPlan.DoesNotExist:
             return Response({"error": "Plan not found or inactive."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if plan.price <= Decimal("0.00"):
+            return Response(
+                {"error": "Free plans are assigned automatically and cannot be purchased."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
             
         # Check if they already have an active sub
         active = get_active_subscription(request.user)

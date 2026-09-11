@@ -1,8 +1,9 @@
 // src/context/auth-context.jsx (or src/providers/AuthProvider.jsx)
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     getProfile,
     login as loginRequest,
+    loginOtpVerify as loginOtpVerifyRequest,
     logout as logoutRequest,
     register as registerRequest,
     googleLogin as googleLoginRequest,
@@ -15,17 +16,40 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const sessionTimer = useRef(null)
+    const sessionTimeoutMinutes = useRef(null)
     const authCheckInFlight = useRef(null)
+    const logoutRef = useRef(logout)
 
-    function scheduleSessionTimeout(minutes) {
+    useEffect(() => {
+        logoutRef.current = logout
+    })
+
+    const scheduleSessionTimeout = useCallback((minutes) => {
+        sessionTimeoutMinutes.current = minutes
         if (sessionTimer.current) clearTimeout(sessionTimer.current)
         if (!minutes) return
         sessionTimer.current = setTimeout(() => {
-            logout()
+            logoutRef.current()
         }, minutes * 60 * 1000)
-    }
+    }, [])
 
-    useEffect(() => () => sessionTimer.current && clearTimeout(sessionTimer.current), [])
+    // Sliding idle timeout: any user activity resets the countdown, so the
+    // session only ends after `session_timeout_minutes` without interaction.
+    useEffect(() => {
+        const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'mousemove', 'touchstart', 'scroll', 'wheel']
+        function resetIdleTimer() {
+            scheduleSessionTimeout(sessionTimeoutMinutes.current)
+        }
+        ACTIVITY_EVENTS.forEach((eventName) => {
+            window.addEventListener(eventName, resetIdleTimer, { passive: true })
+        })
+        return () => {
+            ACTIVITY_EVENTS.forEach((eventName) => {
+                window.removeEventListener(eventName, resetIdleTimer)
+            })
+            if (sessionTimer.current) clearTimeout(sessionTimer.current)
+        }
+    }, [scheduleSessionTimeout])
 
     // Restore the authenticated user from the HttpOnly cookie-backed profile API.
     async function checkAuth() {
@@ -40,7 +64,7 @@ export function AuthProvider({ children }) {
             try {
                 const profile = await getProfile()
                 setUser(profile)
-                if (profile?.role === 'admin') scheduleSessionTimeout(profile.session_timeout_minutes)
+                if (profile?.session_timeout_minutes) scheduleSessionTimeout(profile.session_timeout_minutes)
                 return profile
             } catch {
                 try {
@@ -48,7 +72,7 @@ export function AuthProvider({ children }) {
                     await refreshTokenRequest()
                     const profile = await getProfile()
                     setUser(profile)
-                    if (profile?.role === 'admin') scheduleSessionTimeout(profile.session_timeout_minutes)
+                    if (profile?.session_timeout_minutes) scheduleSessionTimeout(profile.session_timeout_minutes)
                     return profile
                 } catch {
                     setUser(null)
@@ -93,9 +117,30 @@ export function AuthProvider({ children }) {
         setLoading(true)
         try {
             const result = await loginRequest(data)
+            // Manual login now requires a two-step email-OTP flow. The step-1
+            // response carries a challenge (no user yet), which the login page
+            // completes via verifyLoginOtp before we establish a session.
+            if (result?.requires_otp) {
+                return result
+            }
             setUser(result.user)
             localStorage.setItem('property-rental-auth-session', '1')
-            if (result.user?.role === 'admin') scheduleSessionTimeout(result.session_timeout_minutes)
+            if (result.session_timeout_minutes) scheduleSessionTimeout(result.session_timeout_minutes)
+            return result
+        } catch (error) {
+            throw new Error(normalizeErrorMessage(error), { cause: error })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function verifyLoginOtp(loginChallengeId, code) {
+        setLoading(true)
+        try {
+            const result = await loginOtpVerifyRequest(loginChallengeId, code)
+            setUser(result.user)
+            localStorage.setItem('property-rental-auth-session', '1')
+            if (result.session_timeout_minutes) scheduleSessionTimeout(result.session_timeout_minutes)
             return result
         } catch (error) {
             throw new Error(normalizeErrorMessage(error), { cause: error })
@@ -105,6 +150,8 @@ export function AuthProvider({ children }) {
     }
 
     async function logout() {
+        if (sessionTimer.current) clearTimeout(sessionTimer.current)
+        sessionTimeoutMinutes.current = null
         try {
             await logoutRequest()
         } finally {
@@ -120,7 +167,7 @@ export function AuthProvider({ children }) {
             const result = await googleLoginRequest(token)
             setUser(result.user)
             localStorage.setItem('property-rental-auth-session', '1')
-            if (result.user?.role === 'admin') scheduleSessionTimeout(result.session_timeout_minutes)
+            if (result.session_timeout_minutes) scheduleSessionTimeout(result.session_timeout_minutes)
             return result
         } catch (error) {
             throw new Error(normalizeErrorMessage(error), { cause: error })
@@ -134,6 +181,7 @@ export function AuthProvider({ children }) {
             user,
             loading,
             login,
+            verifyLoginOtp,
             register,
             logout,
             googleLogin,

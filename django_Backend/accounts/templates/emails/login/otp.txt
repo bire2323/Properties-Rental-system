@@ -1,0 +1,10 @@
+Hi {{ user_name }},
+
+Enter the code below to finish signing in to your {{ site_name }} account:
+
+{{ code }}
+
+This code expires in {{ expiry_minutes }} minutes.
+
+If you didn't try to sign in, you can safely ignore this email.
+Sent to {{ email }}. Please do not share this code with anyone.

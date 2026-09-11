@@ -266,6 +266,41 @@ def confirm_booking_from_payment(payment_transaction):
 
     booking.status = Booking.BookingStatus.CONFIRMED
     booking.save(update_fields=["status", "updated_at"])
+
+    # A paid booking means the listing is now rented. Lock the property so the
+    # owner can no longer edit/delete it while it is occupied.
+    property_obj = booking.property
+    if property_obj is not None and property_obj.status != ListingStatus.RENTED:
+        previous_status = property_obj.status
+        previous_available = property_obj.is_available
+        property_obj.status = ListingStatus.RENTED
+        property_obj.is_available = False
+        property_obj.save(update_fields=["status", "is_available", "updated_at"])
+        audit_event(
+            actor=None,
+            action="PROPERTY_MARKED_RENTED",
+            category=AuditLog.Category.PROPERTY
+            if property_obj.listing_type == ListingType.HOUSE
+            else AuditLog.Category.VEHICLE,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="property",
+            target_id=property_obj.pk,
+            target_display=property_obj.property_name,
+            description=(
+                f"Property '{property_obj.property_name}' marked as rented after a verified "
+                f"payment for booking {booking.booking_reference}."
+            ),
+            previous_state={"status": previous_status, "is_available": previous_available},
+            new_state={"status": ListingStatus.RENTED, "is_available": False},
+            metadata={
+                "booking_id": booking.pk,
+                "booking_reference": booking.booking_reference,
+                "property_name": property_obj.property_name,
+            },
+            request=None,
+        )
+
     record_audit_event(
         booking=booking,
         action="confirmed_from_payment",

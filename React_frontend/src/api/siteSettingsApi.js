@@ -1,35 +1,13 @@
-import { refreshToken } from './authApi'
+import { apiFetch, API_BASE_URL } from './apiClient'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 let siteSettingsPromise = null
 let siteSettingsCache = null
 
 async function request(path = '', options = {}, canRefresh = options.method !== 'GET') {
-    const headers = { ...(options.headers || {}) }
-    if (!(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/json'
-    }
+    const response = await apiFetch(`/api/site-settings/${path}`, options, { noRefresh: !canRefresh })
 
-    let response = await fetch(`${API_BASE_URL}/api/site-settings/${path}`, {
-        credentials: 'include',
-        headers,
-        ...options,
-    })
-
-    if (response.status === 401 && canRefresh) {
-        try {
-            await refreshToken()
-            response = await fetch(`${API_BASE_URL}/api/site-settings/${path}`, {
-                credentials: 'include',
-                headers,
-                ...options,
-            })
-        } catch {
-            // Preserve the original authentication response below.
-        }
-    }
     const text = await response.text()
-    let payload = {}
+    let payload
     try {
         payload = text ? JSON.parse(text) : {}
     } catch {

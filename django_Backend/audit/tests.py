@@ -11,14 +11,16 @@ Covers:
 - Integration: booking lifecycle generates BOOKING_* audit events.
 - Integration: verified payment -> PAYMENT_VERIFIED and admin notification rules.
 """
+import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from django.test import TestCase, override_settings
+from django.core import mail
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from accounts.models import Notification, User
+from accounts.models import LoginOTP, Notification, User
 from audit.admin import AuditLogAdmin
 from audit.models import AuditLog
 from audit.services import audit_event, audit_system_event
@@ -36,6 +38,14 @@ def _make_user(email, role):
         last_name="User",
         role=role,
     )
+
+
+def _otp_code_from_outbox():
+    for message in reversed(mail.outbox):
+        match = re.search(r"\b(\d{6})\b", message.body or "")
+        if match:
+            return match.group(1)
+    raise AssertionError("No login OTP email found in the mail outbox.")
 
 
 def _make_house(owner):
@@ -481,7 +491,10 @@ class AuditRegistrationTests(TestCase):
         )
 
 
-class AuditLoginTests(TestCase):
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class AuditLoginTests(TransactionTestCase):
+    """Login now requires an emailed OTP; LOGIN_SUCCESS is logged on verify."""
+
     def setUp(self):
         self.user = _make_user("login@example.com", User.Role.TENANT)
 
@@ -490,6 +503,18 @@ class AuditLoginTests(TestCase):
         response = client.post(
             "/api/accounts/login/",
             {"email": "login@example.com", "password": "StrongPass123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["requires_otp"])
+
+        otp = LoginOTP.objects.filter(user=self.user, used_at__isnull=True).first()
+        self.assertIsNotNone(otp)
+        code = _otp_code_from_outbox()
+
+        response = client.post(
+            "/api/accounts/login/otp-verify/",
+            {"login_challenge_id": str(otp.id), "code": code},
             format="json",
         )
         self.assertEqual(response.status_code, 200)

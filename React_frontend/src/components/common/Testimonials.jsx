@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Quote } from 'lucide-react'
 import { getTestimonials } from '../../api/property/propertyApi'
 import { getImageUrl } from '../../lib/utils'
@@ -28,13 +28,13 @@ export default function Testimonials() {
         getTestimonials()
             .then((data) => {
                 if (cancelled) return
-                const reviews = Array.isArray(data) ? data : (data?.results || [])
-                setTestimonials(reviews.map((review) => ({
-                    ...review,
-                    name: review.user_name || 'NexaSpace customer',
-                    role: review.user_role === 'owner' ? 'Property Owner' : 'Tenant',
-                    image: getImageUrl(review.profile_image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user_name || 'Customer')}&background=c99b43&color=fff`,
-                    text: review.review_text,
+                const items = Array.isArray(data) ? data : (data?.results || [])
+                setTestimonials(items.map((item) => ({
+                    ...item,
+                    name: item.name || 'NexaSpace customer',
+                    role: item.role || 'Happy customer',
+                    image: getImageUrl(item.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name || 'Customer')}&background=c99b43&color=fff`,
+                    text: item.text,
                 })))
             })
             .catch(() => {

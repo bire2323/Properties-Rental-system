@@ -130,13 +130,13 @@ function Verification() {
     }
 
     return (
-        <div className={`min-h-screen flex lg:flex ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+        <div className={`min-h-screen flex lg:flex ${isDark ? 'bg-slate-950' : 'bg-white'}`}>
             <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
             <div className="flex-1">
                 <AdminTopbar onToggleSidebar={() => setSidebarOpen(true)} />
 
-                <main className={`mx-auto w-full px-4 py-6 sm:px-5 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+                <main className={`mx-auto w-full px-4 py-6 sm:px-5 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-white'}`}>
                     <div className="mb-6 flex items-center gap-2 text-sm">
                         <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Dashboard</span>
                         <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>/</span>

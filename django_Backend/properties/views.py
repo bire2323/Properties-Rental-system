@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
@@ -14,7 +14,7 @@ from site_settings.models import SiteSettings
 from audit.models import AuditLog
 from audit.services import audit_event
 from properties.services.subscriptions import can_create_listing
-from .models import Property, Feature, Company, CompanyVerificationDocument, ListingType, Region, City, Category
+from .models import Property, Feature, Company, CompanyVerificationDocument, ListingType, ListingStatus, Region, City, Category
 from .permissions import PropertyPermission, CompanyPermission, CompanyDocumentPermission, AdminRolePermission
 from .serializers import (
     PropertySerializer,
@@ -615,7 +615,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 sender_phone=owner_phone,
             )
 
+    def _can_modify_listing(self, instance):
+        """Rented properties are locked; only admins may modify/delete them."""
+        if instance.status != ListingStatus.RENTED:
+            return True
+        user = self.request.user
+        return user.is_staff or user.is_superuser or getattr(user, "role", "") == "admin"
+
     def perform_update(self, serializer):
+        if not self._can_modify_listing(serializer.instance):
+            raise ValidationError(
+                {"detail": "This property is currently rented and cannot be updated. It will become editable once the rental period ends."}
+            )
         previous_state = {
             "status": serializer.instance.status,
             "is_available": serializer.instance.is_available,
@@ -642,6 +653,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
+        if not self._can_modify_listing(instance):
+            raise ValidationError(
+                {"detail": "This property is currently rented and cannot be deleted. It will become available once the rental period ends."}
+            )
         audit_event(
             actor=self.request.user,
             action="PROPERTY_DELETED",

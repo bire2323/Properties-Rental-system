@@ -1,5 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-let refreshInFlight = null
+import { apiFetch } from './apiClient'
 
 function getErrorMessage(payload, fallback = 'Request failed.') {
     const detail = payload?.detail || payload?.message || payload?.error
@@ -16,35 +15,8 @@ function getErrorMessage(payload, fallback = 'Request failed.') {
     return fallback
 }
 
-function refreshSession() {
-    if (!refreshInFlight) {
-        refreshInFlight = refreshToken().finally(() => {
-            refreshInFlight = null
-        })
-    }
-    return refreshInFlight
-}
-
-async function request(endpoint, options = {}, canRefresh = endpoint !== '/api/accounts/token/refresh/') {
-    const isFormData = options.body instanceof FormData
-    let response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        credentials: 'include',
-        headers: isFormData ? (options.headers || {}) : { 'Content-Type': 'application/json', ...(options.headers || {}) },
-        ...options,
-    })
-
-    if (response.status === 401 && canRefresh) {
-        try {
-            await refreshSession()
-            response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                credentials: 'include',
-                headers: isFormData ? (options.headers || {}) : { 'Content-Type': 'application/json', ...(options.headers || {}) },
-                ...options,
-            })
-        } catch {
-            // Preserve the original authentication response below.
-        }
-    }
+async function request(endpoint, options = {}, noRefresh = false) {
+    const response = await apiFetch(endpoint, options, { noRefresh })
 
     const responseText = await response.text()
     const payload = responseText
@@ -75,6 +47,13 @@ export async function login(data) {
     return request('/api/accounts/login/', {
         method: 'POST',
         body: JSON.stringify(data),
+    })
+}
+
+export async function loginOtpVerify(challengeId, code) {
+    return request('/api/accounts/login/otp-verify/', {
+        method: 'POST',
+        body: JSON.stringify({ login_challenge_id: challengeId, code }),
     })
 }
 
@@ -110,7 +89,7 @@ export async function googleLogin(token) {
 export async function refreshToken() {
     return request('/api/accounts/token/refresh/', {
         method: 'POST',
-    })
+    }, true)
 }
 
 export const api = {

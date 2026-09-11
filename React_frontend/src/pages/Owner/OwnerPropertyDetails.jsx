@@ -86,16 +86,29 @@ export default function OwnerPropertyDetails() {
                     <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Review the full listing and manage this property.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <Button variant="default" onClick={() => navigate(`/owner/properties/${id}/edit`)}>
+                    <Button variant="default" onClick={() => navigate(`/owner/properties/${id}/edit`)} disabled={property?.status === 'rented'} title={property?.status === 'rented' ? 'This property is rented and cannot be edited' : undefined}>
                         <Edit3 className="h-4 w-4" />
                         Edit
                     </Button>
-                    <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                    <Button variant="destructive" onClick={handleDelete} disabled={deleting || property?.status === 'rented'} title={property?.status === 'rented' ? 'This property is rented and cannot be deleted' : undefined}>
                         <Trash2 className="h-4 w-4" />
                         {deleting ? 'Deleting...' : 'Delete'}
                     </Button>
                 </div>
             </div>
+
+            {(!loading && !error && property?.status === 'rented') && (
+                <div className="flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800 dark:border-indigo-900/40 dark:bg-indigo-950/40 dark:text-indigo-300">
+                    <svg className="h-5 w-5 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <p>
+                        <span className="font-semibold">This property is currently rented.</span>{' '}
+                        It cannot be edited or deleted until the rental period ends. The renter has paid for this property.
+                    </p>
+                </div>
+            )}
 
             {loading ? (
                 <LoadingSkeleton />
@@ -178,7 +191,7 @@ export default function OwnerPropertyDetails() {
                                     </span>
                                     <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">
                                         <CalendarDays className="h-4 w-4" />
-                                        {property.is_available ? 'Available' : 'Unavailable'}
+                                        {property.status === 'rented' ? 'Rented' : property.is_available ? 'Available' : 'Unavailable'}
                                     </span>
                                 </div>
                                 <div>

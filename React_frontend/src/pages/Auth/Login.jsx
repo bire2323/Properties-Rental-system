@@ -47,7 +47,7 @@ function BrandFallback({ label = 'Home' }) {
 function Login() {
   const googleLoginEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true'
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, verifyLoginOtp } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -56,6 +56,13 @@ function Login() {
     password: '',
     remember: false,
   })
+  const [otpStep, setOtpStep] = useState(false)
+  const [loginChallengeId, setLoginChallengeId] = useState('')
+  const [maskedEmail, setMaskedEmail] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [otpErrorMessage, setOtpErrorMessage] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [resending, setResending] = useState(false)
 
   const [siteSettings, setSiteSettings] = useState(null)
   const [siteSettingsStatus, setSiteSettingsStatus] = useState('loading')
@@ -179,12 +186,71 @@ function Login() {
         password: formData.password,
       })
 
+      // Manual login now requires an emailed verification code.
+      if (result?.requires_otp) {
+        setLoginChallengeId(result.login_challenge_id)
+        setMaskedEmail(result.masked_email || formData.email.trim())
+        setOtpCode('')
+        setOtpErrorMessage('')
+        setOtpStep(true)
+        return
+      }
+
       navigate(getDashboardRoute(result?.user?.role))
     } catch (error) {
       setErrorMessage(error.message || 'Unable to sign in right now.')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleOtpSubmit = async (event) => {
+    event.preventDefault()
+
+    setOtpErrorMessage('')
+
+    if (!otpCode.trim()) {
+      setOtpErrorMessage('Enter the 6-digit code sent to your email.')
+      return
+    }
+
+    setVerifying(true)
+
+    try {
+      const result = await verifyLoginOtp(loginChallengeId, otpCode.trim())
+      navigate(getDashboardRoute(result?.user?.role))
+    } catch (error) {
+      setOtpErrorMessage(error.message || 'That code did not work. Please try again.')
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  const handleResend = async () => {
+    setOtpErrorMessage('')
+    setResending(true)
+
+    try {
+      const result = await login({
+        email: formData.email.trim(),
+        password: formData.password,
+      })
+      if (result?.requires_otp) {
+        setLoginChallengeId(result.login_challenge_id)
+        setMaskedEmail(result.masked_email || formData.email.trim())
+        setOtpCode('')
+      }
+    } catch (error) {
+      setOtpErrorMessage(error.message || 'Unable to resend the code. Please try again.')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  const handleBackToCredentials = () => {
+    setOtpStep(false)
+    setOtpErrorMessage('')
+    setOtpCode('')
   }
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,_#fffdf9_0%,_#f7fbff_100%)] text-slate-900 transition-colors dark:bg-[linear-gradient(180deg,_#05101f_0%,_#0a2140_22%,_#08172d_100%)] dark:text-white">
@@ -253,6 +319,75 @@ function Login() {
 
             <CardContent className="space-y-6 px-8 py-8">
 
+              {otpStep ? (
+                <form className="space-y-6" onSubmit={handleOtpSubmit}>
+                  <div className="space-y-2 text-center">
+                    <CardTitle className="text-xl font-semibold text-slate-700 dark:text-white">
+                      Enter verification code
+                    </CardTitle>
+                    <CardDescription className="text-base leading-7 text-slate-500 dark:text-slate-400">
+                      We sent a 6-digit code to <span className="font-medium text-slate-700 dark:text-slate-200">{maskedEmail}</span>. Use it to finish signing in.
+                    </CardDescription>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label
+                      htmlFor="otp-code"
+                      className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                    >
+                      Verification code
+                    </label>
+                    <div className="group relative">
+                      <Lock className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#b27a23]" />
+                      <Input
+                        id="otp-code"
+                        name="otpCode"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                        className="h-13 rounded-2xl bg-slate-50/90 pl-11 pr-4 text-center text-xl font-semibold tracking-[0.5em] shadow-sm focus-visible:ring-[#d4a756]/20 dark:bg-slate-900/80"
+                      />
+                    </div>
+                    {otpErrorMessage && (
+                      <p className="text-sm text-rose-600 dark:text-rose-400">
+                        {otpErrorMessage}
+                      </p>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={verifying}
+                    className="h-13 w-full rounded-2xl bg-[linear-gradient(135deg,_#f3cd7a,_#c68c2b)] text-base font-semibold text-slate-950 shadow-[0_18px_35px_rgba(212,167,86,0.28)] hover:translate-y-[-1px] hover:opacity-95"
+                  >
+                    <span>{verifying ? 'Verifying...' : 'Verify & Sign In'}</span>
+                    <ArrowRight size={16} />
+                  </Button>
+
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <button
+                      type="button"
+                      onClick={handleBackToCredentials}
+                      className="font-medium text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    >
+                      Back to sign in
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resending}
+                      className="font-medium text-[#b27a23] transition hover:text-[#8c5c14] disabled:opacity-60"
+                    >
+                      {resending ? 'Resending...' : 'Resend code'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div className="space-y-2.5">
                   <label
@@ -397,6 +532,7 @@ function Login() {
                   </button>
                 </p>
               </form>
+              )}
             </CardContent>
           </Card>
         </section>

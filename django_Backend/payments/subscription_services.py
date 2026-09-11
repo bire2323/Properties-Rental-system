@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 from django.db import transaction as db_transaction
 from django.utils import timezone
 from audit.models import AuditLog
@@ -8,6 +9,15 @@ from payments.models import SubscriptionPayment
 from payments.services import chapa_initialize, chapa_verify, has_chapa_configured, ChapaError
 
 logger = logging.getLogger(__name__)
+
+def _with_tx_ref(url, ref):
+    """Append the internal transaction reference to a URL for the Chapa round-trip.
+
+    Chapa redirects the user back to the exact ``return_url`` we provide, so the
+    subscription result page must receive the reference as a query parameter here.
+    """
+    sep = '&' if urllib.parse.urlsplit(url).query else '?'
+    return f"{url}{sep}tx_ref={urllib.parse.quote(str(ref))}"
 
 def create_subscription_payment(subscription, payer, callback_url, return_url):
     """
@@ -34,10 +44,13 @@ def create_subscription_payment(subscription, payer, callback_url, return_url):
             first_name=payer.first_name,
             last_name=payer.last_name,
             callback_url=callback_url,
-            return_url=return_url
+            return_url=_with_tx_ref(return_url, payment.transaction_reference),
         )
-        payment.tx_ref = chapa_response["reference"]
-        payment.save(update_fields=["tx_ref"])
+        # tx_ref is the reference we passed to Chapa (the round-trip key).
+        payment.tx_ref = payment.transaction_reference
+        # Chapa's own reference from the initialize response.
+        payment.provider_reference = chapa_response["reference"]
+        payment.save(update_fields=["tx_ref", "provider_reference"])
         return payment, chapa_response["checkout_url"]
     except Exception as e:
         payment.status = SubscriptionPayment.PaymentStatus.FAILED

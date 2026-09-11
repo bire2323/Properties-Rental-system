@@ -370,92 +370,92 @@ function Properties() {
       <section className="bg-white py-8 dark:bg-slate-950">
         <div className="mx-auto flex max-w-screen-2xl gap-4 px-4 sm:px-6 lg:mx-10 lg:gap-6 lg:px-8">
 
-            {/* Desktop Sidebar */}
-            <aside className="hidden lg:block w-[248px] xl:w-[288px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
-              <PropertySidebarFilters
-                filters={filters}
-                setFilters={setFilters}
-                onClearAll={handleClearAll}
-              />
-            </aside>
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block w-[248px] xl:w-[288px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
+            <PropertySidebarFilters
+              filters={filters}
+              setFilters={setFilters}
+              onClearAll={handleClearAll}
+            />
+          </aside>
 
-            {/* Content Area — stretches to right edge */}
-            <main className="flex-1 min-w-0">
-              {loading && (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4" : "flex flex-col gap-4"}>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <PropertyCardSkeleton key={i} />
-                  ))}
+          {/* Content Area — stretches to right edge */}
+          <main className="flex-1 min-w-0">
+            {loading && (
+              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4" : "flex flex-col gap-4"}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <PropertyCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200/60 bg-white py-20 text-center shadow-sm dark:border-red-900/30 dark:bg-slate-900">
+                <div className="rounded-full bg-red-50 p-5 dark:bg-red-950/30">
+                  <AlertCircle className="h-10 w-10 text-red-400 dark:text-red-500" />
                 </div>
-              )}
+                <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
+                  Failed to Load Properties
+                </h3>
+                <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                  {error}
+                </p>
+                <Button
+                  onClick={fetchProperties}
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-sm hover:opacity-90"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+              </div>
+            )}
 
-              {!loading && error && (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200/60 bg-white py-20 text-center shadow-sm dark:border-red-900/30 dark:bg-slate-900">
-                  <div className="rounded-full bg-red-50 p-5 dark:bg-red-950/30">
-                    <AlertCircle className="h-10 w-10 text-red-400 dark:text-red-500" />
-                  </div>
-                  <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
-                    Failed to Load Properties
-                  </h3>
-                  <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                    {error}
-                  </p>
-                  <Button
-                    onClick={fetchProperties}
-                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#c99b43] to-[#f3c96d] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-sm hover:opacity-90"
+            {!loading && !error && sortedProperties.length > 0 && (
+              <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4' : 'flex flex-col gap-4'}>
+                {sortedProperties.map((property, index) => (
+                  <motion.div
+                    key={property.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.35 }}
                   >
-                    <RefreshCw className="h-4 w-4" />
-                    Try Again
+                    <PropertyCard
+                      property={property}
+                      isFav={favorites.includes(property.id)}
+                      isLoading={favoriteLoading[property.id]}
+                      toggleFavorite={toggleFavorite}
+                      layout={viewMode}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {!loading && !error && sortedProperties.length === 0 && (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-20 text-center shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
+                <div className="rounded-full bg-[#c99b43]/10 p-5 dark:bg-[#c99b43]/10">
+                  <Building2 className="h-10 w-10 text-[#c99b43]/60" />
+                </div>
+                <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
+                  No Properties Found
+                </h3>
+                <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                  {properties.length === 0
+                    ? 'There are no properties listed yet. Check back later!'
+                    : "We couldn't find any properties matching your search criteria. Try adjusting your filters."}
+                </p>
+                {properties.length > 0 && (
+                  <Button
+                    onClick={handleClearAll}
+                    variant="outline"
+                    className="mt-6 rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white"
+                  >
+                    Clear Filters
                   </Button>
-                </div>
-              )}
-
-              {!loading && !error && sortedProperties.length > 0 && (
-                <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4' : 'flex flex-col gap-4'}>
-                  {sortedProperties.map((property, index) => (
-                    <motion.div
-                      key={property.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.35 }}
-                    >
-                      <PropertyCard
-                        property={property}
-                        isFav={favorites.includes(property.id)}
-                        isLoading={favoriteLoading[property.id]}
-                        toggleFavorite={toggleFavorite}
-                        layout={viewMode}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {!loading && !error && sortedProperties.length === 0 && (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-20 text-center shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
-                  <div className="rounded-full bg-[#c99b43]/10 p-5 dark:bg-[#c99b43]/10">
-                    <Building2 className="h-10 w-10 text-[#c99b43]/60" />
-                  </div>
-                  <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
-                    No Properties Found
-                  </h3>
-                  <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                    {properties.length === 0
-                      ? 'There are no properties listed yet. Check back later!'
-                      : "We couldn't find any properties matching your search criteria. Try adjusting your filters."}
-                  </p>
-                  {properties.length > 0 && (
-                    <Button
-                      onClick={handleClearAll}
-                      variant="outline"
-                      className="mt-6 rounded-xl border-[#c99b43]/30 bg-[#c99b43]/5 px-5 py-2.5 text-sm font-semibold text-[#c99b43] hover:border-[#c99b43] hover:bg-[#c99b43] hover:text-white"
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                </div>
-              )}
-            </main>
+                )}
+              </div>
+            )}
+          </main>
         </div>
       </section>
 

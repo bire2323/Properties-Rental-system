@@ -170,7 +170,7 @@ function Properties() {
             <div className="min-w-0 flex-1 overflow-x-hidden">
                 <AdminTopbar onToggleSidebar={() => setSidebarOpen(true)} />
 
-                <main className={`mx-auto w-full min-w-0 max-w-full overflow-x-hidden px-4 py-6 sm:px-5 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+                <main className={`mx-auto w-full min-w-0 max-w-full overflow-x-hidden px-4 py-6 sm:px-5 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-white'}`}>
                     <div className="mb-6 flex items-center justify-between gap-4">
                         <h1 className={`text-3xl font-bold tracking-[-0.04em] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             Properties

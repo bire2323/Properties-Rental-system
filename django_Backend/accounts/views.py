@@ -1,4 +1,6 @@
+import secrets
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 from datetime import timedelta
 from django.http import JsonResponse
 from django.db.models import Q
@@ -25,9 +27,11 @@ from .serializers import (
     NotificationSerializer,
 )
 from .services import clear_auth_cookies, create_tokens, set_auth_cookies
-from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification
+from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification, LoginOTP
+from .email_service import send_login_otp_email
 from bookings.models import Booking
 from properties.models import Property
+from properties.services.subscriptions import assign_free_subscription
 from site_settings.models import SiteSettings
 from audit.services import audit_event
 from audit.models import AuditLog
@@ -40,6 +44,19 @@ def home(request):
         "message": "Welcome to Property Rental System",
     }
     return JsonResponse(data)
+
+
+def _generate_otp_code():
+    """6-digit verification code from the CSPRNG."""
+    return f"{secrets.randbelow(10**6):06d}"
+
+
+def _mask_email(email):
+    """Show the email partially, e.g. j***@example.com"""
+    local, _, domain = email.partition("@")
+    if len(local) <= 1:
+        return f"{local}***@{domain}"
+    return f"{local[0]}***@{domain}"
 
 
 def build_media_url(request, value):
@@ -171,7 +188,11 @@ class RegisterAPIView(GenericAPIView):
         return response
 
 class LoginAPIView(GenericAPIView):
-    """Log in using email/password and store tokens in secure cookies."""
+    """Step 1 of manual login: validate credentials and email an OTP code.
+
+    No auth cookies are set here. The account is only authenticated once the
+    user completes step 2 (`LoginOTPVerifyAPIView`) with the emailed code.
+    """
 
     authentication_classes = []
     serializer_class = LoginSerializer
@@ -182,6 +203,111 @@ class LoginAPIView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
+        code = _generate_otp_code()
+        otp = LoginOTP.objects.create(
+            user=user,
+            code_hash=make_password(code),
+            expires_at=timezone.now() + timedelta(minutes=LoginOTP.OTP_LIFETIME_MINUTES),
+        )
+        send_login_otp_email(user, code)
+
+        audit_event(
+            actor=user,
+            action="LOGIN_OTP_SENT",
+            category=AuditLog.Category.AUTHENTICATION,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"Sent a login verification code to {user.email}.",
+            metadata={"auth_provider": user.auth_provider},
+            request=request,
+        )
+
+        return Response(
+            {
+                "requires_otp": True,
+                "login_challenge_id": str(otp.id),
+                "masked_email": _mask_email(user.email),
+                "message": "A verification code was sent to your email.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class LoginOTPVerifyAPIView(APIView):
+    """Step 2 of manual login: verify the emailed code and issue auth cookies."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        challenge_id = request.data.get("login_challenge_id")
+        code = request.data.get("code")
+
+        if not challenge_id or not code:
+            return Response(
+                {"detail": "Login challenge and verification code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            otp = LoginOTP.objects.select_related("user").get(id=challenge_id)
+        except (LoginOTP.DoesNotExist, ValueError, TypeError):
+            return Response(
+                {"detail": "Verification session not found or already used."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = otp.user
+
+        if otp.used_at is not None:
+            return Response(
+                {"detail": "This verification code has already been used."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if otp.is_expired():
+            return Response(
+                {"detail": "This verification code has expired. Please sign in again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if otp.is_locked():
+            return Response(
+                {"detail": "Too many failed attempts. Please sign in again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not otp.verify(code):
+            remaining = max(0, LoginOTP.MAX_ATTEMPTS - otp.attempts)
+            audit_event(
+                actor=user,
+                action="LOGIN_FAILED",
+                category=AuditLog.Category.AUTHENTICATION,
+                severity=AuditLog.Severity.WARNING,
+                result=AuditLog.Result.FAILED,
+                target_type="user",
+                target_id=user.pk,
+                target_display=user.email,
+                description="Login attempt rejected because of an invalid email verification code.",
+                metadata={"failure_reason": "invalid_otp"},
+                request=request,
+            )
+            return Response(
+                {
+                    "detail": "Invalid verification code." if remaining > 1 else "Invalid verification code. Please sign in again for a new code.",
+                    "remaining_attempts": remaining,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Success: invalidate any other pending challenges for this account.
+        LoginOTP.objects.filter(user=user, used_at__isnull=True).exclude(id=otp.id).update(used_at=timezone.now())
+
+        if user.failed_login_attempts:
+            user.failed_login_attempts = 0
+            user.save(update_fields=["failed_login_attempts"])
+
         audit_event(
             actor=user,
             action="LOGIN_SUCCESS",
@@ -191,7 +317,7 @@ class LoginAPIView(GenericAPIView):
             target_type="user",
             target_id=user.pk,
             target_display=user.email,
-            description=f"User {user.get_full_name().strip() or user.email} logged in successfully.",
+            description=f"User {user.get_full_name().strip() or user.email} logged in successfully after email verification.",
             metadata={"auth_provider": user.auth_provider},
             request=request,
         )
@@ -459,6 +585,11 @@ class BecomeOwnerAPIView(APIView):
         # ─── 6. Update user role ────────────────────────────────────
         user.role = User.Role.OWNER
         user.save(update_fields=["role"])
+
+        # ─── 6b. Auto-assign the free subscription (0 ETB) ──────────
+        # New owners immediately get the Free plan quota without checkout.
+        # No-op if the user already has an active/trialing subscription.
+        assign_free_subscription(user)
 
         audit_event(
             actor=user,

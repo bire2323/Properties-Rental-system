@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "payments",
     "site_settings",
     "audit",
+    "testimonials",
 
 ]
 

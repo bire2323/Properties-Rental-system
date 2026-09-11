@@ -304,6 +304,22 @@ class SubscriptionPayment(models.Model):
     """
     Represents a payment made for an owner subscription.
     """
+    class PaymentMethod(models.TextChoices):
+        TELEBIRR = "telebirr", "Telebirr"
+        CHAPA = "chapa", "Chapa"
+        CBE_BIRR = "cbe_birr", "CBE Birr"
+        CASH = "cash", "Cash"
+        OTHER = "other", "Other"
+
+    class PaymentStatus(models.TextChoices):
+        INITIATED = "initiated", "Initiated"
+        PENDING = "pending", "Pending"
+        SUCCESSFUL = "successful", "Successful"
+        FAILED = "failed", "Failed"
+        CANCELLED = "cancelled", "Cancelled"
+        REFUNDED = "refunded", "Refunded"
+        PARTIALLY_REFUNDED = "partially_refunded", "Partially Refunded"
+
     transaction_reference = models.CharField(
         max_length=50,
         unique=True,
@@ -327,7 +343,7 @@ class SubscriptionPayment(models.Model):
 
     payment_method = models.CharField(
         max_length=20,
-        choices=PaymentTransaction.PaymentMethod.choices,
+        choices=PaymentMethod.choices,
         help_text="Payment method used."
     )
     
@@ -358,8 +374,8 @@ class SubscriptionPayment(models.Model):
 
     status = models.CharField(
         max_length=20,
-        choices=PaymentTransaction.PaymentStatus.choices,
-        default=PaymentTransaction.PaymentStatus.INITIATED,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.INITIATED,
         help_text="Current payment status."
     )
 

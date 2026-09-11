@@ -19,6 +19,7 @@ import {
     Percent,
     Layers,
     Star,
+    Trash2,
 } from 'lucide-react'
 import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
@@ -29,6 +30,7 @@ import {
     adminCreateSubscriptionPlan,
     adminUpdateSubscriptionPlan,
     adminSetSubscriptionPlanActive,
+    adminDeleteSubscriptionPlan,
 } from '../../api/admin/subscriptionPlanApi'
 import { formatAmount } from '../../lib/bookingDisplay'
 
@@ -151,6 +153,35 @@ function ConfirmToggleModal({ open, onClose, onConfirm, plan, activating, loadin
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                         {activating ? 'Activate' : 'Deactivate'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function ConfirmDeleteModal({ open, onClose, onConfirm, plan, loading }) {
+    if (!open || !plan) return null
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-700 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                        <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">Delete Plan</h2>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+                    Are you sure you want to permanently delete <strong>"{plan.name}"</strong>? This action cannot be undone.
+                    Plans that are referenced by subscription history cannot be deleted — deactivate them instead.
+                </p>
+                <div className="flex gap-3 justify-end">
+                    <button onClick={onClose} disabled={loading} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
+                        Cancel
+                    </button>
+                    <button onClick={onConfirm} disabled={loading} className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                        {loading && <Loader2 className="h-4 w-4 animate-spin" />} Delete
                     </button>
                 </div>
             </div>
@@ -405,7 +436,7 @@ function PlanFormModal({ open, onClose, mode, initialData, onSaved }) {
 
 // ─── Plan Card ────────────────────────────────────────────────────────────────
 
-function PlanCard({ plan, isDark, onEdit, onToggle }) {
+function PlanCard({ plan, isDark, onEdit, onToggle, onDelete }) {
     const target = getTargetMeta(plan.target_type)
     const TargetIcon = target.icon
     const isPopular = Number(plan.commission_rate_discount) >= 20
@@ -492,6 +523,13 @@ function PlanCard({ plan, isDark, onEdit, onToggle }) {
                     >
                         <Pencil className="h-3.5 w-3.5" /> Edit
                     </button>
+                    <button
+                        onClick={() => onDelete(plan)}
+                        title="Delete plan"
+                        className={`rounded-lg px-2.5 py-1.5 transition ${isDark ? 'text-red-400 hover:bg-red-950/40' : 'text-red-600 hover:bg-red-50'}`}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                 </div>
             </div>
         </motion.div>
@@ -536,6 +574,9 @@ export default function SubscriptionPlans() {
     const [formModal, setFormModal] = useState({ open: false, mode: 'add', data: null })
     const [toggleModal, setToggleModal] = useState({ open: false, plan: null, activating: false })
     const [toggling, setToggling] = useState(false)
+    const [deleteModal, setDeleteModal] = useState({ open: false, plan: null })
+    const [deleting, setDeleting] = useState(false)
+    const [deleteError, setDeleteError] = useState(null)
 
     const loadPlans = useCallback(async (opts = {}) => {
         setLoading(true)
@@ -587,6 +628,24 @@ export default function SubscriptionPlans() {
             toast.error(err.message)
         } finally {
             setToggling(false)
+        }
+    }
+
+    const handleConfirmDelete = async () => {
+        const plan = deleteModal.plan
+        if (!plan) return
+        setDeleting(true)
+        setDeleteError(null)
+        try {
+            await adminDeleteSubscriptionPlan(plan.id)
+            toast.success(`Plan "${plan.name}" deleted.`)
+            setDeleteModal({ open: false, plan: null })
+            loadPlans()
+        } catch (err) {
+            setDeleteModal({ open: false, plan: null })
+            setDeleteError(err.message)
+        } finally {
+            setDeleting(false)
         }
     }
 
@@ -695,6 +754,7 @@ export default function SubscriptionPlans() {
                                         isDark={isDark}
                                         onEdit={(p) => setFormModal({ open: true, mode: 'edit', data: p })}
                                         onToggle={(p, activating) => setToggleModal({ open: true, plan: p, activating })}
+                                        onDelete={(p) => { setDeleteError(null); setDeleteModal({ open: true, plan: p }) }}
                                     />
                                 ))}
                             </div>
@@ -729,6 +789,21 @@ export default function SubscriptionPlans() {
                 activating={toggleModal.activating}
                 loading={toggling}
             />
+
+            <ConfirmDeleteModal
+                open={deleteModal.open}
+                onClose={() => setDeleteModal({ open: false, plan: null })}
+                onConfirm={handleConfirmDelete}
+                plan={deleteModal.plan}
+                loading={deleting}
+            />
+
+            {deleteError && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-xl border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-300 shadow-lg">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span>{deleteError}</span>
+                </div>
+            )}
         </div>
     )
 }

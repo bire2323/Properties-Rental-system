@@ -8,7 +8,7 @@
  *   GET /api/properties/categories/?listing_type=car
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { apiFetch } from '../apiClient'
 
 function extractErrorMessage(payload, fallbackStatus) {
     if (!payload) return `Request failed (${fallbackStatus})`
@@ -25,17 +25,9 @@ function extractErrorMessage(payload, fallbackStatus) {
 }
 
 async function request(endpoint, options = {}) {
-    const headers = { ...(options.headers || {}) }
-    if (!(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/json'
-    }
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        credentials: 'include',
-        headers,
-        ...options,
-    })
+    const response = await apiFetch(endpoint, options)
     const text = await response.text()
-    let payload = {}
+    let payload
     try { payload = text ? JSON.parse(text) : {} } catch { payload = {} }
 
     if (!response.ok) {

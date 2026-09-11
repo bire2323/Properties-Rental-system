@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { apiFetch } from '../apiClient'
+
 let navigationOptionsPromise = null
 let navigationOptionsCache = null
 
@@ -7,19 +8,7 @@ let navigationOptionsCache = null
  * Includes credentials (cookies) for authenticated endpoints.
  */
 async function request(endpoint, options = {}) {
-    const headers = {
-        ...(options.headers || {}),
-    }
-
-    if (!(options.body instanceof FormData) && headers['Content-Type'] !== 'multipart/form-data') {
-        headers['Content-Type'] = 'application/json'
-    }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        credentials: 'include',
-        headers,
-        ...options,
-    })
+    const response = await apiFetch(endpoint, options)
 
     const responseText = await response.text()
     const payload = responseText ? JSON.parse(responseText) : {}
@@ -35,7 +24,7 @@ async function request(endpoint, options = {}) {
         // Flatten them into a readable, single-line message for the toast.
         if ((!payload?.detail && !payload?.message && !payload?.error) && payload && typeof payload === 'object' && !Array.isArray(payload)) {
             const parts = []
-            for (const [field, value] of Object.entries(payload)) {
+            for (const value of Object.values(payload)) {
                 if (Array.isArray(value)) {
                     parts.push(value.join(' '))
                 } else if (typeof value === 'string') {
@@ -289,11 +278,11 @@ export async function deleteCompany(id) {
 // ─── Interactions ────────────────────────────────────────────────────────────
 
 /**
- * GET /api/reviews/
- * Returns public reviews from active, available listings.
+ * GET /api/testimonials/
+ * Returns the admin-curated testimonials for the public home page.
  */
 export async function getTestimonials() {
-    return request('/api/reviews/', { method: 'GET' })
+    return request('/api/testimonials/', { method: 'GET' })
 }
 
 /**

@@ -195,7 +195,7 @@ export default function OwnerDashboard() {
 
     const totalProperties = ownerProperties.length
     const availableProperties = ownerProperties.filter((p) => p.status === 'active').length
-    const rentedProperties = ownerProperties.filter((p) => p.status !== 'active').length
+    const rentedProperties = ownerProperties.filter((p) => p.status === 'rented').length
     const rentalValue = ownerProperties.reduce((s, p) => s + parseFloat(p.price || 0), 0)
 
     const recentProperties = ownerProperties.slice(0, 3)

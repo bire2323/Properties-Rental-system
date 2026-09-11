@@ -1,6 +1,5 @@
 import { getAdminBookings } from '../bookingApi'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { apiFetch, API_BASE_URL } from '../apiClient'
 
 function resolveMediaUrl(value) {
     if (!value) return null
@@ -11,25 +10,13 @@ function resolveMediaUrl(value) {
 }
 
 async function request(endpoint, options = {}) {
-    const headers = {
-        ...(options.headers || {}),
-    }
-
-    if (!(options.body instanceof FormData) && headers['Content-Type'] !== 'multipart/form-data') {
-        headers['Content-Type'] = 'application/json'
-    }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        credentials: 'include',
-        headers,
-        ...options,
-    })
+    const response = await apiFetch(endpoint, options)
 
     const responseText = await response.text()
-    let payload = {}
+    let payload
     try {
         payload = responseText ? JSON.parse(responseText) : {}
-    } catch (parseError) {
+    } catch {
         payload = {
             detail: response.statusText || `Server returned ${response.status}`,
         }

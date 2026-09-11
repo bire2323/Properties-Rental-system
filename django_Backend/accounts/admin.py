@@ -1,8 +1,15 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User
+from .models import User, LoginOTP
 from accounts.models import OwnerProfile
+
+@admin.register(LoginOTP)
+class LoginOTPAdmin(admin.ModelAdmin):
+    list_display = ["user", "created_at", "expires_at", "attempts", "used_at"]
+    list_filter = ["created_at", "expires_at"]
+    search_fields = ["user__email"]
+    readonly_fields = ["id", "user", "code_hash", "created_at", "expires_at", "attempts", "used_at"]
 
 @admin.register(OwnerProfile)
 class OwnerProfileAdmin(admin.ModelAdmin):

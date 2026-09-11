@@ -11,7 +11,8 @@ import {
     Loader2,
     MapPin,
     Navigation,
-    ImagePlus
+    ImagePlus,
+    Lock
 } from 'lucide-react'
 import { getPropertyById, updateProperty, getMyManagedCompanies, createProperty } from '../../api/property/propertyApi'
 import FeatureMultiSelect from '../../components/property/FeatureMultiSelect'
@@ -802,6 +803,49 @@ export default function EditProperty() {
         </div>
     )
     if (!form) return <EmptyState title="Property not found" description="This property could not be loaded." />
+
+    if (form.status === 'rented') {
+        return (
+            <div className="space-y-6">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/owner/properties/${id}`)}
+                            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                            <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <div>
+                            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Edit property</h1>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{form.property_name}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-indigo-200 bg-indigo-50 px-6 py-16 text-center dark:border-indigo-900/40 dark:bg-indigo-950/40">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300">
+                        <Lock className="h-8 w-8" />
+                    </div>
+                    <h2 className="mt-6 text-xl font-bold text-slate-900 dark:text-white">
+                        This property is currently rented
+                    </h2>
+                    <p className="mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">
+                        A renter has paid for this property, so it cannot be edited until the rental period ends.
+                        <br />
+                        You can still view the listing from your property details page.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => navigate(`/owner/properties/${id}`)}
+                        className="mt-8 rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                    >
+                        View property details
+                    </button>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="flex gap-6">
