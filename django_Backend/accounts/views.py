@@ -28,7 +28,13 @@ from .serializers import (
 )
 from .services import clear_auth_cookies, create_tokens, set_auth_cookies
 from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification, LoginOTP, PasswordResetOTP
-from .email_service import send_login_otp_email, send_password_reset_otp_email
+from .email_service import (
+    send_login_otp_email,
+    send_password_reset_otp_email,
+    send_registration_success_emails,
+    send_owner_verification_status_email,
+    send_user_deleted_email,
+)
 from bookings.models import Booking
 from properties.models import Property
 from properties.services.subscriptions import assign_free_subscription
@@ -175,6 +181,7 @@ class RegisterAPIView(GenericAPIView):
             sender_email=user.email,
             sender_phone=getattr(getattr(user, "profile", None), "phone_number", "") or "",
         )
+        send_registration_success_emails(user)
 
         tokens = create_tokens(user)
         response = Response(
@@ -656,6 +663,10 @@ class BecomeOwnerAPIView(APIView):
             verification_status=OwnerProfile.VerificationStatus.PENDING,
             can_post_property=False,
         )
+        send_owner_verification_status_email(
+            user,
+            OwnerProfile.VerificationStatus.PENDING,
+        )
 
         # ─── 6. Update user role ────────────────────────────────────
         user.role = User.Role.OWNER
@@ -818,6 +829,7 @@ class FullUserDetailAPIView(APIView):
             request=request,
         )
 
+        send_user_deleted_email(user, request.user.email)
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1076,6 +1088,11 @@ class AdminOwnerVerificationDecisionAPIView(APIView):
 
         user.save(update_fields=['role'])
         owner_profile.save()
+        send_owner_verification_status_email(
+            user,
+            status_value,
+            owner_profile.rejection_reason,
+        )
 
         audit_event(
             actor=request.user,

@@ -442,7 +442,7 @@ function Vehicles() {
         <div className="mx-auto flex max-w-screen-2xl gap-4 px-4 sm:px-6 lg:mx-10 lg:gap-6 lg:px-8">
 
           {/* Desktop Sidebar */}
-          <aside className="hidden lg:block w-[248px] xl:w-[288px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
+          <aside className="hidden lg:block w-[200px] xl:w-[232px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
             <VehicleSidebarFilters
               filters={filters}
               setFilters={setFilters}
@@ -453,7 +453,7 @@ function Vehicles() {
           {/* Content Area — stretches to right edge */}
           <main className="flex-1 min-w-0">
             {loading && (
-              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4" : "flex flex-col gap-4"}>
+              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" : "flex flex-col gap-4"}>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <VehicleCardSkeleton key={i} />
                 ))}
@@ -482,7 +482,7 @@ function Vehicles() {
             )}
 
             {!loading && !error && sortedVehicles.length > 0 && (
-              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4" : "flex flex-col gap-4"}>
+              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" : "flex flex-col gap-4"}>
                 {sortedVehicles.map((vehicle, index) => (
                   <motion.div
                     key={vehicle.id}

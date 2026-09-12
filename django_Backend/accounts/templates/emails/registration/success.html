@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<body style="margin:0;padding:24px;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%"
+        style="max-width:600px;margin:auto;background:#fff;border-radius:12px;padding:32px;">
+        <tr>
+            <td>
+                <h1 style="color:#0b2141;">Registration successful</h1>
+                <p>Hi {{ user_name }},</p>
+                {% if is_owner %}
+                <p>Your owner account has been created successfully and is currently under review.</p>
+                <p>We will email you again when an administrator approves or rejects your owner application.</p>
+                {% else %}
+                <p>Your {{ site_name }} account has been created successfully.</p>
+                {% endif %}
+                <p><strong>Email:</strong> {{ email }}<br><strong>Account type:</strong> {{ role }}</p>
+                <p>You can now sign in and start using your account.</p>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

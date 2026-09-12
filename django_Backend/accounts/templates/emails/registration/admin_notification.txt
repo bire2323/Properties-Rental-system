@@ -1,0 +1,7 @@
+New user registration
+
+A new user has successfully registered on {{ site_name }}.
+
+Name: {{ registered_name }}
+Email: {{ registered_email }}
+Account type: {{ role }}

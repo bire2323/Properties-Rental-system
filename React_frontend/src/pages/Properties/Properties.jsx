@@ -371,7 +371,7 @@ function Properties() {
         <div className="mx-auto flex max-w-screen-2xl gap-4 px-4 sm:px-6 lg:mx-10 lg:gap-6 lg:px-8">
 
           {/* Desktop Sidebar */}
-          <aside className="hidden lg:block w-[248px] xl:w-[288px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
+          <aside className="hidden lg:block w-[200px] xl:w-[232px] flex-shrink-0 sticky top-44 self-start h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar pb-8">
             <PropertySidebarFilters
               filters={filters}
               setFilters={setFilters}
@@ -382,7 +382,7 @@ function Properties() {
           {/* Content Area — stretches to right edge */}
           <main className="flex-1 min-w-0">
             {loading && (
-              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4" : "flex flex-col gap-4"}>
+              <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" : "flex flex-col gap-4"}>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <PropertyCardSkeleton key={i} />
                 ))}
@@ -411,7 +411,7 @@ function Properties() {
             )}
 
             {!loading && !error && sortedProperties.length > 0 && (
-              <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4' : 'flex flex-col gap-4'}>
+              <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4' : 'flex flex-col gap-4'}>
                 {sortedProperties.map((property, index) => (
                   <motion.div
                     key={property.id}
