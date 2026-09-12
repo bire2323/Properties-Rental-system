@@ -27,8 +27,8 @@ from .serializers import (
     NotificationSerializer,
 )
 from .services import clear_auth_cookies, create_tokens, set_auth_cookies
-from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification, LoginOTP
-from .email_service import send_login_otp_email
+from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification, LoginOTP, PasswordResetOTP
+from .email_service import send_login_otp_email, send_password_reset_otp_email
 from bookings.models import Booking
 from properties.models import Property
 from properties.services.subscriptions import assign_free_subscription
@@ -333,6 +333,81 @@ class LoginOTPVerifyAPIView(APIView):
         )
         set_auth_cookies(response, tokens["access"], tokens["refresh"])
         return response
+
+
+class PasswordResetRequestAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        email = str(request.data.get("email", "")).strip().lower()
+        if not email:
+            return Response({"detail": "Email address is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({"detail": "Email not found in the system."}, status=status.HTTP_404_NOT_FOUND)
+
+        PasswordResetOTP.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
+        code = _generate_otp_code()
+        otp = PasswordResetOTP.objects.create(
+            user=user,
+            code_hash=make_password(code),
+            expires_at=timezone.now() + timedelta(minutes=PasswordResetOTP.OTP_LIFETIME_MINUTES),
+        )
+        send_password_reset_otp_email(user, code)
+        return Response({
+            "reset_challenge_id": str(otp.id),
+            "masked_email": _mask_email(user.email),
+            "message": "A 6-digit password reset code was sent to your email.",
+        })
+
+
+class PasswordResetVerifyAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        challenge_id = request.data.get("reset_challenge_id")
+        code = str(request.data.get("code", "")).strip()
+        try:
+            otp = PasswordResetOTP.objects.get(id=challenge_id)
+        except (PasswordResetOTP.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Reset session not found or already used."}, status=status.HTTP_400_BAD_REQUEST)
+        if otp.is_expired():
+            return Response({"detail": "This code has expired. Please request a new code."}, status=status.HTTP_400_BAD_REQUEST)
+        if otp.is_locked():
+            return Response({"detail": "Too many failed attempts. Please request a new code."}, status=status.HTTP_400_BAD_REQUEST)
+        if not otp.verify(code):
+            return Response({"detail": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Code verified. You can now set a new password."})
+
+
+class PasswordResetCompleteAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        challenge_id = request.data.get("reset_challenge_id")
+        password = request.data.get("password", "")
+        confirm_password = request.data.get("confirm_password", "")
+        if len(password) < 8:
+            return Response({"detail": "Password must be at least 8 characters."}, status=status.HTTP_400_BAD_REQUEST)
+        if password != confirm_password:
+            return Response({"detail": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            otp = PasswordResetOTP.objects.select_related("user").get(id=challenge_id)
+        except (PasswordResetOTP.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Reset session not found or already used."}, status=status.HTTP_400_BAD_REQUEST)
+        if otp.verified_at is None or otp.used_at is not None or otp.is_expired():
+            return Response({"detail": "Verify a valid reset code before changing your password."}, status=status.HTTP_400_BAD_REQUEST)
+        user = otp.user
+        user.set_password(password)
+        user.save(update_fields=["password"])
+        otp.used_at = timezone.now()
+        otp.save(update_fields=["used_at"])
+        return Response({"message": "Password changed successfully."})
 
 
 
@@ -1091,6 +1166,25 @@ class AdminNotificationListAPIView(APIView):
 
         entries.sort(key=lambda entry: entry.get("created_at", ""), reverse=True)
         return Response(entries, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        if request.user.role != User.Role.ADMIN:
+            return Response(
+                {"detail": "You do not have permission to access this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        updated_count = Notification.objects.filter(
+            Q(type=Notification.NotificationType.BOOKING)
+            | Q(type=Notification.NotificationType.PROPERTY, property_obj__isnull=False)
+            | Q(type=Notification.NotificationType.SYSTEM, title="New user registration"),
+            status=Notification.NotificationStatus.NEW,
+        ).update(status=Notification.NotificationStatus.READ)
+
+        return Response(
+            {"updated_count": updated_count, "message": "All new notifications marked as read."},
+            status=status.HTTP_200_OK,
+        )
 
     def _payment_notifications(self):
         from payments.models import PaymentTransaction

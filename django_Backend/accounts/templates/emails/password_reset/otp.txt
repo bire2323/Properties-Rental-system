@@ -1,0 +1,8 @@
+Hi {{ user_name }},
+
+Use this 6-digit code to reset your {{ site_name }} password:
+
+{{ code }}
+
+This code expires in {{ expiry_minutes }} minutes.
+If you did not request a password reset, you can safely ignore this email.

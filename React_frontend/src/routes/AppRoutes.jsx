@@ -42,6 +42,7 @@ import EditCompany from '../pages/Owner/Companies/EditCompany'
 import TenantDashboard from '../pages/Tenant/TenantDashboard'
 import Home from '../pages/Home/Home'
 import Login from '../pages/Auth/Login'
+import ForgotPassword from '../pages/Auth/ForgotPassword'
 import Register from '../pages/Auth/Register'
 import Properties from '../pages/Properties/Properties'
 import PropertyDetails from '../pages/Properties/PropertyDetails'
@@ -91,6 +92,7 @@ function AppRoutes() {
                 <Route path="/" element={<Home />} />
                 <Route path="/become-owner" element={<BecomeOwnerPage />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/about" element={<AboutUs />} />
                 <Route path="/profile" element={<ProtectedRoute><ProfileRedirect /></ProtectedRoute>} />

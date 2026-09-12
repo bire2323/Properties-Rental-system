@@ -60,9 +60,11 @@ export default function AdminTopbar({ onToggleSidebar }) {
             if (active) setNotifications(items)
         }
         loadNotifications()
+        window.addEventListener('admin-notifications-updated', loadNotifications)
         const interval = window.setInterval(loadNotifications, 30000)
         return () => {
             active = false
+            window.removeEventListener('admin-notifications-updated', loadNotifications)
             window.clearInterval(interval)
         }
     }, [])

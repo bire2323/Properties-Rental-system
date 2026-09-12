@@ -481,6 +481,10 @@ export async function deleteAdminNotification(notificationId) {
     return request(`/api/accounts/admin/notifications/${notificationId}/`, { method: 'DELETE' })
 }
 
+export async function markAllAdminNotificationsRead() {
+    return request('/api/accounts/admin/notifications/mark-all-read/', { method: 'POST' })
+}
+
 export function markAdminNotificationViewed(notificationId) {
     const viewedIds = new Set(JSON.parse(localStorage.getItem('admin-viewed-notifications') || '[]'))
     viewedIds.add(String(notificationId))

@@ -13,7 +13,7 @@ import {
 import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
-import { getAdminNotifications } from '../../api/admin/adminApi'
+import { getAdminNotifications, markAllAdminNotificationsRead } from '../../api/admin/adminApi'
 
 const tabs = ['All', 'Property', 'Booking', 'New User']
 
@@ -24,6 +24,8 @@ function Notification() {
     const [displayCount, setDisplayCount] = useState(3)
     const [notifications, setNotifications] = useState([])
     const [loading, setLoading] = useState(true)
+    const [markingAllRead, setMarkingAllRead] = useState(false)
+    const [actionError, setActionError] = useState('')
     const navigate = useNavigate()
     const { isDark } = useTheme()
 
@@ -65,11 +67,29 @@ function Notification() {
     const getStatusClass = (status) => {
         const map = {
             New: isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-50 text-blue-600',
+            Read: isDark ? 'bg-slate-600/20 text-slate-300' : 'bg-slate-100 text-slate-600',
             Received: isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-600',
             Confirmed: isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-600',
             Info: isDark ? 'bg-slate-600/20 text-slate-300' : 'bg-slate-100 text-slate-600',
         }
         return map[status] || (isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-600')
+    }
+
+    const handleMarkAllRead = async () => {
+        if (markingAllRead || !notifications.some((item) => item.status === 'New')) return
+        setMarkingAllRead(true)
+        setActionError('')
+        try {
+            await markAllAdminNotificationsRead()
+            setNotifications((current) => current.map((item) => (
+                item.status === 'New' ? { ...item, status: 'Read', read: true } : item
+            )))
+            window.dispatchEvent(new Event('admin-notifications-updated'))
+        } catch (error) {
+            setActionError(error.message || 'Failed to mark notifications as read.')
+        } finally {
+            setMarkingAllRead(false)
+        }
     }
 
     return (
@@ -97,6 +117,15 @@ function Notification() {
                                 </p>
                             </div>
 
+                            <button
+                                type="button"
+                                onClick={handleMarkAllRead}
+                                disabled={markingAllRead || !notifications.some((item) => item.status === 'New')}
+                                className={`text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'}`}
+                            >
+                                {markingAllRead ? 'Marking as read...' : 'Mark all as read'}
+                            </button>
+
                             <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
                                 <Search className="h-4 w-4 text-slate-400" />
                                 <input
@@ -107,6 +136,12 @@ function Notification() {
                                 />
                             </div>
                         </div>
+
+                        {actionError && (
+                            <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:px-6">
+                                {actionError}
+                            </div>
+                        )}
 
                         <div className="border-b px-4 py-3 md:px-6">
                             <div className="flex flex-wrap gap-2">
