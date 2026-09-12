@@ -18,7 +18,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import { deleteBooking, listBookings, rejectBooking, approveBooking } from '../../api/bookingApi'
+import { rejectBooking, approveBooking, listBookings } from '../../api/bookingApi'
 import BookingStatusBadge from '../../components/booking/BookingStatusBadge'
 import { toast } from '../../components/ui/toaster'
 import {
@@ -243,22 +243,6 @@ export default function OwnerBookings() {
     }
   }
 
-  const handleDelete = async (booking) => {
-    if (!window.confirm(`Delete booking ${booking.booking_reference}? This cannot be undone.`)) return
-    setOpenMenuId(null)
-    setActionId(booking.id)
-    try {
-      await deleteBooking(booking.id)
-      setBookings((prev) => prev.filter((item) => item.id !== booking.id))
-      setSelected((current) => (current?.id === booking.id ? null : current))
-      toast.success(`Booking ${booking.booking_reference} deleted.`)
-    } catch (err) {
-      toast.error(err.message || 'Unable to delete booking.')
-    } finally {
-      setActionId(null)
-    }
-  }
-
   const applyUpdate = (updated) => {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)))
     if (selected?.id === updated.id) {
@@ -478,7 +462,6 @@ export default function OwnerBookings() {
                         {openMenuId === booking.id && (
                           <div className="absolute right-0 top-11 z-20 w-36 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-lg dark:border-slate-700 dark:bg-slate-900">
                             <button type="button" onClick={() => { setOpenMenuId(null); setSelected(booking) }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">View</button>
-                            <button type="button" onClick={() => handleDelete(booking)} className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">Delete</button>
                           </div>
                         )}
                       </div>
@@ -618,7 +601,6 @@ export default function OwnerBookings() {
                   {openMenuId === booking.id && (
                     <div className="absolute bottom-11 right-0 z-20 w-36 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-900">
                       <button type="button" onClick={() => { setOpenMenuId(null); setSelected(booking) }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">View</button>
-                      <button type="button" onClick={() => handleDelete(booking)} className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">Delete</button>
                     </div>
                   )}
                 </div>

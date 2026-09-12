@@ -16,6 +16,7 @@ import {
     Settings,
     LogOut,
     X,
+    MessagesSquare,
 } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 import { cn } from '@/lib/utils'
@@ -34,6 +35,7 @@ const managementLinks = [
     { label: 'Subscription Plans', path: '/admin-dashboard/subscriptions', icon: BadgeDollarSign },
     { label: 'Locations', path: '/admin-dashboard/locations', icon: MapPinned },
     { label: 'Category management', path: '/admin-dashboard/categories', icon: MapPinned },
+    { label: 'Testimonials', path: '/admin-dashboard/testimonials', icon: MessagesSquare },
 ]
 
 const settingsLinks = [

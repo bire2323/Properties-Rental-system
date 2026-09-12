@@ -14,6 +14,7 @@ import { Card } from '../../components/ui/card'
 import { getAllProperties, getPropertyById, addFavorite, removeFavorite, rateProperty, submitPropertyReview } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 import ShareButton from '../../components/common/ShareButton'
+import { toast } from '../../components/ui/toaster'
 
 // ─── Map API Property to Card Format ──────────────────────────────
 function mapPropertyToCard(property) {
@@ -287,6 +288,7 @@ function PropertyDetails() {
       const data = await getPropertyById(property.id)
       if (data) setProperty(mapPropertyToCard(data))
       setReviewText('')
+      toast.success('Thank you for your feedback! Your review has been submitted successfully.')
     } catch (err) {
       setReviewError(err.message || 'Failed to save your review.')
     } finally {

@@ -54,6 +54,13 @@ class PropertyReviewAPIView(APIView):
 				'review_text': serializer.validated_data['review_text'],
 			},
 		)
+		# Every review gets a testimonial moderation candidate. Existing
+		# approved/rejected/hidden state is preserved on review updates.
+		from testimonials.models import Testimonial
+		Testimonial.objects.get_or_create(
+			review=review,
+			defaults={'status': Testimonial.Status.PENDING},
+		)
 		return Response(ReviewSerializer(review).data, status=201 if created else 200)
 
 	def get_permissions(self):

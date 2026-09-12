@@ -122,11 +122,11 @@ class AdminBookingApiTests(TestCase):
         self.assertEqual(res.status_code, 204)
         self.assertFalse(Booking.objects.filter(pk=booking_id).exists())
 
-    def test_owner_can_delete_managed_booking(self):
+    def test_owner_cannot_delete_managed_booking(self):
         booking_id = self.booking.pk
         res = self._owner_client().delete(f"/api/bookings/{booking_id}/")
-        self.assertEqual(res.status_code, 204)
-        self.assertFalse(Booking.objects.filter(pk=booking_id).exists())
+        self.assertEqual(res.status_code, 403)
+        self.assertTrue(Booking.objects.filter(pk=booking_id).exists())
 
     # ─── Filters ────────────────────────────────────────────────────────
 

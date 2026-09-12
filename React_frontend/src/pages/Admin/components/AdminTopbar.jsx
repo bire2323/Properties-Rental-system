@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Bell, Heart, Moon, SunMedium, Menu, ChevronDown } from 'lucide-react'
+import { Bell, Moon, SunMedium, Menu, ChevronDown } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
 import { getAdminNotifications } from '../../../api/admin/adminApi'
@@ -16,6 +16,7 @@ const routeTitles = {
     payments: 'Payments',
     locations: 'Locations',
     categories: 'Categories',
+    testimonials: 'Testimonials',
     notifications: 'Notifications',
     'audit-log': 'Audit Log',
     settings: 'Settings',

@@ -28,7 +28,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useAuth } from '../../hooks/useAuth'
 import { getBooking } from '../../api/bookingApi'
-import { createPayment, verifyPayment } from '../../api/paymentApi'
+import { createPayment, listPayments, lookupPaymentByTxRef, verifyPayment } from '../../api/paymentApi'
 import {
   formatAmount,
   formatDisplayDate,
@@ -40,7 +40,11 @@ import {
 } from '../../lib/bookingDisplay'
 
 const POLL_INTERVAL_MS = 3000
-const MAX_POLL_ATTEMPTS = 20 // ~60s of "We're confirming your payment…"
+// After the fast-poll window (MAX_POLL_ATTEMPTS × POLL_INTERVAL_MS) the page
+// keeps re-checking at a slower cadence instead of giving up, so a missed
+// Chapa callback/webhook still settles the result on this page automatically.
+const SLOW_POLL_INTERVAL_MS = 15000
+const MAX_POLL_ATTEMPTS = 20 // ~60s of fast polling
 
 function PaymentSkeleton() {
   return (
@@ -77,11 +81,16 @@ export default function PaymentCheckout() {
   const { isAuthenticated, loading: authLoading } = useAuth()
   const reduceMotion = useReducedMotion()
 
-  // When the renter arrives from Chapa's hosted checkout (via /payment-result),
-  // navigation state carries the transaction reference and the resolved payment
-  // id. This lets us trigger authoritative verification for that specific
-  // attempt instead of showing a blank/duplicate pay screen.
-  const returnTxRef = location.state?.txRef || null
+  // When the renter arrives from Chapa's hosted checkout (via /payment-result)
+  // or directly back to this page, the transaction reference arrives in the URL
+  // query string (trx_ref/tx_ref) — never in navigation state. Chapa appends it
+  // to the return_url, so we read it from the query string first and fall back
+  // to navigation state if some future flow forwards it explicitly.
+  const returnTxRef =
+    location.state?.txRef ||
+    new URLSearchParams(window.location.search).get('trx_ref') ||
+    new URLSearchParams(window.location.search).get('tx_ref') ||
+    null
   const returnPaymentId = location.state?.paymentId || null
 
   const [booking, setBooking] = useState(null)
@@ -97,6 +106,7 @@ export default function PaymentCheckout() {
   const [confirming, setConfirming] = useState(false)
   const confirmRef = useRef(null)
   const reconciledRef = useRef(false)
+  const pendingPaymentIdRef = useRef(null)
 
   // Fetch the booking. Never sets loading state synchronously (the effect must
   // not call setState in its body); the manual retry handler sets loading true.
@@ -145,33 +155,44 @@ export default function PaymentCheckout() {
 
   const stopConfirming = () => {
     setConfirming(false)
-    if (confirmRef.current) clearInterval(confirmRef.current)
+    if (confirmRef.current) clearTimeout(confirmRef.current)
     confirmRef.current = null
   }
 
+  // Authoritative server-side verification loop. Polls fast for about a minute,
+  // then slows down (but never stops) so a delayed webhook or a gateway that
+  // was briefly unreachable still resolves here automatically. Each tick also
+  // retries the server-side Chapa verification, mirroring /payment-result, so a
+  // missed webhook is compensated for — the booking only flips to confirmed/
+  // failed from the backend's own authoritative verification response.
   const startConfirming = useCallback(() => {
     stopConfirming()
     setConfirming(true)
-    let attempts = 0
-    confirmRef.current = setInterval(async () => {
-      attempts += 1
+    const fastPollDeadline = Date.now() + POLL_INTERVAL_MS * MAX_POLL_ATTEMPTS
+    const tick = async () => {
+      if (pendingPaymentIdRef.current) {
+        try {
+          await verifyPayment(pendingPaymentIdRef.current)
+        } catch {
+          // Verification may be temporarily unavailable — keep monitoring; the
+          // slow cadence will keep retrying.
+        }
+      }
       const latest = await loadBooking(true)
-      // The backend is authoritative: once it confirms the booking (via
-      // webhook/callback/verify) we stop polling and render the result.
-      if (latest && (latest.status === 'confirmed' || latest.latest_payment_status === 'successful')) {
+      const terminal = latest && (
+        latest.status === 'confirmed' ||
+        latest.latest_payment_status === 'successful' ||
+        latest.latest_payment_status === 'failed'
+      )
+      if (terminal) {
         stopConfirming()
-        setBooking(latest)
+        if (latest) setBooking(latest)
         return
       }
-      if (latest && latest.latest_payment_status === 'failed') {
-        stopConfirming()
-        setBooking(latest)
-        return
-      }
-      if (attempts >= MAX_POLL_ATTEMPTS) {
-        stopConfirming()
-      }
-    }, POLL_INTERVAL_MS)
+      const delay = Date.now() < fastPollDeadline ? POLL_INTERVAL_MS : SLOW_POLL_INTERVAL_MS
+      confirmRef.current = setTimeout(tick, delay)
+    }
+    confirmRef.current = setTimeout(tick, POLL_INTERVAL_MS)
   }, [loadBooking])
 
   useEffect(() => {
@@ -179,23 +200,51 @@ export default function PaymentCheckout() {
   }, [])
 
   // Reconcile a payment the renter just attempted at Chapa's hosted checkout.
-  // When we return here via /payment-result the webhook/callback may still be
-  // processing, so we trigger an authoritative server-side verification for the
-  // resolved payment and then poll the backend until it reaches a terminal
-  // state (confirmed/successful or failed).
+  // The booking may be approved with a still-pending payment because the
+  // webhook/callback never arrived; we resolve the pending attempt and ask the
+  // backend to verify it authoritatively, then monitor until it settles.
   const reconcileReturningPayment = useCallback(async () => {
     if (reconciledRef.current) return
-    if (!authLoading && isAuthenticated && bookingId && returnPaymentId) {
-      reconciledRef.current = true
+    if (authLoading || !isAuthenticated || !bookingId) return
+    if (!booking || booking.status !== 'approved') return
+    // A FAILED attempt is terminal on the backend — never resurrect it. For
+    // every other state (initiated, pending, even successful-but-unconfirmed)
+    // the authoritative verification is idempotent and safe to run.
+    if (booking.latest_payment_status === 'failed') return
+
+    reconciledRef.current = true
+    let paymentId = returnPaymentId || null
+
+    // Preferred: resolve the exact attempt via the Chapa transaction reference.
+    // GET /api/payments/lookup/ performs the authoritative server-side Chapa
+    // verification itself and returns the resolved payment id.
+    if (!paymentId && returnTxRef) {
       try {
-        await verifyPayment(returnPaymentId)
+        const data = await lookupPaymentByTxRef(returnTxRef)
+        paymentId = data?.payment_id || null
       } catch {
-        // Verification may be temporarily unavailable or the payment already
-        // reached a terminal state; either way keep polling the booking state.
+        // Unknown/unverifiable tx_ref — fall through to the latest payment.
       }
-      startConfirming()
     }
-  }, [authLoading, isAuthenticated, bookingId, returnPaymentId, startConfirming])
+
+    // Fallback: latest payment for this booking (any non-failed state).
+    if (!paymentId) {
+      try {
+        const data = await listPayments({ booking: bookingId, ordering: '-created_at' })
+        const latest = data?.results?.[0]
+        if (latest && latest.status !== 'failed') {
+          paymentId = latest.id
+        }
+      } catch {
+        // Payment lookup failed; fall back to monitoring the booking state.
+      }
+    }
+
+    if (!paymentId) return
+
+    pendingPaymentIdRef.current = paymentId
+    startConfirming()
+  }, [authLoading, isAuthenticated, bookingId, booking, returnPaymentId, returnTxRef, startConfirming])
 
   useEffect(() => {
     reconcileReturningPayment()
@@ -214,6 +263,9 @@ export default function PaymentCheckout() {
       if (!result?.checkout_url) {
         throw new Error('No secure checkout link was returned.')
       }
+      // Track the attempt so the reconciliation loop can verify it server-side
+      // even if the Chapa callback/webhook never arrives.
+      pendingPaymentIdRef.current = result?.id || null
       // Send the user to Chapa's hosted checkout. We do NOT trust a redirect
       // "success" — on return we reconcile against the backend, which confirms
       // the booking only after authoritative Chapa verification.

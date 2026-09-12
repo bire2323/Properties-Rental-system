@@ -46,9 +46,12 @@ class BookingPermission(permissions.BasePermission):
             return _user_manages_property(user, obj.property)
 
         if view.action == "destroy":
+            # Owners/managers may never delete bookings; they can approve/reject
+            # pending requests or cancel via admin the paid ones. Only admins
+            # hard-delete (e.g. data cleanup). Renters can soft-cancel pre-payment.
             if obj.renter_id == user.pk and obj.status in {obj.BookingStatus.PENDING, obj.BookingStatus.APPROVED}:
                 return True
-            return user.role == User.Role.ADMIN or _user_manages_property(user, obj.property)
+            return user.role == User.Role.ADMIN
 
         return False
 

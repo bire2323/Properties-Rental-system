@@ -21,7 +21,13 @@ import { getBooking } from '../../api/bookingApi'
 import { formatAmount, formatDisplayDate, formatListingType } from '../../lib/bookingDisplay'
 
 const POLL_INTERVAL_MS = 3000
-const MAX_POLL_ATTEMPTS = 20
+// After the fast-poll window (MAX_POLL_ATTEMPTS × POLL_INTERVAL_MS) the page
+// keeps re-checking at a slower cadence instead of giving up: a delayed Chapa
+// callback/webhook or a gateway that is slow for a minute must still settle
+// the outcome here automatically rather than leaving the renter staring at a
+// frozen "finalizing…" card.
+const SLOW_POLL_INTERVAL_MS = 15000
+const MAX_POLL_ATTEMPTS = 20 // ~60s of fast polling
 
 /**
  * Chapa's hosted checkout returns the browser to CHAPA_RETURN_URL
@@ -139,18 +145,26 @@ export default function PaymentResult() {
 
     // 2. If the transaction is still processing, keep re-verifying until it
     //    settles instead of showing "pending" from an outdated snapshot. Once a
-    //    definitive state is reached, stop polling.
-    const interval = setInterval(() => {
-      if (cancelledRef.current) return
-      const current = stateRef.current
-      if (current === 'confirmed' || current === 'failed' || current === 'unresolved') return
-      if (attemptsRef.current >= MAX_POLL_ATTEMPTS) return
-      triggerCheck()
-    }, POLL_INTERVAL_MS)
+    //    definitive state is reached, stop. Poll fast for about a minute, then
+    //    slow down (but never stop) so a temporarily unreachable gateway or a
+    //    delayed webhook still resolves on this page without manual refreshes.
+    const fastPollDeadline = Date.now() + POLL_INTERVAL_MS * MAX_POLL_ATTEMPTS
+    let timer = null
+    const schedulePoll = (delay) => {
+      timer = setTimeout(() => {
+        if (cancelledRef.current) return
+        const current = stateRef.current
+        if (current === 'confirmed' || current === 'failed' || current === 'unresolved') return
+        triggerCheck()
+        const delay = Date.now() < fastPollDeadline ? POLL_INTERVAL_MS : SLOW_POLL_INTERVAL_MS
+        schedulePoll(delay)
+      }, delay)
+    }
+    schedulePoll(POLL_INTERVAL_MS)
 
     return () => {
       cancelledRef.current = true
-      clearInterval(interval)
+      if (timer) clearTimeout(timer)
     }
   }, [authLoading, isAuthenticated, navigate, txRef, triggerCheck, setStateAndRef])
 

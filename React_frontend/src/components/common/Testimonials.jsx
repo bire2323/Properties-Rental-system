@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Quote } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Quote, Star, BadgeCheck } from 'lucide-react'
 import { getTestimonials } from '../../api/property/propertyApi'
 import { getImageUrl } from '../../lib/utils'
 
@@ -32,9 +32,12 @@ export default function Testimonials() {
                 setTestimonials(items.map((item) => ({
                     ...item,
                     name: item.name || 'NexaSpace customer',
-                    role: item.role || 'Happy customer',
+                    role: item.role || item.property_name || 'Happy customer',
                     image: getImageUrl(item.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name || 'Customer')}&background=c99b43&color=fff`,
                     text: item.text,
+                    rating: item.rating ?? null,
+                    isVerified: Boolean(item.is_verified_renter),
+                    propertyName: item.property_name || '',
                 })))
             })
             .catch(() => {
@@ -70,7 +73,21 @@ export default function Testimonials() {
         setCurrentIndex(index)
     }
 
-    if (isLoading) return null
+    if (isLoading) {
+        return (
+            <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
+                <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+                    <div className="mx-auto max-w-2xl">
+                        <div className="text-center">
+                            <div className="mx-auto h-9 w-64 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+                            <div className="mx-auto mt-4 h-4 w-80 max-w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+                        </div>
+                        <div className="mx-auto mt-12 h-[280px] sm:h-[320px] md:h-[350px] lg:h-[380px] animate-pulse rounded-xl border bg-white/60 dark:bg-slate-900/60" />
+                    </div>
+                </div>
+            </section>
+        )
+    }
 
     if (!testimonials.length) return null
 
@@ -169,6 +186,21 @@ export default function Testimonials() {
                                                 "{testimonial.text}"
                                             </p>
 
+                                            {/* Star Rating */}
+                                            {testimonial.rating > 0 && (
+                                                <div className={`mt-2 flex items-center justify-center gap-0.5 ${isActive ? '' : 'opacity-50'}`}>
+                                                    {[1, 2, 3, 4, 5].map((value) => (
+                                                        <Star
+                                                            key={value}
+                                                            className={`h-4 w-4 ${value <= testimonial.rating
+                                                                ? 'fill-amber-400 text-amber-400'
+                                                                : 'text-slate-300 dark:text-slate-600'
+                                                                }`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+
                                             {/* Avatar & Name – larger */}
                                             <div className="mt-4 flex items-center gap-3">
                                                 <img
@@ -180,14 +212,21 @@ export default function Testimonials() {
                                                         }`}
                                                 />
                                                 <div className="text-left">
-                                                    <p
-                                                        className={`font-semibold ${isActive
-                                                            ? 'text-sm text-slate-900 dark:text-white sm:text-base'
-                                                            : 'text-xs text-slate-600 dark:text-slate-400'
-                                                            }`}
-                                                    >
-                                                        {testimonial.name}
-                                                    </p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p
+                                                            className={`font-semibold ${isActive
+                                                                ? 'text-sm text-slate-900 dark:text-white sm:text-base'
+                                                                : 'text-xs text-slate-600 dark:text-slate-400'
+                                                                }`}
+                                                        >
+                                                            {testimonial.name}
+                                                        </p>
+                                                        {testimonial.isVerified && isActive && (
+                                                            <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                                <BadgeCheck className="h-3 w-3" /> Verified
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p
                                                         className={`${isActive
                                                             ? 'text-xs text-slate-500 dark:text-slate-400 sm:text-sm'

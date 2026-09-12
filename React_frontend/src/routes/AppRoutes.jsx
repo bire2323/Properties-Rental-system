@@ -19,6 +19,7 @@ import AdminSetting from '../pages/Admin/AdminSetting'
 import AdminProfile from '../pages/Admin/AdminProfile'
 import Notification from '../pages/Admin/Notification'
 import AuditLog from '../pages/Admin/AuditLog'
+import AdminTestimonials from '../pages/Admin/Testimonials'
 import NotificationDetail from '../pages/Admin/NotificationDetail'
 import Locations from '../pages/Admin/Locations'
 import OwnerDashboard from '../pages/Owner/OwnerDashboard'
@@ -305,6 +306,14 @@ function AppRoutes() {
                     element={
                         <AdminRoute>
                             <AuditLog />
+                        </AdminRoute>
+                    }
+                />
+                <Route
+                    path="/admin-dashboard/testimonials"
+                    element={
+                        <AdminRoute>
+                            <AdminTestimonials />
                         </AdminRoute>
                     }
                 />

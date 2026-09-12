@@ -150,7 +150,7 @@ export default function Favorites() {
                   <p className="mt-1 flex items-center gap-1 text-slate-400 dark:text-slate-500 text-[11px] sm:text-xs truncate">
                     <MapPin className="h-3 w-3 text-[#c99b43] shrink-0" />
                     <span className="truncate">
-                      {[property.city, property.region, property.kebele].filter(Boolean).join(', ') || 'Location Unspecified'}
+                      {[property.city_name, property.region_name, property.kebele].filter(Boolean).join(', ') || 'Location Unspecified'}
                     </span>
                   </p>
                 </div>
