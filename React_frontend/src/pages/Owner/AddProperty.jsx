@@ -612,11 +612,11 @@ function Step3({ form, onChange, errors }) {
                 </FormField>
 
                 {/* Kebele */}
-                <FormField label="Kebele" error={errors.kebele}>
+                <FormField label="Kebele" required error={errors.kebele}>
                     <Input
                         value={form.kebele}
                         onChange={(e) => onChange('kebele', e.target.value)}
-                        placeholder="Enter kebele (optional)"
+                        placeholder="Enter kebele"
                         className={errors.kebele ? 'border-red-500' : ''}
                     />
                 </FormField>
@@ -1450,7 +1450,14 @@ function buildPayload(form) {
         fd.append('car_detail', JSON.stringify(cd))
     }
 
-    fd.append('feature_ids', JSON.stringify(form.selectedFeatures.map((f) => f.id)))
+    fd.append('feature_ids', JSON.stringify((form.selectedFeatures || [])
+        .filter((f) => f && Number.isInteger(f.id))
+        .map((f) => f.id)))
+    const newFeatures = (form.selectedFeatures || [])
+        .filter((f) => f && !Number.isInteger(f.id))
+        .map((f) => String(f.name || '').trim())
+        .filter(Boolean)
+    if (newFeatures.length) fd.append('feature_names', JSON.stringify(newFeatures))
     form.images.forEach((file) => fd.append('images', file))
     return fd
 }

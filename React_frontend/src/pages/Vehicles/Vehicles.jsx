@@ -57,7 +57,7 @@ function mapVehicleToCard(property) {
 }
 
 // ─── Vehicle Card ─────────────────────────────────────────────────────
-function VehicleCard({ vehicle, isFav, favLoading, onToggleFav, onView, viewMode }) {
+function VehicleCard({ vehicle, isFav, favLoading, onToggleFav, onView, viewMode, dateFilterActive }) {
   const isGrid = viewMode === 'grid'
 
   return (
@@ -146,7 +146,9 @@ function VehicleCard({ vehicle, isFav, favLoading, onToggleFav, onView, viewMode
           <div className="flex items-center gap-1.5">
             <span className={`h-2 w-2 rounded-full ${vehicle.is_available ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
             <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
-              {vehicle.is_available ? 'Available' : 'Rented'}
+              {dateFilterActive
+                ? (vehicle.is_available ? 'Available for your dates' : 'Not available for your dates')
+                : (vehicle.is_available ? 'Available' : 'Rented')}
             </span>
           </div>
 
@@ -204,6 +206,8 @@ function Vehicles() {
     min_price: 0,
     max_price: 200000,
     is_available: '',
+    start_date: '',
+    end_date: '',
   };
 
   const [filters, setFilters] = useState(defaultFilters);
@@ -337,7 +341,8 @@ function Vehicles() {
     (filters.seating_capacity !== 'any' ? 1 : 0) +
     (filters.min_price > 0 || filters.max_price < 200000 ? 1 : 0) +
     (filters.is_available !== '' ? 1 : 0) +
-    (filters.category ? 1 : 0);
+    (filters.category ? 1 : 0) +
+    (filters.start_date || filters.end_date ? 1 : 0);
 
   const sortedVehicles = [...vehicles].sort((a, b) => {
     switch (sortBy) {
@@ -497,6 +502,7 @@ function Vehicles() {
                       onToggleFav={toggleFavorite}
                       onView={(id) => navigate(`/vehicles/${id}`)}
                       viewMode={viewMode}
+                      dateFilterActive={Boolean(filters.start_date || filters.end_date)}
                     />
                   </motion.div>
                 ))}

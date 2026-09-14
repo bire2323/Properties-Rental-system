@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
@@ -171,6 +171,7 @@ function notifyBookingError(backendErrors) {
 
 export default function BookingCheckout() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
   const reduceMotion = useReducedMotion()
@@ -324,6 +325,17 @@ export default function BookingCheckout() {
       cancelled = true
     }
   }, [id, loadProperty])
+
+  // Prefill pickup/return dates when arriving from the vehicle details page
+  // with ?start_date=...&end_date=... (only applies to car listings).
+  useEffect(() => {
+    if (!property || property.listingType !== 'car') return
+    const start = searchParams.get('start_date')
+    const end = searchParams.get('end_date')
+    if (start && end) {
+      updateForm({ checkIn: start, checkOut: end })
+    }
+  }, [property, searchParams, updateForm])
 
   const getFieldValidationErrors = (nextForm = form) => {
     const fieldErrors = {}

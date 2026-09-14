@@ -135,7 +135,7 @@ export default function OwnerSidebar({ isOpen, onClose }) {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    'fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-y-auto border-r border-[#c99b43]/20 bg-gradient-to-br from-[#0b2141] via-[#122b52] to-[#0b2141] shadow-2xl shadow-[#0b2141]/30 transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
+                    'fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-y-auto border-r border-[#c99b43]/20 bg-gradient-to-br from-[#0b2141] via-[#122b52] to-[#0b2141] dark:from-[#040f22] dark:via-[#0a1a3a] dark:to-[#040f22] shadow-2xl shadow-[#0b2141]/30 transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
                     isOpen ? 'translate-x-0' : '-translate-x-full'
                 )}
             >

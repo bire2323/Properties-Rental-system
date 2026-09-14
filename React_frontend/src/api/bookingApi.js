@@ -405,40 +405,18 @@ export async function getAdminBookingReports(filters = {}) {
 /**
  * Check if a property/vehicle has any blocking bookings for a date range.
  * 
- * This is called before creating a booking to show real-time availability.
- * Backend will also validate during booking creation.
+ * Uses the dedicated availability endpoint on the Property API which
+ * applies the authoritative half-open interval overlap logic.
  * 
  * @param {number} propertyId - Property ID
  * @param {string} startDate - Start date (YYYY-MM-DD)
- * @param {string} endDate - End date (YYYY-MM-DD) or null
- * @returns {Promise<boolean>} True if dates are available
+ * @param {string} endDate - End date (YYYY-MM-DD)
+ * @returns {Promise<Object>} { available: boolean, conflicting_booking: { start_date, end_date } | null }
  */
 export async function checkAvailability(propertyId, startDate, endDate) {
-    try {
-        // Attempt to create a booking; if it fails due to overlap, return false
-        // This is a client-side check only; backend will be authoritative
-        const bookings = await listBookings({
-            property: propertyId,
-            status: 'pending,confirmed',
-        })
-
-        // Simple overlap check
-        const start = new Date(startDate)
-        const end = endDate ? new Date(endDate) : new Date('9999-12-31')
-
-        for (const booking of bookings.results || []) {
-            const bookingStart = new Date(booking.start_date)
-            const bookingEnd = booking.end_date ? new Date(booking.end_date) : new Date('9999-12-31')
-
-            // Check for overlap: start_a < end_b AND start_b < end_a
-            if (start < bookingEnd && bookingStart < end) {
-                return false
-            }
-        }
-
-        return true
-    } catch (error) {
-        // On error, assume unavailable (safe default)
-        return false
-    }
+    const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate,
+    })
+    return request(`/api/properties/${propertyId}/availability/?${params}`, { method: 'GET' })
 }

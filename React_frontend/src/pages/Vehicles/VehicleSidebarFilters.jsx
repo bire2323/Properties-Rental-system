@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { PriceRangeSlider } from '../Properties/PriceRangeSlider';
 import { getCategories, getListingNavigationOptions } from '../../api/property/propertyApi';
@@ -141,6 +141,47 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
             onChange={(e) => handleFilterChange('search', e.target.value)}
             className="w-full h-9 pl-8 bg-slate-50 dark:bg-slate-800/50"
           />
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Rental Dates">
+        <div className="space-y-2">
+          <label className="block space-y-1">
+            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Pickup Date</span>
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c99b43]" />
+              <Input
+                type="date"
+                value={filters.start_date || ''}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFilters((prev) => {
+                    const next = { ...prev, start_date: val };
+                    if (prev.end_date && val && prev.end_date < val) next.end_date = '';
+                    return next;
+                  });
+                  triggerFilterSelect();
+                }}
+                className="w-full h-9 pl-8 bg-slate-50 dark:bg-slate-800/50"
+              />
+            </div>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Return Date</span>
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c99b43]" />
+              <Input
+                type="date"
+                value={filters.end_date || ''}
+                min={filters.start_date || new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  handleFilterChange('end_date', e.target.value);
+                }}
+                className="w-full h-9 pl-8 bg-slate-50 dark:bg-slate-800/50"
+              />
+            </div>
+          </label>
         </div>
       </FilterSection>
 

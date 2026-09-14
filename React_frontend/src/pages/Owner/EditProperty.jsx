@@ -309,7 +309,14 @@ function buildUpdatePayload(form) {
         fd.append('car_detail', JSON.stringify(cd))
     }
 
-    fd.append('feature_ids', JSON.stringify((form.selectedFeatures || []).map((f) => f.id)))
+    fd.append('feature_ids', JSON.stringify((form.selectedFeatures || [])
+        .filter((f) => f && Number.isInteger(f.id))
+        .map((f) => f.id)))
+    const newFeatures = (form.selectedFeatures || [])
+        .filter((f) => f && !Number.isInteger(f.id))
+        .map((f) => String(f.name || '').trim())
+        .filter(Boolean)
+    if (newFeatures.length) fd.append('feature_names', JSON.stringify(newFeatures))
 
     // CRITICAL: Send new images ONLY if user actually uploaded them
     if (form.newImages?.length > 0) {

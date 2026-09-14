@@ -205,15 +205,25 @@ def get_overlapping_bookings(property_id, start_date, end_date, exclude_booking_
     """
     Return bookings that conflict with the requested period.
 
-    Overlap rule (inclusive dates; NULL end_date = ongoing):
-      start_a <= effective_end_b AND start_b <= effective_end_a
+    Date semantics — half-open intervals [start, end):
+      A booking occupies the rental from start_date (inclusive) through
+      end_date (exclusive). The end_date is the return / move-out day;
+      the vehicle is available for a new booking starting on end_date.
+
+    Overlap rule (NULL end_date = ongoing open-ended):
+      existing.start < requested.end AND existing.end > requested.start
+
+    Examples (daily, end_date exclusive):
+      existing [Sep 15, Sep 18)  request [Sep 10, Sep 15) → ALLOW (no overlap)
+      existing [Sep 15, Sep 18)  request [Sep 18, Sep 22) → ALLOW (same-day turnover)
+      existing [Sep 15, Sep 18)  request [Sep 14, Sep 16) → REJECT (overlaps)
     """
     effective_end = end_date or OPEN_ENDED_MAX_DATE
 
     queryset = Booking.objects.filter(
         property_id=property_id,
         status__in=Booking.ACTIVE_CALENDAR_STATUSES,
-        start_date__lte=effective_end,
+        start_date__lt=effective_end,
     ).filter(
         Q(end_date__isnull=True) | Q(end_date__gt=start_date)
     )
@@ -224,7 +234,7 @@ def get_overlapping_bookings(property_id, start_date, end_date, exclude_booking_
     return queryset
 
 
-def validate_no_overlap(property_id, start_date, end_date, exclude_booking_id=None):
+def validate_no_overlap(property_id, start_date, end_date, exclude_booking_id=None, listing_type=None):
     overlapping = get_overlapping_bookings(
         property_id,
         start_date,
@@ -232,11 +242,20 @@ def validate_no_overlap(property_id, start_date, end_date, exclude_booking_id=No
         exclude_booking_id=exclude_booking_id,
     )
     if overlapping.exists():
-        return {
-            "non_field_errors": [
+        conflict = overlapping.order_by("start_date").first()
+        conflict_start = conflict.start_date.isoformat() if conflict.start_date else "N/A"
+        conflict_end = conflict.end_date.isoformat() if conflict.end_date else "Ongoing"
+
+        if listing_type == "car":
+            msg = (
+                f"This vehicle is already rented from {conflict_start} to {conflict_end}."
+            )
+        else:
+            msg = (
                 "This property is already booked for part or all of the selected period."
-            ]
-        }
+            )
+
+        return {"non_field_errors": [msg]}
     return {}
 
 
@@ -269,8 +288,14 @@ def confirm_booking_from_payment(payment_transaction):
 
     # A paid booking means the listing is now rented. Lock the property so the
     # owner can no longer edit/delete it while it is occupied.
+    # For cars, skip the global lock: vehicle availability is determined by
+    # date-range overlap of blocking bookings, not a single boolean.
     property_obj = booking.property
-    if property_obj is not None and property_obj.status != ListingStatus.RENTED:
+    if (
+        property_obj is not None
+        and property_obj.listing_type != ListingType.CAR
+        and property_obj.status != ListingStatus.RENTED
+    ):
         previous_status = property_obj.status
         previous_available = property_obj.is_available
         property_obj.status = ListingStatus.RENTED
@@ -371,7 +396,7 @@ def create_booking(*, renter, property_id, rental_type, start_date, end_date, ap
             raise ValueError(next(iter(bookable_errors.values())))
         if property_obj.owner_id == renter.pk:
             raise ValueError("You cannot book your own listing.")
-        overlap_errors = validate_no_overlap(property_id, start_date, end_date)
+        overlap_errors = validate_no_overlap(property_id, start_date, end_date, listing_type=property_obj.listing_type)
         if overlap_errors:
             raise ValueError(overlap_errors["non_field_errors"][0])
 

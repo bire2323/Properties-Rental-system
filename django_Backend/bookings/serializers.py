@@ -189,6 +189,7 @@ class BookingCreateSerializer(serializers.Serializer):
             property_obj.pk,
             start_date,
             end_date,
+            listing_type=property_obj.listing_type,
         )
         if overlap_errors:
             raise serializers.ValidationError(overlap_errors)

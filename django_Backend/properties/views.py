@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.generics import ListAPIView
@@ -547,6 +548,29 @@ class PropertyViewSet(viewsets.ModelViewSet):
             if status_param in valid_statuses:
                 queryset = queryset.filter(status=status_param)
 
+        # Date-range availability filter: exclude vehicles with blocking
+        # overlapping bookings when both start_date and end_date are supplied.
+        date_start = self.request.query_params.get('start_date')
+        date_end = self.request.query_params.get('end_date')
+        if date_start and date_end:
+            try:
+                from datetime import date as _date
+                from bookings.models import Booking
+
+                parsed_start = _date.fromisoformat(date_start)
+                parsed_end = _date.fromisoformat(date_end)
+
+                if parsed_end > parsed_start:
+                    conflicting_ids = Booking.objects.filter(
+                        status__in=Booking.ACTIVE_CALENDAR_STATUSES,
+                        start_date__lt=parsed_end,
+                    ).filter(
+                        Q(end_date__isnull=True) | Q(end_date__gt=parsed_start)
+                    ).values_list("property_id", flat=True)
+                    queryset = queryset.exclude(id__in=conflicting_ids)
+            except (ValueError, TypeError):
+                pass
+
         return queryset.order_by('-created_at')
 
 
@@ -671,6 +695,63 @@ class PropertyViewSet(viewsets.ModelViewSet):
             request=self.request,
         )
         instance.delete()
+
+    @action(detail=True, methods=["get"], url_path="availability")
+    def availability(self, request, *args, **kwargs):
+        """Return whether the property is available for the requested date range.
+
+        GET /api/properties/{id}/availability/?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+
+        Response:
+            { "available": true, "conflicting_booking": null }
+            { "available": false, "conflicting_booking": { "start_date": "...", "end_date": "..." } }
+
+        Uses half-open interval [start, end): the return day (end_date) is
+        available for a new booking (same-day turnover).
+        """
+        from datetime import date as _date
+        from django.shortcuts import get_object_or_404
+        from bookings.services import get_overlapping_bookings
+
+        # Retrieve directly (bypassing get_queryset date filters) so a property
+        # that IS conflicted can still report its unavailable status.
+        property_obj = get_object_or_404(Property, pk=kwargs.get("id"))
+
+        start_str = request.query_params.get("start_date")
+        end_str = request.query_params.get("end_date")
+
+        if not start_str or not end_str:
+            raise ValidationError(
+                {"detail": "start_date and end_date query parameters are required."}
+            )
+
+        try:
+            start_date = _date.fromisoformat(start_str)
+            end_date = _date.fromisoformat(end_str)
+        except (ValueError, TypeError):
+            raise ValidationError(
+                {"detail": "Dates must be in YYYY-MM-DD format."}
+            )
+
+        if end_date <= start_date:
+            raise ValidationError(
+                {"detail": "end_date must be after start_date."}
+            )
+
+        overlap = get_overlapping_bookings(
+            property_obj.pk, start_date, end_date
+        ).order_by("start_date").first()
+
+        if overlap:
+            return Response({
+                "available": False,
+                "conflicting_booking": {
+                    "start_date": overlap.start_date.isoformat(),
+                    "end_date": overlap.end_date.isoformat() if overlap.end_date else None,
+                },
+            })
+
+        return Response({"available": True, "conflicting_booking": None})
 
 
 class CompanyViewSet(viewsets.ModelViewSet):

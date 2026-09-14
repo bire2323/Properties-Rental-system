@@ -5,7 +5,7 @@ import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { getAllProperties, getPropertyById, rateProperty, submitPropertyReview } from '../../api/property/propertyApi'
+import { getAllProperties, getPropertyById, getPropertyAvailability, rateProperty, submitPropertyReview } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
 
 const featureIcons = {
@@ -102,6 +102,11 @@ function VehicleDetails() {
   const [similarVehicles, setSimilarVehicles] = useState([])
   const [similarVehiclesLoading, setSimilarVehiclesLoading] = useState(false)
   const [showReviewDrawer, setShowReviewDrawer] = useState(false)
+  const [pickupDate, setPickupDate] = useState('')
+  const [returnDate, setReturnDate] = useState('')
+  const [availability, setAvailability] = useState(null)
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
+  const datesSelected = Boolean(pickupDate && returnDate)
 
   const handleRating = async (ratingValue) => {
     if (!user) {
@@ -213,6 +218,44 @@ function VehicleDetails() {
 
     return () => { active = false }
   }, [vehicle])
+
+  // Availability check: runs when both dates are selected (and valid).
+  useEffect(() => {
+    if (!vehicle?.id || !pickupDate || !returnDate) {
+      setAvailability(null)
+      return
+    }
+    if (returnDate <= pickupDate) {
+      setAvailability({ available: false, invalidDates: true, conflicting_booking: null })
+      return
+    }
+
+    let active = true
+    setAvailabilityLoading(true)
+    const timer = setTimeout(() => {
+      getPropertyAvailability(vehicle.id, pickupDate, returnDate)
+        .then((data) => {
+          if (active) {
+            setAvailability({
+              available: Boolean(data?.available),
+              conflicting_booking: data?.conflicting_booking || null,
+              invalidDates: false,
+            })
+          }
+        })
+        .catch(() => {
+          if (active) setAvailability({ available: null, error: true, conflicting_booking: null })
+        })
+        .finally(() => {
+          if (active) setAvailabilityLoading(false)
+        })
+    }, 400)
+
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [vehicle, pickupDate, returnDate])
 
   if (loading) {
     return (
@@ -560,12 +603,86 @@ function VehicleDetails() {
                     ETB {vehicle.price}
                     <span className="ml-1 text-sm font-normal">/ {vehicle.rentalUnit}</span>
                   </p>
+
+                  {/* Date-based availability widget */}
+                  <div className="mt-5">
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1">
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Pickup Date</span>
+                        <input
+                          type="date"
+                          value={pickupDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => {
+                            setPickupDate(e.target.value)
+                            if (returnDate && e.target.value && returnDate < e.target.value) setReturnDate('')
+                          }}
+                          className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Return Date</span>
+                        <input
+                          type="date"
+                          value={returnDate}
+                          min={pickupDate || new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setReturnDate(e.target.value)}
+                          className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[#c99b43] focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        />
+                      </label>
+                    </div>
+
+                    {datesSelected && availabilityLoading && (
+                      <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-[#c99b43]" />
+                        Checking availability...
+                      </div>
+                    )}
+
+                    {datesSelected && !availabilityLoading && availability?.invalidDates && (
+                      <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
+                        Return date must be after the pickup date.
+                      </div>
+                    )}
+
+                    {datesSelected && !availabilityLoading && availability?.error && (
+                      <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
+                        Could not check availability. Please try again.
+                      </div>
+                    )}
+
+                    {datesSelected && !availabilityLoading && availability?.available === true && (
+                      <div className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        This vehicle is available for your selected dates.
+                      </div>
+                    )}
+
+                    {datesSelected && !availabilityLoading && availability?.available === false && !availability.invalidDates && (
+                      <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
+                        This vehicle is already rented
+                        {availability.conflicting_booking?.start_date
+                          ? ` from ${availability.conflicting_booking.start_date} to ${availability.conflicting_booking.end_date || 'Ongoing'}.`
+                          : ' during your selected period.'}
+                      </div>
+                    )}
+                  </div>
+
                   <Button
-                    disabled={!vehicle.isAvailable}
-                    onClick={() => navigate(`/properties/${vehicle.id}/book`)}
+                    disabled={!vehicle.isAvailable || (datesSelected && availability?.available === false)}
+                    onClick={() => {
+                      const query = pickupDate && returnDate
+                        ? `?start_date=${pickupDate}&end_date=${returnDate}`
+                        : ''
+                      navigate(`/properties/${vehicle.id}/book${query}`)
+                    }}
                     className="mt-5 w-full bg-[#c99b43] text-white hover:bg-[#b88a35]"
                   >
-                    {vehicle.isAvailable ? 'Book Now' : 'Currently Unavailable'}
+                    {!vehicle.isAvailable
+                      ? 'Currently Unavailable'
+                      : datesSelected && availability?.available === false
+                        ? 'Unavailable for these dates'
+                        : 'Book Now'}
                   </Button>
                 </div>
 

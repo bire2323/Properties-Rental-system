@@ -188,8 +188,9 @@ class PropertyAdmin(admin.ModelAdmin):
 
 @admin.register(Feature)
 class FeatureAdmin(admin.ModelAdmin):
-    list_display = ('name', 'created_at')
-    search_fields = ('name',)
+    list_display = ('name', 'slug', 'created_at')
+    search_fields = ('name', 'slug')
+    readonly_fields = ('slug',)
 
 
 @admin.register(PropertyImage)

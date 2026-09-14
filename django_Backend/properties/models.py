@@ -1,3 +1,4 @@
+import unicodedata
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator, DecimalValidator
@@ -345,11 +346,29 @@ class CarDetail(models.Model):
         return f"Car details for {self.property.property_name}"
 
 
+def feature_slug(name):
+    """Normalized identity key for a feature name (case + punctuation insensitive).
+
+    'Wi-Fi', 'wi-fi' and 'wifi' all collapse to 'wifi' so the catalog stays
+    deduplicated regardless of how users type the same amenity.
+    """
+    value = unicodedata.normalize('NFKD', name or '')
+    return ''.join(ch for ch in value if ch.isalnum()).lower()[:100]
+
+
 class Feature(models.Model):
     name = models.CharField(
         max_length=100,
         unique=True,
         help_text='Display name, e.g. Wi-Fi, Security, Swimming Pool.',
+    )
+    slug = models.SlugField(
+        max_length=100,
+        unique=True,
+        blank=True,
+        editable=False,
+        allow_unicode=True,
+        help_text='Normalized identity key used for deduplication.',
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -357,6 +376,10 @@ class Feature(models.Model):
         ordering = ['name']
         verbose_name = 'Feature'
         verbose_name_plural = 'Features'
+
+    def save(self, *args, **kwargs):
+        self.slug = feature_slug(self.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

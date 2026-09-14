@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from django.db import transaction, models
+from django.db import IntegrityError, transaction, models
 import logging
 import json
 from decimal import Decimal, InvalidOperation
@@ -11,6 +11,7 @@ from .models import (
     CarDetail,
     PropertyImage,
     Feature,
+    feature_slug,
     Company,
     CompanyVerificationDocument,
     Region,
@@ -428,6 +429,41 @@ class PropertySerializer(serializers.ModelSerializer):
 # Property — write (create / update)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Feature name resolution (curated catalog + create-on-use tags)
+# ---------------------------------------------------------------------------
+
+def _get_or_create_feature(cleaned_name):
+    """Return an existing feature by normalized slug, creating it if needed.
+
+    Keeps the catalog deduplicated: "wifi", "Wi-Fi" and "wi-fi" all collapse
+    to one row (slug 'wifi').
+    """
+    slug = feature_slug(cleaned_name)
+    if not slug:
+        return None
+    match = Feature.objects.filter(slug=slug).first()
+    if match:
+        return match
+    try:
+        return Feature.objects.create(name=cleaned_name)
+    except IntegrityError:
+        return Feature.objects.filter(slug=slug).first()
+
+
+def _resolve_feature_names(feature_names):
+    """Map free-text feature names to fresh/existing feature IDs (idempotent)."""
+    resolver = {}
+    for cleaned_name in feature_names:
+        slug = feature_slug(cleaned_name)
+        if not slug or slug in resolver:
+            continue
+        feature = _get_or_create_feature(cleaned_name)
+        if feature is not None:
+            resolver[slug] = feature.pk
+    return [resolver[feature_slug(name)] for name in feature_names if feature_slug(name)]
+
+
 class PropertyCreateSerializer(serializers.ModelSerializer):
     """
     Used for creating and updating properties.
@@ -475,6 +511,12 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         required=False,
         default=list,
     )
+    feature_names = serializers.ListField(
+        child=serializers.CharField(max_length=100, allow_blank=True),
+        write_only=True,
+        required=False,
+        default=list,
+    )
     images = serializers.ListField(
         child=serializers.ImageField(),
         write_only=True,
@@ -509,6 +551,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             'house_detail',
             'car_detail',
             'feature_ids',
+            'feature_names',
             'images',
             'deleted_image_ids',
         ]
@@ -531,6 +574,25 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
                 f'Invalid feature ID(s): {sorted(missing)}'
             )
         return unique_ids
+
+    def validate_feature_names(self, value):
+        """Normalize free-text feature names and reject malformed input."""
+        if value in (None, ''):
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Must be a list of feature names.')
+        cleaned = []
+        seen = set()
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError('Each feature name must be a string.')
+            name = ' '.join(item.split())
+            slug = feature_slug(name)
+            if not slug or slug in seen:
+                continue
+            seen.add(slug)
+            cleaned.append(name)
+        return cleaned
 
     def validate_company(self, company):
         """Ensure the requesting user is a manager of the company they attach."""
@@ -609,13 +671,15 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         house_detail_data = validated_data.pop('house_detail', None)
         car_detail_data = validated_data.pop('car_detail', None)
         feature_ids = validated_data.pop('feature_ids', [])
+        feature_names = validated_data.pop('feature_names', [])
         uploaded_images = validated_data.pop('images', [])
         listing_type = validated_data.get('listing_type')
 
         property_instance = Property.objects.create(**validated_data)
 
-        if feature_ids:
-            features = Feature.objects.filter(id__in=feature_ids)
+        all_feature_ids = list(dict.fromkeys(feature_ids + _resolve_feature_names(feature_names)))
+        if all_feature_ids:
+            features = Feature.objects.filter(id__in=all_feature_ids)
             property_instance.features.set(features)
 
         if listing_type == 'house' and house_detail_data:
@@ -653,6 +717,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         house_detail_data = validated_data.pop('house_detail', None)
         car_detail_data = validated_data.pop('car_detail', None)
         feature_ids = validated_data.pop('feature_ids', None)
+        feature_names = validated_data.pop('feature_names', [])
         uploaded_images = validated_data.pop('images', None)
         deleted_image_ids = validated_data.pop('deleted_image_ids', None)
 
@@ -660,8 +725,14 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        if feature_ids is not None:
-            features = Feature.objects.filter(id__in=feature_ids)
+        if feature_ids is not None or feature_names:
+            resolved_ids = _resolve_feature_names(feature_names)
+            if feature_ids is not None:
+                base_ids = feature_ids
+            else:
+                base_ids = list(instance.features.values_list('id', flat=True))
+            all_feature_ids = list(dict.fromkeys(base_ids + resolved_ids))
+            features = Feature.objects.filter(id__in=all_feature_ids)
             instance.features.set(features)
 
         listing_type = instance.listing_type

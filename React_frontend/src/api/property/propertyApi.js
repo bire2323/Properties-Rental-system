@@ -142,6 +142,22 @@ export async function getPropertyById(id) {
 }
 
 /**
+ * GET /api/properties/:id/availability/?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+ * Check whether a vehicle/property is available for the given date range.
+ *
+ * Returns:
+ *   { available: true, conflicting_booking: null }
+ *   { available: false, conflicting_booking: { start_date, end_date } }
+ *
+ * Uses half-open intervals [start, end): the return day is available for the
+ * next booking (same-day turnover allowed).
+ */
+export async function getPropertyAvailability(propertyId, startDate, endDate) {
+    const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
+    return request(`/api/properties/${propertyId}/availability/?${params}`, { method: 'GET' })
+}
+
+/**
  * DELETE /api/properties/:id/
  * Removes a property. Requires authenticated owner/company manager/admin.
  */

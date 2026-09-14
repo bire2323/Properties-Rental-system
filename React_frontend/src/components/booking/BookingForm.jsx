@@ -1,5 +1,7 @@
-import { AlertCircle, Car, FileText, Home, Info, ShieldCheck, User, Check, Sparkles, CreditCard } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertCircle, Car, FileText, Home, Info, ShieldCheck, User, Check, Sparkles, CreditCard, Loader2 } from 'lucide-react'
 import { Input } from '../ui/input'
+import { getPropertyAvailability } from '../../api/property/propertyApi'
 import { getMaxDateOfBirth, getMinCheckInDate } from '../../lib/bookingUtils'
 
 const idLabels = {
@@ -138,6 +140,47 @@ export default function BookingForm({
   const inputClass = 'h-11 rounded-xl text-sm'
   const maxDateOfBirth = getMaxDateOfBirth()
   const today = getMinCheckInDate()
+
+  // Live date availability check for vehicles (UX only; backend is authoritative).
+  const [availability, setAvailability] = useState(null)
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isCar || !property?.id || !form.checkIn || !form.checkOut) {
+      setAvailability(null)
+      return
+    }
+    if (form.checkOut <= form.checkIn) {
+      setAvailability({ available: false, invalidDates: true })
+      return
+    }
+
+    let active = true
+    setAvailabilityLoading(true)
+    const timer = setTimeout(() => {
+      getPropertyAvailability(property.id, form.checkIn, form.checkOut)
+        .then((data) => {
+          if (active) {
+            setAvailability({
+              available: Boolean(data?.available),
+              conflicting_booking: data?.conflicting_booking || null,
+              invalidDates: false,
+            })
+          }
+        })
+        .catch(() => {
+          if (active) setAvailability({ available: null, error: true })
+        })
+        .finally(() => {
+          if (active) setAvailabilityLoading(false)
+        })
+    }, 400)
+
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [isCar, property, form.checkIn, form.checkOut])
 
   const isNameAutoFilled = Boolean(
     user?.first_name && form.contactName && form.contactName.includes(user.first_name)
@@ -404,6 +447,48 @@ export default function BookingForm({
                 className={inputClass}
               />
             </Field>
+
+            {isCar && form.checkIn && form.checkOut && (
+              <div className="sm:col-span-2">
+                {availabilityLoading && (
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#c99b43]" />
+                    Checking availability for these dates...
+                  </div>
+                )}
+
+                {!availabilityLoading && availability?.invalidDates && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    Return date must be after the pickup date.
+                  </div>
+                )}
+
+                {!availabilityLoading && availability?.error && (
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    Could not verify availability right now. You can still submit; the system will validate before confirming.
+                  </div>
+                )}
+
+                {!availabilityLoading && availability?.available === true && (
+                  <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    This vehicle is available for your selected dates.
+                  </div>
+                )}
+
+                {!availabilityLoading && availability?.available === false && !availability.invalidDates && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    This vehicle is already rented
+                    {availability.conflicting_booking?.start_date
+                      ? ` from ${availability.conflicting_booking.start_date} to ${availability.conflicting_booking.end_date || 'Ongoing'}.`
+                      : ' during your selected period.'}
+                  </div>
+                )}
+              </div>
+            )}
 
             <Field label="Rental Purpose" required error={errors.pickupPurpose} className="sm:col-span-2">
               <select
