@@ -28,7 +28,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useAuth } from '../../hooks/useAuth'
 import { getBooking } from '../../api/bookingApi'
-import { createPayment, listPayments, lookupPaymentByTxRef, verifyPayment } from '../../api/paymentApi'
+import { createPayment, listPayments, lookupPaymentByTxRef, storeLastPaymentAttempt, verifyPayment } from '../../api/paymentApi'
 import {
   formatAmount,
   formatDisplayDate,
@@ -266,6 +266,9 @@ export default function PaymentCheckout() {
       // Track the attempt so the reconciliation loop can verify it server-side
       // even if the Chapa callback/webhook never arrives.
       pendingPaymentIdRef.current = result?.id || null
+      // Persist the reference so /payment-result can still verify the payment
+      // after Chapa's return even though CHAPA_RETURN_URL has no query params.
+      storeLastPaymentAttempt(result?.tx_ref, result?.id)
       // Send the user to Chapa's hosted checkout. We do NOT trust a redirect
       // "success" — on return we reconcile against the backend, which confirms
       // the booking only after authoritative Chapa verification.

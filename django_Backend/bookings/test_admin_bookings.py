@@ -8,7 +8,7 @@ from accounts.models import User
 from properties.models import ListingType, ListingStatus, Property, RentalUnit
 from site_settings.models import SiteSettings
 
-from .models import Booking, BookingAuditEvent
+from .models import Booking, BookingAuditEvent, BookingApplicantDetails
 from payments.models import PaymentTransaction
 
 
@@ -258,6 +258,82 @@ class AdminBookingApiTests(TestCase):
         self.assertEqual(res.data["by_status"]["pending"], 2)
         self.assertIn("financial_totals", res.data)
         self.assertIn("payments", res.data)
+
+    # ─── Admin rentals tab ──────────────────────────────────────────────
+
+    def _add_applicant(self, booking, name="Renter One", phone="+251911222333"):
+        BookingApplicantDetails.objects.create(
+            booking=booking,
+            contact_name=name,
+            contact_phone=phone,
+            contact_email="applicant@example.com",
+            id_type="kebele",
+            id_number="ID-123456",
+            terms_accepted=True,
+            information_confirmed=True,
+            number_of_tenants=1,
+        )
+
+    def _lease_bookings(self, car_status, house_status):
+        self.booking.status = car_status
+        self.booking.save(update_fields=["status"])
+        self.house_booking.status = house_status
+        self.house_booking.save(update_fields=["status"])
+
+    def test_admin_rentals_lists_leased_bookings(self):
+        self._lease_bookings(Booking.BookingStatus.CONFIRMED, Booking.BookingStatus.COMPLETED)
+        self._add_applicant(self.booking)
+
+        res = self._admin_client().get("/api/bookings/admin/rentals/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 2)
+
+        active = next(r for r in res.data if r["id"] == self.booking.booking_reference)
+        self.assertEqual(active["status"], "Active")
+        self.assertEqual(active["statusCode"], "confirmed")
+        self.assertEqual(active["tenant"], "Renter One")
+        self.assertEqual(active["tenantPhone"], "+251911222333")
+        self.assertEqual(active["property"], "Car")
+        self.assertEqual(active["amount"], "ETB 300.00")
+        self.assertEqual(active["amountPeriod"], "/ term")
+        self.assertEqual(active["bookingId"], self.booking.pk)
+
+        completed = next(r for r in res.data if r["id"] == self.house_booking.booking_reference)
+        self.assertEqual(completed["status"], "Completed")
+        self.assertEqual(completed["statusCode"], "completed")
+        self.assertEqual(completed["tenant"], "Renter One")
+
+    def test_rentals_excludes_non_lease_statuses(self):
+        self._lease_bookings(Booking.BookingStatus.CONFIRMED, Booking.BookingStatus.PENDING)
+        res = self._admin_client().get("/api/bookings/admin/rentals/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], self.booking.booking_reference)
+
+    def test_rentals_status_filter(self):
+        self._lease_bookings(Booking.BookingStatus.CONFIRMED, Booking.BookingStatus.COMPLETED)
+        res = self._admin_client().get("/api/bookings/admin/rentals/?status=confirmed")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["status"], "Active")
+
+    def test_rentals_search_by_property(self):
+        self._lease_bookings(Booking.BookingStatus.CONFIRMED, Booking.BookingStatus.COMPLETED)
+        res = self._admin_client().get("/api/bookings/admin/rentals/?search=house")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["property"], "House")
+
+    def test_rentals_tenant_phone_falls_back_to_profile(self):
+        self._lease_bookings(Booking.BookingStatus.CONFIRMED, Booking.BookingStatus.PENDING)
+        res = self._admin_client().get("/api/bookings/admin/rentals/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data[0]["tenant"], "Renter One")
+        self.assertEqual(res.data[0]["tenantPhone"], "")
+
+    def test_non_admin_cannot_call_admin_rentals(self):
+        res = self._renter_client().get("/api/bookings/admin/rentals/")
+        self.assertIn(res.status_code, (403, 404, 405))
 
     # ─── Payment visibility ─────────────────────────────────────────────
 

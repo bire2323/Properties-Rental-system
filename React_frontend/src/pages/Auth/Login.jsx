@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   Eye,
@@ -47,6 +47,7 @@ function BrandFallback({ label = 'Home' }) {
 function Login() {
   const googleLoginEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true'
   const navigate = useNavigate()
+  const location = useLocation()
   const { login, verifyLoginOtp } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -196,6 +197,11 @@ function Login() {
         return
       }
 
+      const from = location.state?.from
+      if (typeof from === 'string' && from.startsWith('/')) {
+        navigate(from, { replace: true })
+        return
+      }
       navigate(getDashboardRoute(result?.user?.role))
     } catch (error) {
       setErrorMessage(error.message || 'Unable to sign in right now.')
@@ -218,6 +224,11 @@ function Login() {
 
     try {
       const result = await verifyLoginOtp(loginChallengeId, otpCode.trim())
+      const from = location.state?.from
+      if (typeof from === 'string' && from.startsWith('/')) {
+        navigate(from, { replace: true })
+        return
+      }
       navigate(getDashboardRoute(result?.user?.role))
     } catch (error) {
       setOtpErrorMessage(error.message || 'That code did not work. Please try again.')

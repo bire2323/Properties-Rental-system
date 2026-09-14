@@ -410,26 +410,26 @@ export async function getAdminDashboardStats() {
     }
 }
 
-export async function getAllRentals() {
+export async function getAllRentals(filters = {}) {
     try {
-        const propertiesResponse = await getAllProperties()
-        const properties = Array.isArray(propertiesResponse) ? propertiesResponse : propertiesResponse.results || []
+        const params = new URLSearchParams()
 
-        // Filter for rented properties (is_available === false)
-        const rentedProperties = properties.filter((p) => p.is_available === false)
+        if (filters.status && filters.status !== 'All') {
+            params.append('status', filters.status)
+        }
+        if (filters.search) {
+            params.append('search', filters.search)
+        }
 
-        return rentedProperties.map((property) => ({
-            id: `RT-${property.id.toString().padStart(4, '0')}`,
-            tenant: property.current_tenant_name || property.owner_name || 'Unknown',
-            tenantPhone: property.current_tenant_phone || '+251 XXX XXX XXX',
-            property: property.title || 'Untitled Property',
-            location: property.location || 'Unknown Location',
-            image: typeof property.main_image === 'string'
-                ? property.main_image
-                : (property.main_image?.image || property.images?.[0]?.image || 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=200&q=80'),
-            amount: `ETB ${property.price || '0'}`,
-            amountPeriod: '/ month',
-            status: 'Active', // Default status for rented properties
+        const queryString = params.toString()
+        const endpoint = `/api/bookings/admin/rentals/${queryString ? `?${queryString}` : ''}`
+        const response = await request(endpoint, { method: 'GET' })
+
+        const rentals = Array.isArray(response) ? response : response.results || []
+
+        return rentals.map((rental) => ({
+            ...rental,
+            image: resolveMediaUrl(rental.image),
         }))
     } catch (error) {
         console.error('Error fetching rentals:', error)

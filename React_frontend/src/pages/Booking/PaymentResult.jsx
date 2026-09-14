@@ -16,7 +16,7 @@ import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useAuth } from '../../hooks/useAuth'
-import { lookupPaymentByTxRef } from '../../api/paymentApi'
+import { clearLastPaymentAttempt, listPayments, lookupPaymentByTxRef, readLastPaymentAttempt } from '../../api/paymentApi'
 import { getBooking } from '../../api/bookingApi'
 import { formatAmount, formatDisplayDate, formatListingType } from '../../lib/bookingDisplay'
 
@@ -55,7 +55,13 @@ export default function PaymentResult() {
   const navigate = useNavigate()
   const { isAuthenticated, loading: authLoading } = useAuth()
 
-  const [txRef] = useState(() => extractTxRef(new URLSearchParams(window.location.search)))
+  const [txRef, setTxRef] = useState(() => {
+    const fromUrl = extractTxRef(new URLSearchParams(window.location.search))
+    if (fromUrl) return fromUrl
+    // CHAPA_RETURN_URL is static and carries no query params, so fall back to
+    // the attempt recorded by the checkout page before the gateway redirect.
+    return readLastPaymentAttempt()?.txRef || ''
+  })
   // 'checking' | 'confirmed' | 'failed' | 'processing' | 'unresolved'
   const [state, setState] = useState('checking')
   const [result, setResult] = useState(null) // lookup response { booking, booking_reference, booking_status, payment_status, ... }
@@ -70,10 +76,33 @@ export default function PaymentResult() {
     setState(next)
   }, [])
 
+  const recoverTxRef = useCallback(async () => {
+    if (readLastPaymentAttempt()?.txRef) return readLastPaymentAttempt().txRef
+    try {
+      const data = await listPayments({ ordering: '-created_at' })
+      const results = Array.isArray(data?.results) ? data.results : []
+      // Only a recent, not-yet-settled payment is a safe match: verifying an
+      // unrelated older transaction would be pointless at best, an error at
+      // worst. Settled payments are also excluded — the booking is already
+      // confirmed via the callback, and repeating verification adds nothing.
+      const cutoff = Date.now() - 15 * 60 * 1000
+      const recent = results.find(
+        (p) =>
+          p.tx_ref &&
+          (p.status === 'initiated' || p.status === 'pending') &&
+          new Date(p.created_at).getTime() >= cutoff
+      )
+      return recent?.tx_ref || ''
+    } catch {
+      return ''
+    }
+  }, [])
+
   const applyLookup = useCallback(
     (data) => {
       setResult(data)
       if (data?.booking_status === 'confirmed') {
+        clearLastPaymentAttempt()
         setStateAndRef('confirmed')
         // Best-effort enrichment of the success screen (property name, amount).
         getBooking(data.booking)
@@ -86,6 +115,7 @@ export default function PaymentResult() {
         return
       }
       if (data?.payment_status === 'failed') {
+        clearLastPaymentAttempt()
         setStateAndRef('failed')
         return
       }
@@ -126,12 +156,24 @@ export default function PaymentResult() {
   useEffect(() => {
     if (authLoading) return
     if (!isAuthenticated) {
-      navigate('/login', { state: { from: '/payment-result' } })
+      // Preserve the tx_ref (and the page) across the login round-trip so the
+      // authoritative verification actually runs once the user is back.
+      navigate('/login', { state: { from: window.location.pathname + window.location.search } })
       return
     }
     if (!txRef) {
-      setErrorMessage('No payment reference was provided by the payment gateway.')
-      setStateAndRef('unresolved')
+      // Nothing in the URL or storage — before giving up, recover the most
+      // recent unsettled transaction reference so a fresh payment whose return
+      // lost its reference still gets verified on this page.
+      recoverTxRef().then((recovered) => {
+        if (cancelledRef.current) return
+        if (recovered) {
+          setTxRef(recovered)
+          return
+        }
+        setErrorMessage('No payment reference was provided by the payment gateway.')
+        setStateAndRef('unresolved')
+      })
       return
     }
 
@@ -166,7 +208,7 @@ export default function PaymentResult() {
       cancelledRef.current = true
       if (timer) clearTimeout(timer)
     }
-  }, [authLoading, isAuthenticated, navigate, txRef, triggerCheck, setStateAndRef])
+  }, [authLoading, isAuthenticated, navigate, recoverTxRef, txRef, triggerCheck, setStateAndRef])
 
   const isSuccess = state === 'confirmed'
   const isFailed = state === 'failed'

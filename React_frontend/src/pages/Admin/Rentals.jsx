@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
     ChevronDown,
+    Loader2,
     MoreHorizontal,
     Search,
     Sparkles,
@@ -10,6 +11,8 @@ import AdminTopbar from './components/AdminTopbar'
 import { useTheme } from '../../hooks/useTheme'
 import { Button, Card, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui'
 import { getAllRentals } from '../../api/admin/adminApi'
+import { getBooking } from '../../api/bookingApi'
+import AdminBookingDrawer from './components/AdminBookingDrawer'
 
 const getStatusClasses = (status) => {
     if (status === 'Active') {
@@ -31,28 +34,67 @@ function Rentals() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [rentals, setRentals] = useState([])
+    const [searchTerm, setSearchTerm] = useState('')
+    const [statusFilter, setStatusFilter] = useState('all')
+    const [detailBooking, setDetailBooking] = useState(null)
+    const [detailAction, setDetailAction] = useState(null)
+    const [detailLoading, setDetailLoading] = useState(false)
+    const [detailError, setDetailError] = useState(null)
     const { isDark } = useTheme()
 
-    useEffect(() => {
-        async function loadRentals() {
-            setLoading(true)
-            setError(null)
-            try {
-                const data = await getAllRentals()
-                setRentals(data)
-            } catch (err) {
-                setError(err.message || 'Failed to load rentals')
-                console.error('Rentals error:', err)
-            } finally {
-                setLoading(false)
-            }
+    const loadRentals = async () => {
+        setLoading(true)
+        setError(null)
+        try {
+            const data = await getAllRentals()
+            setRentals(data)
+        } catch (err) {
+            setError(err.message || 'Failed to load rentals')
+            console.error('Rentals error:', err)
+        } finally {
+            setLoading(false)
         }
+    }
 
+    useEffect(() => {
         loadRentals()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    const displayedRentals = rentals.slice(0, visibleCount)
-    const hasMoreRentals = rentals.length > visibleCount
+    const openBooking = async (rental, action = null) => {
+        setOpenMenuId(null)
+        setDetailAction(action)
+        setDetailError(null)
+        setDetailLoading(true)
+        try {
+            const booking = await getBooking(rental.bookingId)
+            setDetailBooking(booking)
+        } catch (err) {
+            setDetailError(err.message || 'Failed to load booking details.')
+            setDetailBooking(null)
+        } finally {
+            setDetailLoading(false)
+        }
+    }
+
+    const closeBooking = () => {
+        setDetailBooking(null)
+        setDetailAction(null)
+        setDetailError(null)
+    }
+
+    const filteredRentals = rentals.filter((rental) => {
+        const search = searchTerm.toLowerCase().trim()
+        const matchesSearch = !search
+            || ((rental.tenant || '').toLowerCase().includes(search))
+            || ((rental.property || '').toLowerCase().includes(search))
+            || ((rental.id || '').toLowerCase().includes(search))
+        const matchesStatus = statusFilter === 'all' || rental.status === statusFilter
+        return matchesSearch && matchesStatus
+    })
+
+    const displayedRentals = filteredRentals.slice(0, visibleCount)
+    const hasMoreRentals = filteredRentals.length > visibleCount
 
     return (
         <div className={`min-h-screen flex lg:flex ${isDark ? 'bg-slate-950' : 'bg-white'}`}>
@@ -86,6 +128,8 @@ function Rentals() {
                                             <Input
                                                 type="text"
                                                 placeholder="Search by tenant, property or ID..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
                                                 className={`pr-12 pl-10 ${isDark ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400'}`}
                                             />
                                             <button
@@ -100,7 +144,8 @@ function Rentals() {
                                         <div className="flex flex-wrap items-center gap-2">
                                             <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
                                                 <select
-                                                    defaultValue="all"
+                                                    value={statusFilter}
+                                                    onChange={(e) => setStatusFilter(e.target.value)}
                                                     className={`w-full appearance-none bg-transparent pr-5 text-sm outline-none ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
                                                     style={isDark ? { backgroundColor: '#0f172a' } : { backgroundColor: '#f8fafc' }}
                                                 >
@@ -128,7 +173,14 @@ function Rentals() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody className={isDark ? 'bg-slate-900' : 'bg-white'}>
-                                                    {displayedRentals.map((rental) => (
+                                                    {displayedRentals.length === 0 ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={6} className={`px-6 py-8 text-center text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                                No rentals match your filters.
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ) : (
+                                                        displayedRentals.map((rental) => (
                                                         <TableRow key={rental.id} className={isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}>
                                                             <TableCell className={`px-6 py-4 text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{rental.id}</TableCell>
                                                             <TableCell className="px-6 py-4">
@@ -172,53 +224,48 @@ function Rentals() {
                                                                             <div className={`absolute right-0 z-10 mt-2 w-48 rounded-lg border shadow-lg ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
                                                                                 <button
                                                                                     type="button"
-                                                                                    className={`block w-full rounded-t-lg px-4 py-2.5 text-left text-sm font-medium transition ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                                                                                    onClick={() => {
-                                                                                        console.log('View Detail:', rental.id)
-                                                                                        setOpenMenuId(null)
-                                                                                    }}
+                                                                                    className={`block w-full px-4 py-2.5 text-left text-sm font-medium transition ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'} ${rental.status === 'Active' ? 'rounded-t-lg' : 'rounded-t-lg rounded-b-lg'}`}
+                                                                                    onClick={() => openBooking(rental)}
                                                                                 >
                                                                                     View Detail
                                                                                 </button>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    className={`block w-full px-4 py-2.5 text-left text-sm font-medium text-emerald-600 transition ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                                                                                    onClick={() => {
-                                                                                        console.log('Complete:', rental.id)
-                                                                                        setOpenMenuId(null)
-                                                                                    }}
-                                                                                >
-                                                                                    Complete
-                                                                                </button>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    className={`block w-full rounded-b-lg px-4 py-2.5 text-left text-sm font-medium text-red-600 transition ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                                                                                    onClick={() => {
-                                                                                        console.log('Cancel:', rental.id)
-                                                                                        setOpenMenuId(null)
-                                                                                    }}
-                                                                                >
-                                                                                    Cancel
-                                                                                </button>
+                                                                                {rental.status === 'Active' && (
+                                                                                    <>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className={`block w-full px-4 py-2.5 text-left text-sm font-medium text-emerald-600 transition ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+                                                                                            onClick={() => openBooking(rental, 'complete')}
+                                                                                        >
+                                                                                            Complete
+                                                                                        </button>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className={`block w-full rounded-b-lg px-4 py-2.5 text-left text-sm font-medium text-red-600 transition ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+                                                                                            onClick={() => openBooking(rental, 'cancel')}
+                                                                                        >
+                                                                                            Cancel
+                                                                                        </button>
+                                                                                    </>
+                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>
-                                                    ))}
+                                                        )))}
                                                 </TableBody>
                                             </Table>
                                         </div>
                                     </div>
 
-                                    {rentals.length > 0 && (
+                                    {filteredRentals.length > 0 && (
                                         <div className="mt-4 flex justify-end">
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => setVisibleCount((prev) => (prev >= rentals.length ? 5 : rentals.length))}
+                                                onClick={() => setVisibleCount((prev) => (prev >= filteredRentals.length ? 5 : filteredRentals.length))}
                                             >
                                                 {hasMoreRentals ? 'View more' : 'View less'}
                                             </Button>
@@ -230,6 +277,27 @@ function Rentals() {
                     )}
                 </main>
             </div>
+
+            {detailLoading && (
+                <div className="fixed inset-0 z-[45] flex items-center justify-center bg-slate-950/40 backdrop-blur-[1px]">
+                    <Loader2 className="h-7 w-7 animate-spin text-[#C99B43]" />
+                </div>
+            )}
+
+            {detailError && !detailLoading && (
+                <div className="fixed inset-x-0 top-4 z-[80] mx-auto w-fit rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
+                    {detailError}
+                </div>
+            )}
+
+            {detailBooking && (
+                <AdminBookingDrawer
+                    booking={detailBooking}
+                    initialAction={detailAction}
+                    onClose={closeBooking}
+                    onRefresh={loadRentals}
+                />
+            )}
         </div>
     )
 }

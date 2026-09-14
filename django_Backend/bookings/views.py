@@ -36,6 +36,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     POST   /api/bookings/{id}/admin/complete/  — admin completion (reason required)
     GET    /api/bookings/{id}/audit/           — audit history
     GET    /api/bookings/admin/reports/        — booking administrative statistics
+    GET    /api/bookings/admin/rentals/        — active/past/cancelled rentals (admin dashboard tab)
     """
 
     permission_classes = [BookingPermission]
@@ -460,6 +461,126 @@ class BookingViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+
+    @action(detail=False, methods=["get"], url_path="admin/rentals")
+    def admin_rentals(self, request, *args, **kwargs):
+        """
+        Rental records for the admin dashboard. A "rental" is a booking that
+        left the pipeline: confirmed (active), completed or cancelled.
+
+        Query params:
+            status — confirmed | completed | cancelled
+            search — matches booking reference, tenant name/email or property name
+        """
+        forbidden = self._admin_only()
+        if forbidden:
+            return forbidden
+
+        queryset = (
+            Booking.objects.filter(
+                status__in=[
+                    Booking.BookingStatus.CONFIRMED,
+                    Booking.BookingStatus.COMPLETED,
+                    Booking.BookingStatus.CANCELLED,
+                ]
+            )
+            .select_related(
+                "renter",
+                "property",
+                "property__city",
+                "property__region",
+                "applicant_details",
+            )
+            .prefetch_related("property__images")
+            .order_by("-created_at", "-id")
+        )
+
+        status_value = request.query_params.get("status")
+        if status_value:
+            queryset = queryset.filter(status=status_value.strip().lower())
+
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(booking_reference__icontains=search)
+                | Q(renter__first_name__icontains=search)
+                | Q(renter__last_name__icontains=search)
+                | Q(renter__email__icontains=search)
+                | Q(property__property_name__icontains=search)
+            )
+
+        records = [
+            self._build_rental_record(booking, request)
+            for booking in queryset
+        ]
+        return Response(records, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _build_rental_record(booking, request):
+        """Flatten a booking into the field shape the admin Rentals tab renders."""
+        property_obj = booking.property
+        renter = booking.renter
+        applicant = getattr(booking, "applicant_details", None)
+
+        tenant_name = ""
+        if applicant and applicant.contact_name:
+            tenant_name = applicant.contact_name
+        if not tenant_name and renter:
+            tenant_name = renter.get_full_name().strip() or renter.email
+
+        tenant_phone = ""
+        if applicant and applicant.contact_phone:
+            tenant_phone = applicant.contact_phone
+        if not tenant_phone and renter and getattr(renter, "profile", None):
+            tenant_phone = renter.profile.phone_number or ""
+
+        image = booking.property_image
+        if not image:
+            first_image = property_obj.images.first()
+            if first_image:
+                image = first_image.image.url
+        if image and request:
+            image = request.build_absolute_uri(image)
+
+        location = ", ".join(
+            part for part in (
+                property_obj.address,
+                getattr(property_obj.city, "name", None),
+                getattr(property_obj.region, "name", None),
+            )
+            if part
+        )
+
+        status_map = {
+            Booking.BookingStatus.CONFIRMED: "Active",
+            Booking.BookingStatus.COMPLETED: "Completed",
+            Booking.BookingStatus.CANCELLED: "Cancelled",
+        }
+        amount_period = (
+            "/ month"
+            if booking.rental_type == Booking.RentalType.MONTH_TO_MONTH
+            else "/ term"
+        )
+
+        return {
+            "id": booking.booking_reference,
+            "bookingId": booking.pk,
+            "bookingReference": booking.booking_reference,
+            "tenant": tenant_name,
+            "tenantPhone": tenant_phone,
+            "property": property_obj.property_name,
+            "location": location,
+            "image": image,
+            "amount": f"{booking.currency} {booking.base_price}",
+            "amountPeriod": amount_period,
+            "status": status_map.get(booking.status, booking.get_status_display()),
+            "statusCode": booking.status,
+            "startDate": booking.start_date,
+            "endDate": booking.end_date,
+            "totalAmount": str(booking.total_amount),
+            "rentalType": booking.get_rental_type_display(),
+        }
 
 
 def _to_number(value):

@@ -256,3 +256,41 @@ export async function initiateTelebirrPayment(bookingData) {
  * 5. Return 200 OK
  */
 export const WEBHOOK_ENDPOINT = '/api/payments/webhook/'
+
+// ─── RETURN-PAGE RECOVERY ──────────────────────────────────────────────────
+// Chapa's hosted checkout returns the browser to the STATIC CHAPA_RETURN_URL
+// (/payment-result/), which carries no query parameters, so the return page
+// cannot derive the transaction reference from the URL. The checkout page
+// therefore persists the reference here before sending the renter to the
+// gateway, and /payment-result reads it back to run its authoritative
+// server-side verification.
+export const LAST_PAYMENT_STORAGE_KEY = 'last_chapa_payment'
+
+export function storeLastPaymentAttempt(txRef, paymentId) {
+    try {
+        sessionStorage.setItem(
+            LAST_PAYMENT_STORAGE_KEY,
+            JSON.stringify({ txRef: txRef || '', paymentId: paymentId || null, initiatedAt: Date.now() })
+        )
+    } catch {
+        // Storage unavailable — verification still works when Chapa appends
+        // the reference to the return URL.
+    }
+}
+
+export function readLastPaymentAttempt() {
+    try {
+        const raw = sessionStorage.getItem(LAST_PAYMENT_STORAGE_KEY)
+        return raw ? JSON.parse(raw) : null
+    } catch {
+        return null
+    }
+}
+
+export function clearLastPaymentAttempt() {
+    try {
+        sessionStorage.removeItem(LAST_PAYMENT_STORAGE_KEY)
+    } catch {
+        // best-effort
+    }
+}
