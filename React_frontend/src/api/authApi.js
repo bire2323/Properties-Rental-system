@@ -57,6 +57,27 @@ export async function loginOtpVerify(challengeId, code) {
     })
 }
 
+export async function requestPasswordReset(email) {
+    return request('/api/accounts/password-reset/request/', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    })
+}
+
+export async function verifyPasswordResetOtp(challengeId, code) {
+    return request('/api/accounts/password-reset/verify/', {
+        method: 'POST',
+        body: JSON.stringify({ reset_challenge_id: challengeId, code }),
+    })
+}
+
+export async function completePasswordReset(challengeId, password, confirmPassword) {
+    return request('/api/accounts/password-reset/complete/', {
+        method: 'POST',
+        body: JSON.stringify({ reset_challenge_id: challengeId, password, confirm_password: confirmPassword }),
+    })
+}
+
 export async function logout() {
     return request('/api/accounts/logout/', {
         method: 'POST',

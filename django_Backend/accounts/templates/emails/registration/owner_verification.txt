@@ -1,0 +1,17 @@
+{% if status == 'pending' %}Owner registration received
+
+Hi {{ user_name }},
+Your owner registration was successful. Your account is currently under review.
+We will email you again when an administrator approves or rejects your owner application.
+{% elif status == 'approved' %}Owner account approved
+
+Hi {{ user_name }},
+Your owner verification was approved successfully. You can now use the owner features of {{ site_name }}.
+{% else %}Owner account {{ status_label }}
+
+Hi {{ user_name }},
+Your owner verification was {{ status_label }}.
+{% if status == 'rejected' %}Reason: {{ rejection_reason }}{% endif %}
+{% endif %}
+
+Email: {{ email }}

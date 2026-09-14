@@ -1,0 +1,8 @@
+Your account was deleted
+
+Hi {{ user_name }},
+
+Your {{ site_name }} account has been deleted by an administrator.
+{% if deleted_by_email %}Administrator contact: {{ deleted_by_email }}{% endif %}
+
+Deleted account email: {{ email }}

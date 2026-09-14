@@ -1,0 +1,8 @@
+Hi {{ user_name }},
+
+Your {{ site_name }} account has been created successfully.
+
+Email: {{ email }}
+Account type: {{ role }}
+
+You can now sign in and start using your account.

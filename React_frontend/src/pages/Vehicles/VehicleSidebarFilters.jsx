@@ -5,13 +5,13 @@ import { PriceRangeSlider } from '../Properties/PriceRangeSlider';
 import { getCategories, getListingNavigationOptions } from '../../api/property/propertyApi';
 import { useLocationSelector } from '../../hooks/useLocationSelector';
 
-const selectCls = 'w-full h-10 appearance-none rounded-lg border border-slate-300 bg-slate-50 pl-3 pr-9 text-sm font-medium transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed'
+const selectCls = 'w-full h-9 appearance-none rounded-lg border border-slate-300 bg-slate-50 pl-2.5 pr-7 text-[13px] font-medium transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed'
 
 
 function FilterSection({ title, children }) {
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300">
         {title}
       </h3>
       {children}
@@ -108,7 +108,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${active
+      className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${active
         ? 'bg-[#c99b43] text-white'
         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
@@ -120,13 +120,13 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Filters</h2>
+        <h2 className="text-sm font-bold text-slate-900 dark:text-white">Filters</h2>
         <button
           onClick={() => {
             onClearAll?.();
             triggerFilterSelect();
           }}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white underline"
+          className="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white underline"
         >
           Clear All
         </button>
@@ -134,12 +134,12 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
 
       <FilterSection title="Search">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <Input
-            placeholder="Search vehicles..."
+            placeholder="Search..."
             value={filters.search || ''}
             onChange={(e) => handleFilterChange('search', e.target.value)}
-            className="w-full pl-9 bg-slate-50 dark:bg-slate-800/50"
+            className="w-full h-9 pl-8 bg-slate-50 dark:bg-slate-800/50"
           />
         </div>
       </FilterSection>
@@ -150,7 +150,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
             <option value="">All Categories</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         </div>
       </FilterSection>
 
@@ -170,7 +170,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           </div>
 
           {/* City — only shown once a region is picked */}
@@ -186,7 +186,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             </div>
           )}
         </div>
@@ -198,7 +198,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
             <select
               value={filters.brand || ''}
               onChange={(e) => handleFilterChange('brand', e.target.value)}
-              className="w-full h-10 appearance-none rounded-lg border border-slate-300 bg-slate-50 pl-3 pr-9 text-sm font-medium transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white"
+              className="w-full h-9 appearance-none rounded-lg border border-slate-300 bg-slate-50 pl-2.5 pr-7 text-[13px] font-medium transition-all hover:border-[#c99b43]/50 focus:border-[#c99b43] focus:outline-none focus:ring-2 focus:ring-[#c99b43]/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white"
             >
               <option value="">All Brands</option>
               {brands.map((b) => (
@@ -207,7 +207,7 @@ export function VehicleSidebarFilters({ filters, setFilters, onClearAll, onFilte
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           </div>
         </FilterSection>
       )}

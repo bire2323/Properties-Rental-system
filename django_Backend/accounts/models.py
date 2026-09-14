@@ -348,6 +348,7 @@ class Notification(models.Model):
 
     class NotificationStatus(models.TextChoices):
         NEW = "New", "New"
+        READ = "Read", "Read"
         RECEIVED = "Received", "Received"
         CONFIRMED = "Confirmed", "Confirmed"
         INFO = "Info", "Info"
@@ -460,6 +461,46 @@ class LoginOTP(models.Model):
         if check_password(str(code), self.code_hash):
             self.used_at = timezone.now()
             self.save(update_fields=["used_at"])
+            return True
+        self.attempts += 1
+        self.save(update_fields=["attempts"])
+        return False
+
+
+class PasswordResetOTP(models.Model):
+    """Hashed, short-lived OTP used to authorize a password reset."""
+
+    OTP_LIFETIME_MINUTES = 10
+    MAX_ATTEMPTS = 5
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="password_reset_otps",
+    )
+    code_hash = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveIntegerField(default=0)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def is_locked(self):
+        return self.attempts >= self.MAX_ATTEMPTS
+
+    def verify(self, code):
+        if self.used_at is not None or self.verified_at is not None or self.is_expired() or self.is_locked():
+            return False
+        if check_password(str(code), self.code_hash):
+            self.verified_at = timezone.now()
+            self.save(update_fields=["verified_at"])
             return True
         self.attempts += 1
         self.save(update_fields=["attempts"])

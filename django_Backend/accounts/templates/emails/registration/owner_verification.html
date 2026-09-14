@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<body style="margin:0;padding:24px;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%"
+        style="max-width:600px;margin:auto;background:#fff;border-radius:12px;padding:32px;">
+        <tr>
+            <td>
+                {% if status == 'pending' %}
+                <h1 style="color:#0b2141;">Owner registration received</h1>
+                <p>Hi {{ user_name }},</p>
+                <p>Your owner registration was successful. Your account is currently <strong>under review</strong>.</p>
+                <p>We will email you again when an administrator approves or rejects your owner application.</p>
+                {% elif status == 'approved' %}
+                <h1 style="color:#0b2141;">Owner account approved</h1>
+                <p>Hi {{ user_name }},</p>
+                <p>Your owner verification was approved successfully. You can now use the owner features of {{ site_name
+                    }}.</p>
+                {% else %}
+                <h1 style="color:#0b2141;">Owner account {{ status_label }}</h1>
+                <p>Hi {{ user_name }},</p>
+                <p>Your owner verification was {{ status_label }}.</p>
+                {% if status == 'rejected' %}<p><strong>Reason:</strong> {{ rejection_reason }}</p>{% endif %}
+                {% endif %}
+                <p><strong>Email:</strong> {{ email }}</p>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

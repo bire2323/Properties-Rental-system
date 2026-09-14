@@ -46,7 +46,7 @@ export function PriceRangeSlider({ min = 0, max = 200000, step = 1000, value, on
                     aria-label="Maximum price"
                 />
             </Slider.Root>
-            <div className="flex justify-between items-center mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <div className="flex justify-between items-center mt-2 text-xs font-medium text-slate-700 dark:text-slate-300">
                 <span>{formatPrice(localValue[0])} ETB</span>
                 <span>{formatPrice(localValue[1])}{localValue[1] === max ? '+' : ''} ETB</span>
             </div>
