@@ -37,16 +37,16 @@ def set_auth_cookies(response, access_token, refresh_token):
         key="access_token",
         value=access_token,
         httponly=True,
-        samesite="Lax",
-        secure=False,
+        samesite="None",
+        secure=True,
         max_age=60 * 60,
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        samesite="Lax",
-        secure=False,
+        samesite="None",
+        secure=True,
         max_age=60 * 60 * 24 * 7,
     )
     return response
