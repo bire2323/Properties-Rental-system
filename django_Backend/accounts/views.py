@@ -1132,15 +1132,23 @@ class CookieTokenRefreshView(TokenRefreshView):
             access_token["session_timeout_minutes"] = timeout_minutes
             access_token.set_exp(lifetime=timedelta(minutes=timeout_minutes))
             response.data["access"] = str(access_token)
+            # response.set_cookie(
+            #     key="access_token",
+            #     value=str(access_token),
+            #     httponly=True,
+            #     samesite="Lax",
+            #     secure=False,
+            #     max_age=60 * 60,
+            # )
             response.set_cookie(
                 key="access_token",
                 value=str(access_token),
                 httponly=True,
-                samesite="Lax",
-                secure=False,
+                secure=True,
+                samesite="None",
+                path="/",
                 max_age=60 * 60,
-            )
-
+              )
         return response
 
 
