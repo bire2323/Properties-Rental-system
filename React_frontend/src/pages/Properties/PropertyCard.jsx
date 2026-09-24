@@ -18,7 +18,10 @@ export function PropertyCard({ property, isFav, isLoading, toggleFavorite, layou
       <div className={`relative overflow-hidden ${isGrid ? 'h-44 sm:h-48 xl:h-52 w-full' : 'h-48 sm:h-auto w-full sm:w-64 lg:w-72 flex-shrink-0'}`}>
         <img
           src={property.image}
-          alt={property.title}
+          alt={`${property.title} in ${property.location}`}
+          loading="lazy"
+          width="640"
+          height="480"
           className="h-full w-full object-cover transition-transform duration-600 group-hover:scale-108"
           style={{ transitionDuration: '600ms' }}
           onError={e => { e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800' }}

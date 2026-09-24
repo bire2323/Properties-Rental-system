@@ -21,6 +21,7 @@ import { Input } from '../../components/ui/input'
 import { Card } from '../../components/ui/card'
 import { useAuth } from '../../hooks/useAuth'
 import { becomeOwner } from '../../api/roleChange/roleApi'
+import SEO from '../../components/seo/SEO'
 import systemlogo from '../../assets/logo.jpg'
 
 // Document type options matching backend
@@ -400,6 +401,11 @@ export default function BecomeOwnerPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 py-12 sm:py-16 lg:py-20">
+      <SEO
+        title="Become an Owner | GetSpace"
+        description="List your property on GetSpace and earn more. Join thousands of property owners who trust GetSpace to find the perfect tenants."
+        path="/become-owner"
+      />
       <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center">

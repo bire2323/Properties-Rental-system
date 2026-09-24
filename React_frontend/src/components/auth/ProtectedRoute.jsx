@@ -1,6 +1,7 @@
 // src/components/common/ProtectedRoute.jsx
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import SEO from '../seo/SEO';
 
 export default function ProtectedRoute({ children }) {
     const { user, isAuthenticated, loading } = useAuth();
@@ -9,6 +10,7 @@ export default function ProtectedRoute({ children }) {
     if (loading) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <SEO noindex />
                 <div className="flex flex-col items-center gap-3">
                     <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#c99b43] border-t-transparent shadow-md" />
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Loading account...</p>
@@ -52,5 +54,12 @@ export default function ProtectedRoute({ children }) {
         return <Navigate to="/owner/dashboard" replace />;
     }
 
-    return children;
+    return <>
+        <SEO
+            noindex
+            title="My Account | GetSpace"
+            description="Manage your account, listings and bookings on GetSpace."
+        />
+        {children}
+    </>;
 }

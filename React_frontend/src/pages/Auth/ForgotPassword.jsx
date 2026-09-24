@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 import { completePasswordReset, requestPasswordReset, verifyPasswordResetOtp } from '../../api/authApi'
+import SEO from '../../components/seo/SEO'
 
 const steps = ['Email', 'Verify', 'New password']
 
@@ -87,6 +88,12 @@ function ForgotPassword() {
 
     return (
         <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f6f1] px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
+            <SEO
+                noindex
+                title="Reset Password | GetSpace"
+                description="Reset your GetSpace account password securely."
+                path="/forgot-password"
+            />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,_rgba(212,167,86,0.22),_transparent_30%),radial-gradient(circle_at_90%_85%,_rgba(40,104,126,0.16),_transparent_32%)]" />
             <section className="mx-auto w-full max-w-md overflow-hidden rounded-[2rem] border border-white/80 bg-white/90 shadow-[0_30px_100px_rgba(15,23,42,0.14)] backdrop-blur-xl">
                 <div className="flex flex-col justify-center p-6 sm:p-8">

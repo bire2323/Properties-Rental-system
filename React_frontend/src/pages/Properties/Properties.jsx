@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
+import SEO from '../../components/seo/SEO'
 import { Button } from '../../components/ui/button'
 import { getAllProperties, getFavorites, addFavorite, removeFavorite } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
@@ -286,6 +287,12 @@ function Properties() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
+      <SEO
+        title="Properties for Rent | GetSpace"
+        description="Browse available homes and properties for rent on GetSpace. Search by location, price, property type, and more."
+        path="/properties"
+        image="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200"
+      />
       <Navbar />
 
       {/* Toolbar */}

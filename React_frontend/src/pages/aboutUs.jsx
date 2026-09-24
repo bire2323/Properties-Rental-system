@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Navbar from '../components/common/Navbar'
 import Footer from '../components/common/Footer'
+import SEO from '../components/seo/SEO'
 import { getSiteSettings } from '../api/siteSettingsApi'
 
 export default function AboutUs() {
@@ -16,6 +17,11 @@ export default function AboutUs() {
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
+            <SEO
+                title="About GetSpace | Property Rental Platform"
+                description="Learn about GetSpace, the property rental platform helping tenants find homes and landlords list properties across Ethiopia."
+                path="/about"
+            />
             <Navbar />
             <main className="relative flex min-h-[68vh] items-center justify-center overflow-hidden px-4 py-16 sm:px-6 lg:px-8">
                 <img

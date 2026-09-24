@@ -3,6 +3,7 @@ import { Clock, Loader2, ShieldCheck } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import SEO from '../../components/seo/SEO';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
@@ -40,6 +41,12 @@ export default function PendingApproval() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
+            <SEO
+                noindex
+                title="Owner Account Pending Approval | GetSpace"
+                description="Your owner account is pending approval on GetSpace."
+                path="/owner/pending"
+            />
             <Navbar />
             <main className="flex min-h-[70vh] items-center justify-center px-4 py-12">
                 <Card className="max-w-lg w-full p-8 text-center border-slate-200 dark:border-slate-800 shadow-xl">

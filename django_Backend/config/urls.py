@@ -18,9 +18,11 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from properties.sitemap import sitemap_xml
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('sitemap.xml', sitemap_xml, name='sitemap'),
     path('api/accounts/', include('accounts.urls')),
     path('api/properties/', include('properties.urls')),
     path('api/subscriptions/', include('properties.subscription_urls')),

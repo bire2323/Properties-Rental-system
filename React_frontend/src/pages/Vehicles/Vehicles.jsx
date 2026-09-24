@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
+import SEO from '../../components/seo/SEO'
 import { Button } from '../../components/ui/button'
 import { getAllProperties, getFavorites, addFavorite, removeFavorite } from '../../api/property/propertyApi'
 import { useAuth } from '../../hooks/useAuth'
@@ -71,7 +72,10 @@ function VehicleCard({ vehicle, isFav, favLoading, onToggleFav, onView, viewMode
       <div className={`relative overflow-hidden ${isGrid ? 'h-40 sm:h-48 xl:h-52 w-full' : 'w-2/5 sm:w-1/3 shrink-0 h-full'}`}>
         <img
           src={vehicle.image}
-          alt={vehicle.name}
+          alt={`${vehicle.name} for rent`}
+          loading="lazy"
+          width="640"
+          height="480"
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
           onError={e => { e.target.src = 'https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=800' }}
         />
@@ -361,6 +365,11 @@ function Vehicles() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
+      <SEO
+        title="Vehicles for Rent | GetSpace"
+        description="Browse available vehicles for rent on GetSpace. Compare prices, check availability, and book the vehicle you need."
+        path="/vehicles"
+      />
       <Navbar />
 
       {/* Toolbar */}

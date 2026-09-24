@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import logo from '../../assets/logo.jpg'
 import Navbar from '../../components/common/Navbar'
+import SEO from '../../components/seo/SEO'
 import GoogleLoginButton from '../../components/auth/GoogleLoginButton'
 import { useAuth } from '../../hooks/useAuth'
 import { getDashboardRoute } from '../../services/authService'
@@ -265,6 +266,12 @@ function Login() {
   }
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,_#fffdf9_0%,_#f7fbff_100%)] text-slate-900 transition-colors dark:bg-[linear-gradient(180deg,_#05101f_0%,_#0a2140_22%,_#08172d_100%)] dark:text-white">
+      <SEO
+        noindex
+        title="Login | GetSpace"
+        description="Log in to your GetSpace account to manage your rentals and bookings."
+        path="/login"
+      />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-[-8rem] top-24 h-72 w-72 rounded-full bg-[#d4a756]/18 blur-3xl dark:bg-[#d4a756]/20" />
         <div className="absolute right-[-6rem] top-16 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl dark:bg-sky-500/12" />

@@ -14,6 +14,7 @@ import {
 import logo from '../../assets/logo.jpg'
 import { getSiteSettings, resolveSiteMediaUrl } from '../../api/siteSettingsApi'
 import Navbar from '../../components/common/Navbar'
+import SEO from '../../components/seo/SEO'
 import GoogleLoginButton from '../../components/auth/GoogleLoginButton'
 import { useAuth } from '../../hooks/useAuth'
 import { getDashboardRoute } from '../../services/authService'
@@ -319,6 +320,12 @@ function Register() {
 
   return (
     <div className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,_#fffaf3_0%,_#f5f9ff_38%,_#eef4fb_100%)] text-slate-900 transition-colors dark:bg-[radial-gradient(circle_at_top,_rgba(212,167,86,0.12),_transparent_24%),linear-gradient(180deg,_#04111f_0%,_#071a32_42%,_#061427_100%)] dark:text-white">
+      <SEO
+        noindex
+        title="Create Account | GetSpace"
+        description="Create your GetSpace account to browse, rent and list properties and vehicles."
+        path="/register"
+      />
       <div className="relative">
         <Navbar />
       </div>

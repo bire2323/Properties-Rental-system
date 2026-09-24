@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { MapPin, Star, Heart, Share2, Calendar, CheckCircle, ArrowLeft, ChevronLeft, ChevronRight, Car, Fuel, Users, Settings2, Wifi, Shield, Camera, Wind, Zap, X, Loader2 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
+import SEO from '../../components/seo/SEO'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { getAllProperties, getPropertyById, getPropertyAvailability, rateProperty, submitPropertyReview } from '../../api/property/propertyApi'
@@ -260,6 +261,7 @@ function VehicleDetails() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <SEO title="Vehicle Details | GetSpace" path={`/vehicles/${id || ''}`} description="Loading vehicle details..." />
         <Navbar />
         <div className="flex min-h-[60vh] items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-[#c99b43]" />
@@ -272,6 +274,7 @@ function VehicleDetails() {
   if (error || !vehicle) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <SEO title="Vehicle Not Found | GetSpace" path={`/vehicles/${id || ''}`} noindex />
         <Navbar />
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="text-center">
@@ -299,8 +302,43 @@ function VehicleDetails() {
     const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100))
     setZoomOrigin(`${x}% ${y}%`)
   }
+  const seoLocation = vehicle.location && vehicle.location !== 'Location Unspecified' ? vehicle.location : ''
+  const seoTitle = vehicle.name
+    ? `Rent ${vehicle.name}${seoLocation ? ` in ${seoLocation}` : ''} | GetSpace`
+    : 'Vehicle for Rent | GetSpace'
+  const seoDescription = `Book this ${vehicle.fuel !== '-' && vehicle.fuel ? `${vehicle.fuel} ` : ''}${vehicle.name} for rent${seoLocation ? ` in ${seoLocation}` : ''} on GetSpace.`
+  const seoImage = vehicle.images?.[selectedImage] || vehicle.images?.[0] || null
+  const seoImageAlt = `${vehicle.name} for rent${seoLocation ? ` in ${seoLocation}` : ''}`
+  const vehicleStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Vehicle',
+    name: vehicle.name,
+    description: vehicle.description,
+    image: vehicle.images?.slice(0, 10),
+    ...(vehicle.year && vehicle.year !== '-' ? { vehicleModelDate: String(vehicle.year) } : {}),
+    ...(vehicle.fuel && vehicle.fuel !== '-' ? { vehicleFuelType: vehicle.fuel } : {}),
+    ...(vehicle.seats && vehicle.seats !== '-' ? { vehicleSeatingCapacity: vehicle.seats } : {}),
+    ...(vehicle.mileage && vehicle.mileage !== '-'
+      ? { mileageFromOdometer: { '@type': 'QuantitativeValue', value: vehicle.mileage, unitCode: 'KMT' } } : {}),
+    offers: {
+      '@type': 'Offer',
+      name: `Rent ${vehicle.name}`,
+      price: Number(String(vehicle.price).replace(/,/g, '')) || undefined,
+      priceCurrency: 'ETB',
+      availability: vehicle.isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <SEO
+        title={seoTitle}
+        description={seoDescription}
+        path={`/vehicles/${vehicle.id}`}
+        image={seoImage}
+        structuredData={vehicleStructuredData}
+        type="product"
+      />
       <Navbar />
 
       {/* Top Navigation Bar */}
@@ -343,7 +381,10 @@ function VehicleDetails() {
             >
               <img
                 src={vehicle.images[selectedImage]}
-                alt={vehicle.name}
+                alt={seoImageAlt}
+                width="1200"
+                height="800"
+                fetchPriority="high"
                 className="h-96 w-full object-cover transition-transform duration-[220ms] ease-out will-change-transform group-hover:scale-[1.80] md:h-[520px] lg:h-[560px]"
                 style={{ transformOrigin: zoomOrigin }}
                 onClick={() => setLightboxOpen(true)}
@@ -379,7 +420,7 @@ function VehicleDetails() {
                     className={`group/thumb relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${selectedImage === index ? 'border-[#c99b43] shadow-lg shadow-[#c99b43]/20 scale-[1.02]' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                   >
-                    <img src={img} alt={`View ${index + 1}`} className="h-44 w-full object-cover transition-transform duration-500 ease-out group-hover/thumb:scale-110 md:h-full lg:h-[270px]" />
+                    <img src={img} alt={`Photo ${index + 1} of ${vehicle.name}`} loading="lazy" width="320" height="220" className="h-44 w-full object-cover transition-transform duration-500 ease-out group-hover/thumb:scale-110 md:h-full lg:h-[270px]" />
                     <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/thumb:bg-black/10" />
                   </button>
                 ))}
@@ -735,7 +776,7 @@ function VehicleDetails() {
                 {similarVehicles.map((item) => (
                   <Card key={item.id} className="group overflow-hidden border-slate-200/70 bg-white p-0 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(201,155,67,0.15)] dark:border-slate-800 dark:bg-slate-950">
                     <div className="relative overflow-hidden">
-                      <img src={item.image} alt={item.name} className="h-44 w-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.15]" />
+                      <img src={item.image} alt={`${item.name} in ${item.location}`} loading="lazy" width="640" height="480" className="h-44 w-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.15]" />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                     </div>
                     <div className="p-4">
@@ -771,7 +812,7 @@ function VehicleDetails() {
           </button>
           <img
             src={vehicle.images[selectedImage]}
-            alt={vehicle.name}
+            alt={seoImageAlt}
             className="max-h-[90vh] max-w-[90vw] object-contain"
             onClick={(e) => e.stopPropagation()}
           />

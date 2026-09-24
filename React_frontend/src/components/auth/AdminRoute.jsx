@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import SEO from '../seo/SEO'
 
 export default function AdminRoute({ children }) {
     const { isAuthenticated, loading, user } = useAuth()
@@ -17,5 +18,12 @@ export default function AdminRoute({ children }) {
         return <Navigate to={fallback} replace />
     }
 
-    return children
+    return <>
+        <SEO
+            noindex
+            title="Admin Dashboard | GetSpace"
+            description="Administration panel for GetSpace."
+        />
+        {children}
+    </>
 }

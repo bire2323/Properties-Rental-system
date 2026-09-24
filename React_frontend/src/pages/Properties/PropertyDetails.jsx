@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import Navbar from '../../components/common/Navbar'
 import Footer from '../../components/common/Footer'
+import SEO from '../../components/seo/SEO'
 import { getImageUrl } from '../../lib/utils'
 import { getFeatureIcon } from '../../lib/featureIcons'
 import { Button } from '../../components/ui/button'
@@ -299,6 +300,7 @@ function PropertyDetails() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950">
+        <SEO title="Property Details | GetSpace" path={`/properties/${id || ''}`} description="Loading property details..." />
         <Navbar />
 
         {/* Top Navigation skeleton */}
@@ -364,6 +366,7 @@ function PropertyDetails() {
   if (error || !property) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <SEO title="Property Not Found | GetSpace" path={`/properties/${id || ''}`} noindex />
         <Navbar />
         <div className="flex h-[70vh] flex-col items-center justify-center px-4">
           <div className="max-w-md text-center">
@@ -388,8 +391,72 @@ function PropertyDetails() {
 
   const isHouse = property.listing_type === 'house'
 
+  const seoLocation = property.location && property.location !== 'Location Unspecified' ? property.location : ''
+  const seoTitle = property.title
+    ? `${property.title} for Rent${seoLocation ? ` in ${seoLocation}` : ''} | GetSpace`
+    : 'Property for Rent | GetSpace'
+  const seoBeds = isHouse && property.beds && property.beds !== '-' ? `${property.beds} bedroom ` : ''
+  const seoDescription = `View this ${seoBeds}${(property.type || 'property').toLowerCase()} for rent${seoLocation ? ` in ${seoLocation}` : ''} on GetSpace.`
+  const seoImage = property.images?.[selectedImage] || property.mainImage || null
+  const seoImageAlt = `${property.title} for rent${seoLocation ? ` in ${seoLocation}` : ''}`
+  const canonicalPath = `/properties/${property.id}`
+  const availability = property.status === 'For Rent'
+    ? 'https://schema.org/InStock'
+    : 'https://schema.org/OutOfStock'
+  const commonStructuredData = {
+    '@context': 'https://schema.org',
+    name: property.title,
+    description: property.description,
+    image: property.images?.length
+      ? property.images.slice(0, 10)
+      : [property.mainImage].filter(Boolean),
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: property.address || seoLocation,
+      addressLocality: seoLocation || undefined,
+      addressCountry: 'ET',
+    },
+    offers: {
+      '@type': 'Offer',
+      name: `Rent ${property.title}`,
+      price: property.priceRaw,
+      priceCurrency: 'ETB',
+      availability,
+    },
+  }
+  const listingStructuredData = isHouse
+    ? {
+      ...commonStructuredData,
+      '@type': 'House',
+      ...(property.beds && property.beds !== '-' ? { numberOfBedrooms: property.beds } : {}),
+      ...(property.baths && property.baths !== '-' ? { numberOfBathroomsTotal: property.baths } : {}),
+      ...(property.area && property.area !== '-' ? {
+        floorSize: { '@type': 'QuantitativeValue', value: property.area, unitText: 'square feet' },
+      } : {}),
+    }
+    : {
+      ...commonStructuredData,
+      '@type': 'Vehicle',
+      ...(property.brand && property.brand !== '-' ? { brand: { '@type': 'Brand', name: property.brand } } : {}),
+      ...(property.model && property.model !== '-' ? { model: property.model } : {}),
+      ...(property.year && property.year !== '-'
+        ? { vehicleModelDate: String(property.year) } : {}),
+      ...(property.fuel_type ? { vehicleFuelType: property.fuel_type } : {}),
+      ...(property.seating_capacity
+        ? { vehicleSeatingCapacity: property.seating_capacity } : {}),
+      ...(property.mileage && property.mileage !== '-'
+        ? { mileageFromOdometer: { '@type': 'QuantitativeValue', value: property.mileage, unitCode: 'KMT' } } : {}),
+    }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <SEO
+        title={seoTitle}
+        description={seoDescription}
+        path={canonicalPath}
+        image={seoImage}
+        structuredData={listingStructuredData}
+      />
       <Navbar />
 
       {/* ─── Top Navigation ────────────────────────────────────────── */}
@@ -501,7 +568,10 @@ function PropertyDetails() {
             >
               <img
                 src={property.images[selectedImage] || property.mainImage}
-                alt={property.title}
+                alt={seoImageAlt}
+                width="1200"
+                height="800"
+                fetchPriority="high"
                 className="h-96 w-full object-cover transition-transform duration-[220ms] ease-out will-change-transform group-hover:scale-[1.80] md:h-[520px] lg:h-[560px]"
                 style={{ transformOrigin: zoomOrigin }}
                 onClick={() => setLightboxOpen(true)}
@@ -543,7 +613,10 @@ function PropertyDetails() {
                   >
                     <img
                       src={img}
-                      alt={`View ${index + 1}`}
+                      alt={`Photo ${index + 1} of ${property.title}`}
+                      loading="lazy"
+                      width="320"
+                      height="220"
                       className="h-44 w-full object-cover transition-transform duration-500 ease-out group-hover/thumb:scale-110 md:h-full lg:h-[270px]"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
@@ -904,7 +977,7 @@ function PropertyDetails() {
                 {similarProperties.map((item) => (
                   <Card key={item.id} className="group overflow-hidden border-slate-200/70 bg-white p-0 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(201,155,67,0.15)] dark:border-slate-800 dark:bg-slate-950">
                     <div className="relative overflow-hidden">
-                      <img src={item.image} alt={item.title} className="h-44 w-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.15]" />
+                      <img src={item.image} alt={`${item.title} in ${item.location}`} loading="lazy" width="640" height="480" className="h-44 w-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.15]" />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                     </div>
                     <div className="p-4">
@@ -943,7 +1016,7 @@ function PropertyDetails() {
           </button>
           <img
             src={property.images[selectedImage]}
-            alt={property.title}
+            alt={seoImageAlt}
             className="max-h-[90vh] max-w-[90vw] object-contain"
             onClick={(e) => e.stopPropagation()}
           />

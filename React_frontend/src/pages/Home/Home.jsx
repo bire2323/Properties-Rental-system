@@ -6,9 +6,11 @@ import Footer from '../../components/common/Footer'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import Testimonials from '../../components/common/Testimonials'
+import SEO from '../../components/seo/SEO'
 import { useAuth } from '../../hooks/useAuth'
 import { getAllProperties } from '../../api/property/propertyApi'
 import { getImageUrl } from '../../api/mediaHelper'
+import { DEFAULT_DESCRIPTION, DEFAULT_OG_IMAGE } from '../../lib/seo'
 
 const heroImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000'
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800'
@@ -136,6 +138,12 @@ function Home() {
   }
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+      <SEO
+        title="GetSpace — Find Homes &amp; Properties for Rent"
+        description={DEFAULT_DESCRIPTION}
+        path="/"
+        image={DEFAULT_OG_IMAGE}
+      />
       <Navbar />
 
       {/* Hero Section */}
@@ -143,7 +151,10 @@ function Home() {
         <div className="absolute inset-0 z-0">
           <img
             src={heroImage}
-            alt="Luxury property"
+            alt="Modern luxury home for rent in Ethiopia"
+            width="2000"
+            height="1200"
+            fetchPriority="high"
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-slate-900/60 dark:from-slate-950/95 dark:via-slate-950/85 dark:to-slate-950/70" />
@@ -366,7 +377,10 @@ function Home() {
                   <div className="relative h-48 sm:h-56 overflow-hidden">
                     <img
                       src={property.image}
-                      alt={property.title}
+                      alt={`${property.title} in ${property.location}`}
+                      loading="lazy"
+                      width="640"
+                      height="480"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                       onError={(e) => { e.target.src = FALLBACK_IMAGE }}
                     />
