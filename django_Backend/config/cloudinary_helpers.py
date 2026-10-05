@@ -15,18 +15,20 @@ Both helpers tolerate legacy rows that still hold local-disk paths such as
 row by row without breaking the responses in the meantime.
 """
 
-import re
 import logging
+import re
 import time
 
 from cloudinary import CloudinaryResource
 from cloudinary.models import CloudinaryField
 from cloudinary.utils import private_download_url
-from django.conf import settings
 from django.apps import apps
+from django.conf import settings
+from django.db import models
 
 
 logger = logging.getLogger(__name__)
+_MEDIA_SNAPSHOT_FIELD_NAMES = {"property_image", "property_images"}
 
 # Matches "image/upload/v1234567890/getspace/properties/example" as written
 # by CloudinaryField.get_prep_value(), including the optional ".format" tail.
@@ -38,11 +40,25 @@ _CLOUDINARY_DB_RE = re.compile(
     r"(?:\.(?P<format>[^.]+))?$"
 )
 
-_LEGACY_PREFIXES = ("/media/", "media/")
+_LEGACY_RELATIVE_PREFIXES = (
+    "profiles/",
+    "national_ids/",
+    "owner_verification_documents/",
+    "companies/logos/",
+    "company_verification_documents/",
+    "properties/",
+    "booking_documents/",
+    "site/logo/",
+    "site/payment-methods/",
+    "settings/",
+)
+_LEGACY_PREFIXES = ("/media/", "media/", *_LEGACY_RELATIVE_PREFIXES,)
 
 
 def _looks_legacy(path):
-    return bool(path) and str(path).lstrip("/").startswith("media/")
+    return bool(path) and str(path).lstrip("/").startswith(
+        ("media/", *_LEGACY_RELATIVE_PREFIXES)
+    )
 
 
 def is_cloudinary_reference(value):
@@ -68,17 +84,23 @@ def legacy_media_path(value):
     if isinstance(value, CloudinaryResource):
         path = value.public_id or ""
         if _looks_legacy(path):
-            return "/" + path.lstrip("/")
+            normalized = path.lstrip("/")
+            if normalized.startswith("media/"):
+                return f"/{normalized}"
+            return f"/media/{normalized}"
         return None
     if isinstance(value, str) and _looks_legacy(value):
-        return value if value.startswith("/") else "/" + value
+        normalized = value.lstrip("/")
+        if normalized.startswith("media/"):
+            return f"/{normalized}"
+        return f"/media/{normalized}"
     return None
 
 
 def is_legacy_media_reference(value):
     """True for pre-Cloudinary rows still pointing at the local MEDIA_ROOT."""
     if isinstance(value, CloudinaryResource):
-        return False
+        return bool(legacy_media_path(value))
     if not isinstance(value, str) or not value:
         return False
     return value.startswith(_LEGACY_PREFIXES)
@@ -114,8 +136,9 @@ def same_cloudinary_asset(left, right):
         left_resource
         and right_resource
         and left_resource.public_id == right_resource.public_id
-        and left_resource.resource_type == right_resource.resource_type
-        and left_resource.type == right_resource.type
+        and (left_resource.resource_type or "image")
+        == (right_resource.resource_type or "image")
+        and (left_resource.type or "upload") == (right_resource.type or "upload")
     )
 
 
@@ -126,8 +149,8 @@ def public_asset_url(value):
     ``FieldFile``, a ``CloudinaryResource`` (what ``CloudinaryField`` returns on
     read), a Cloudinary DB reference string, or a legacy ``/media/...`` path.
 
-    Returns None for empty values and returns legacy paths untouched so the
-    existing relative-path handling in the frontend keeps working.
+    Returns None for empty values and normalizes legacy upload paths to
+    ``/media/...`` so the frontend can keep using its existing API-base logic.
     """
     if not value:
         return None
@@ -150,6 +173,9 @@ def public_asset_url(value):
     if isinstance(value, str):
         if value.startswith(("http://", "https://")):
             return value
+        legacy = legacy_media_path(value)
+        if legacy:
+            return legacy
         resource = _coerce_resource(value)
         if resource is not None:
             if resource.type != "upload":
@@ -206,7 +232,12 @@ def _asset_is_referenced(resource):
     """Check all Cloudinary fields before deleting an asset that may be shared."""
     for model in apps.get_models():
         for field in model._meta.concrete_fields:
-            if not isinstance(field, CloudinaryField):
+            is_cloudinary_field = isinstance(field, CloudinaryField)
+            is_media_snapshot = (
+                field.name in _MEDIA_SNAPSHOT_FIELD_NAMES
+                and isinstance(field, (models.CharField, models.TextField))
+            )
+            if not is_cloudinary_field and not is_media_snapshot:
                 continue
             try:
                 references = (
@@ -217,12 +248,16 @@ def _asset_is_referenced(resource):
                     .iterator()
                 )
                 for reference in references:
+                    if is_media_snapshot and reference:
+                        return True
                     other = _coerce_resource(reference)
                     if (
                         other
                         and other.public_id == resource.public_id
-                        and other.resource_type == resource.resource_type
-                        and other.type == resource.type
+                        and (other.resource_type or "image")
+                        == (resource.resource_type or "image")
+                        and (other.type or "upload")
+                        == (resource.type or "upload")
                     ):
                         return True
             except Exception:

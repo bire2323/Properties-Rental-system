@@ -1,13 +1,19 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from django.db import connection, transaction
-from django.db.models import Q, Count, OuterRef, Subquery, Sum
-
+import logging
 import mimetypes
 from pathlib import Path
 
+import requests
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from django.db import connection, transaction
+from django.db.models import Q, Count, OuterRef, Subquery, Sum
+
 from django.conf import settings
+from django.http import StreamingHttpResponse
+from django.utils.http import content_disposition_header
+
 from config.cloudinary_helpers import (
     legacy_media_path,
     private_asset_url,
@@ -25,6 +31,9 @@ from .serializers import (
     AdminBookingActionSerializer,
     BookingAuditEventSerializer,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class BookingViewSet(viewsets.ModelViewSet):
@@ -723,8 +732,45 @@ def _serve_applicant_document(request, document):
         signed_url = private_asset_url(document.document)
         if not signed_url:
             raise Http404
-        response = HttpResponse(status=302)
-        response["Location"] = signed_url
+        try:
+            upstream = requests.get(
+                signed_url,
+                stream=True,
+                timeout=(5, 30),
+            )
+        except requests.RequestException:
+            logger.exception(
+                "Cloudinary document download failed for applicant document %s",
+                document.pk,
+            )
+            return HttpResponse(status=502)
+        if upstream.status_code >= 400:
+            logger.warning(
+                "Cloudinary returned HTTP %s for applicant document %s",
+                upstream.status_code,
+                document.pk,
+            )
+            upstream.close()
+            return HttpResponse(status=502)
+
+        def stream_document():
+            try:
+                yield from upstream.iter_content(chunk_size=64 * 1024)
+            finally:
+                upstream.close()
+
+        filename = Path(document.original_filename or "document").name
+        content_type = upstream.headers.get(
+            "Content-Type",
+            mimetypes.guess_type(filename)[0] or "application/octet-stream",
+        )
+        response = StreamingHttpResponse(
+            stream_document(),
+            content_type=content_type,
+        )
+        response["Content-Disposition"] = content_disposition_header(
+            False, filename
+        )
         response["Cache-Control"] = "private, no-store"
         return response
 
@@ -746,7 +792,11 @@ def _serve_applicant_document(request, document):
         content_type=content_type,
         as_attachment=False,
     )
-    response["Content-Disposition"] = f'inline; filename="{document.original_filename or "document"}"'
+    filename = Path(document.original_filename or "document").name
+    response["Content-Disposition"] = content_disposition_header(
+        False, filename
+    )
+    response["Cache-Control"] = "private, no-store"
     return response
 
 

@@ -739,15 +739,26 @@ class BecomeOwnerAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Fields are CloudinaryField(type="authenticated"); the uploads happen
-            # on save and are only reachable through signed URLs.
-            OwnerVerificationDocument.objects.create(
+            # Upload the primary file once, then reuse its Cloudinary reference
+            # when it also fills a front/back slot.
+            verification_document = OwnerVerificationDocument.objects.create(
                 owner_profile=owner_profile,
                 document_type=document_type,
                 document_number=document_number or '',
-                document_image=document_image or document_front_image or document_back_image,
-                document_front_image=document_front_image,
-                document_back_image=document_back_image,
+                document_image=primary_image,
+            )
+            verification_document.document_front_image = (
+                verification_document.document_image
+                if document_front_image is primary_image
+                else document_front_image
+            )
+            verification_document.document_back_image = (
+                verification_document.document_image
+                if document_back_image is primary_image
+                else document_back_image
+            )
+            verification_document.save(
+                update_fields=["document_front_image", "document_back_image"]
             )
 
         # ─── 8. Return response ──────────────────────────────────────

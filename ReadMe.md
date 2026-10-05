@@ -88,3 +88,58 @@ npm install @react-oauth/google
  
  
  npm install react-router-dom
+
+ ## Backend media storage (Cloudinary)
+
+ The Django backend stores new public images in Cloudinary and stores identity
+ and verification documents as authenticated Cloudinary assets. Configure these
+ server-side environment variables for both local Django and Render:
+
+ - `CLOUDINARY_CLOUD_NAME`
+ - `CLOUDINARY_API_KEY`
+ - `CLOUDINARY_API_SECRET`
+ - `CLOUDINARY_PRIVATE_URL_TTL` (optional; defaults to `300` seconds)
+
+ Never add Cloudinary credentials to the React/Vite environment or frontend
+ bundle. Public listing and profile images are returned as Cloudinary URLs.
+ Private identity files are available only to authorized API users and use
+ short-lived signed delivery URLs.
+
+ ### Local checks and legacy-file backfill
+
+ From the repository root in PowerShell:
+
+ ```powershell
+ Set-Location .\django_Backend
+ .\venv\Scripts\Activate.ps1
+ python manage.py check
+ python manage.py makemigrations --check --dry-run
+ python manage.py migrate
+ python manage.py backfill_cloudinary --dry-run
+ ```
+
+ Review the dry-run report, then upload any remaining legacy files with:
+
+ ```powershell
+ python manage.py backfill_cloudinary
+ ```
+
+ The backfill updates database references only after each successful Cloudinary
+ upload and deliberately retains local files. It can be limited to one Django
+ app with `--app <app_label>` or a bounded batch with `--limit <count>`. Run it
+ only where the old files are still present under `MEDIA_ROOT`; a database
+ migration cannot recover files already lost from an ephemeral Render
+ filesystem.
+
+ ### Render deployment
+
+ 1. Add the Cloudinary environment variables above in the Render service
+    settings. Keep `CLOUDINARY_API_SECRET` private and server-side.
+ 2. Back up the Supabase database and preserve any legacy media files before
+    replacing or restarting the service that currently holds them.
+ 3. Deploy the backend, then run `python manage.py migrate`.
+ 4. Run `python manage.py backfill_cloudinary --dry-run` in an environment
+    containing the preserved legacy files; inspect its output before running
+    `python manage.py backfill_cloudinary`.
+ 5. Verify the public image fields and authorized private-document endpoints
+    before removing any separately preserved legacy files.
