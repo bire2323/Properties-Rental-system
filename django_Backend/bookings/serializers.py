@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 
+from config.cloudinary_helpers import public_asset_url
 from properties.models import Property, ListingType
 from accounts.models import User
 from .models import Booking, BookingAuditEvent, BookingApplicantDetails, BookingApplicantDocument
@@ -313,7 +314,9 @@ class BookingSerializer(serializers.ModelSerializer):
         if not value:
             image = obj.property.images.first()
             if image:
-                value = image.image.url
+                value = public_asset_url(image.image)
+        # property_image is a CharField snapshot, so it may hold either a
+        # Cloudinary URL or a legacy /media path. Both render as-is.
         return value or ""
 
     def get_latest_payment_status_display(self, obj):

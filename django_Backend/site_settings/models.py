@@ -1,4 +1,5 @@
 
+from cloudinary.models import CloudinaryField
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 
@@ -36,10 +37,12 @@ class SiteSettings(models.Model):
         blank=True,
         default="© 2026 Property Rental System. All rights reserved."
     )
-    logo = models.ImageField(
-        upload_to="site/logo/",
+    # Public: rendered in the navbar, footer and auth pages.
+    logo = CloudinaryField(
+        "logo",
+        folder="getspace/site/logo",
         blank=True,
-        null=True
+        null=True,
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -53,7 +56,12 @@ class PaymentMethod(models.Model):
     name = models.CharField(max_length=100)
     account = models.CharField(max_length=100)
     holder = models.CharField(max_length=150)
-    logo = models.ImageField(upload_to="site/payment-methods/", blank=True, null=True)
+    logo = CloudinaryField(
+        "logo",
+        folder="getspace/site/payment-methods",
+        blank=True,
+        null=True,
+    )
     description = models.TextField(blank=True)
     enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

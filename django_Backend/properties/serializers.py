@@ -4,6 +4,14 @@ import logging
 import json
 from decimal import Decimal, InvalidOperation
 
+from config.cloudinary_helpers import public_asset_url
+from config.serializer_fields import (
+    CloudinaryPrivateFileField,
+    CloudinaryPrivateImageField,
+    CloudinaryPublicImageField,
+    CloudinaryPublicUrlField,
+)
+
 logger = logging.getLogger(__name__)
 from .models import (
     Property,
@@ -145,6 +153,9 @@ class FeatureSerializer(serializers.ModelSerializer):
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):
+    # Declared explicitly: ModelSerializer cannot render a CloudinaryResource.
+    image = CloudinaryPublicUrlField()
+
     class Meta:
         model = PropertyImage
         fields = ['id', 'image', 'order']
@@ -155,6 +166,9 @@ class PropertyImageSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class CompanyVerificationDocumentSerializer(serializers.ModelSerializer):
+    # Private document: emit a signed, expiring URL rather than a public link.
+    document_file = CloudinaryPrivateFileField()
+
     class Meta:
         model = CompanyVerificationDocument
         fields = [
@@ -186,6 +200,8 @@ class CompanyVerificationDocumentSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class CompanyVerificationDocumentReadSerializer(serializers.ModelSerializer):
+    document_file = CloudinaryPrivateFileField()
+
     class Meta:
         model = CompanyVerificationDocument
         fields = [
@@ -202,6 +218,7 @@ class CompanyVerificationDocumentReadSerializer(serializers.ModelSerializer):
 
 class CompanySerializer(serializers.ModelSerializer):
     """Read serializer for company details and public company data."""
+    logo = CloudinaryPublicUrlField()
     manager_ids = serializers.SerializerMethodField()
     documents = serializers.SerializerMethodField()
     city = CitySerializer(read_only=True)
@@ -252,6 +269,7 @@ class CompanySerializer(serializers.ModelSerializer):
 
 class CompanyWriteSerializer(serializers.ModelSerializer):
     """Write serializer for creating/updating companies."""
+    logo = CloudinaryPublicImageField(required=False, allow_null=True)
     city = serializers.PrimaryKeyRelatedField(
         queryset=City.objects.select_related('region').all(),
         required=False,

@@ -11,6 +11,7 @@ from django.db.models.deletion import ProtectedError
 from collections import Counter
 from interactions.models import PropertyRating, Favorite
 from accounts.models import Notification
+from config.cloudinary_helpers import public_asset_url
 from site_settings.models import SiteSettings
 from audit.models import AuditLog
 from audit.services import audit_event
@@ -625,7 +626,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 property_title=property_obj.property_name,
                 property_status=property_obj.get_status_display(),
                 property_owner=owner_name,
-                property_image=image.image.url if image else '',
+                property_image=public_asset_url(image.image) if image else '',
                 property_bedrooms=getattr(house, 'bedrooms', None),
                 property_bathrooms=getattr(house, 'bathrooms', None),
                 property_size=f"{house.area_sqft} sqft" if house else '',

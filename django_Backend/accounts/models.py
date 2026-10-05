@@ -1,3 +1,4 @@
+from cloudinary.models import CloudinaryField
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
@@ -148,10 +149,12 @@ class Profile(models.Model):
         null=True
     )
 
-    profile_image = models.ImageField(
-        upload_to="profiles/",
+    # Public: rendered in <img> tags across the app.
+    profile_image = CloudinaryField(
+        "profile_image",
+        folder="getspace/profiles",
         blank=True,
-        null=True
+        null=True,
     )
 
     date_of_birth = models.DateField(
@@ -183,18 +186,24 @@ class Profile(models.Model):
         help_text="National ID / FAN number"
     )
 
-    id_front_image = models.ImageField(
-        upload_to="national_ids/front/",
+    # Private: uploaded with type="authenticated" so the CDN requires a signed
+    # URL. Never expose these via a plain .url -- use private_asset_url().
+    id_front_image = CloudinaryField(
+        "id_front_image",
+        folder="getspace/identity/national-id/front",
+        type="authenticated",
         blank=True,
         null=True,
-        help_text="National ID front image"
+        help_text="National ID front image",
     )
 
-    id_back_image = models.ImageField(
-        upload_to="national_ids/back/",
+    id_back_image = CloudinaryField(
+        "id_back_image",
+        folder="getspace/identity/national-id/back",
+        type="authenticated",
         blank=True,
         null=True,
-        help_text="National ID back image"
+        help_text="National ID back image",
     )
 
     share_phone_with_hosts = models.BooleanField(
@@ -303,20 +312,29 @@ class OwnerVerificationDocument(models.Model):
         null=True
     )
 
-    document_image = models.ImageField(
-        upload_to="owner_verification_documents/"
+# Private: owner verification documents are PII. Stored as
+    # type="authenticated" and only ever exposed through the admin
+    # verification endpoints via private_asset_url().
+    document_image = CloudinaryField(
+        "document_image",
+        folder="getspace/identity/owner-verification",
+        type="authenticated",
     )
- # Required when document_type = national_id
-    document_front_image = models.ImageField(
-        upload_to="owner_verification_documents/front/",
+  # Required when document_type = national_id
+    document_front_image = CloudinaryField(
+        "document_front_image",
+        folder="getspace/identity/owner-verification/front",
+        type="authenticated",
         blank=True,
-        null=True
+        null=True,
     )
 
-    document_back_image = models.ImageField(
-        upload_to="owner_verification_documents/back/",
+    document_back_image = CloudinaryField(
+        "document_back_image",
+        folder="getspace/identity/owner-verification/back",
+        type="authenticated",
         blank=True,
-        null=True
+        null=True,
     )
     is_verified = models.BooleanField(
         default=False

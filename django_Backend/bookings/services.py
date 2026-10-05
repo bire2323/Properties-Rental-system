@@ -10,6 +10,7 @@ from math import ceil
 from django.db import transaction
 from django.db.models import Q
 
+from config.cloudinary_helpers import public_asset_url
 from properties.models import ListingType, ListingStatus, RentalUnit, Property
 from site_settings.models import SiteSettings
 
@@ -406,7 +407,7 @@ def create_booking(*, renter, property_id, rental_type, start_date, end_date, ap
         main_image = property_obj.images.first()
         booking = Booking(
             property=property_obj,
-            property_image=main_image.image.url if main_image else "",
+            property_image=public_asset_url(main_image.image) if main_image else "",
             renter=renter,
             rental_type=rental_type,
             start_date=start_date,
@@ -482,7 +483,10 @@ def _save_applicant_documents(applicant, property_obj, applicant_documents):
         )
         saved_count += 1
 
-    # Fallback to renter profile's saved Fayda/National ID images if no documents were attached
+    # Fallback to renter profile's saved Fayda/National ID images if no documents were attached.
+    # These are already Cloudinary authenticated assets, so assigning them copies
+    # the reference rather than re-uploading; the booking document shares the
+    # same private asset and remains reachable only via a signed URL.
     if saved_count == 0 and getattr(applicant, "booking", None):
         renter = getattr(applicant.booking, "renter", None)
         profile = getattr(renter, "profile", None) if renter else None

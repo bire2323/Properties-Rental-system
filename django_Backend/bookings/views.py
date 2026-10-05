@@ -5,7 +5,14 @@ from django.db import connection, transaction
 from django.db.models import Q, Count, OuterRef, Subquery, Sum
 
 import mimetypes
+from pathlib import Path
 
+from django.conf import settings
+from config.cloudinary_helpers import (
+    legacy_media_path,
+    private_asset_url,
+    public_asset_url,
+)
 from accounts.models import User
 from properties.models import Property
 
@@ -539,7 +546,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         if not image:
             first_image = property_obj.images.first()
             if first_image:
-                image = first_image.image.url
+                image = public_asset_url(first_image.image)
         if image and request:
             image = request.build_absolute_uri(image)
 
@@ -711,12 +718,29 @@ def _serve_applicant_document(request, document):
     if not allowed or not document.document:
         raise Http404
 
+    legacy_path = legacy_media_path(document.document)
+    if not legacy_path:
+        signed_url = private_asset_url(document.document)
+        if not signed_url:
+            raise Http404
+        response = HttpResponse(status=302)
+        response["Location"] = signed_url
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+    file_path = (
+        media_root / legacy_path.removeprefix("/media/")
+    ).resolve()
     try:
-        file_obj = document.document.open("rb")
-    except Exception:
+        file_path.relative_to(media_root)
+        file_obj = file_path.open("rb")
+    except (ValueError, OSError):
         raise Http404
 
-    content_type = mimetypes.guess_type(document.original_filename or document.document.name)[0] or "application/octet-stream"
+    content_type = mimetypes.guess_type(
+        document.original_filename or file_path.name
+    )[0] or "application/octet-stream"
     response = FileResponse(
         file_obj,
         content_type=content_type,

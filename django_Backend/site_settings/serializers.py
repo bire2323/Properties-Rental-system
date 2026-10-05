@@ -1,9 +1,12 @@
 from rest_framework import serializers
 
+from config.serializer_fields import CloudinaryPublicImageField, CloudinaryPublicUrlField
 from .models import PaymentMethod, SiteSettings
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
+	logo = CloudinaryPublicUrlField()
+
 	class Meta:
 		model = PaymentMethod
 		fields = ("id", "name", "account", "holder", "logo", "description", "enabled", "created_at", "updated_at")
@@ -11,6 +14,8 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
 
 
 class SiteSettingsSerializer(serializers.ModelSerializer):
+	logo = CloudinaryPublicImageField(required=False, allow_null=True)
+
 	class Meta:
 		model = SiteSettings
 		fields = (

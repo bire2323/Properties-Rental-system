@@ -1,4 +1,5 @@
 import unicodedata
+from cloudinary.models import CloudinaryField
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator, DecimalValidator
@@ -99,10 +100,11 @@ class Company(models.Model):
     """
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
-    logo = models.ImageField(
-        upload_to='companies/logos/',
+    logo = CloudinaryField(
+        "logo",
+        folder="getspace/companies/logos",
         blank=True,
-        null=True
+        null=True,
     )
     contact_email = models.EmailField(blank=True, null=True)
     contact_phone = models.CharField(max_length=20, blank=True, null=True)
@@ -170,11 +172,17 @@ class CompanyVerificationDocument(models.Model):
         null=True,
         help_text='Optional reference or registration number.'
     )
-    document_file = models.FileField(
-        upload_to='company_verification_documents/',
+    # Private: company verification documents are PII and are stored as
+    # authenticated resources (resource_type="raw" so any file format is
+    # accepted). Only served through the authorised document endpoints.
+    document_file = CloudinaryField(
+        "document_file",
+        folder="getspace/identity/company-verification",
+        resource_type="raw",
+        type="authenticated",
         blank=True,
         null=True,
-        help_text='Uploaded document image or file.'
+        help_text='Uploaded document image or file.',
     )
     verification_status = models.CharField(
         max_length=20,
@@ -385,13 +393,45 @@ class Feature(models.Model):
         return self.name
 
 
+class ListingImageField(CloudinaryField):
+    """CloudinaryField that routes to a folder based on the listing type.
+
+    ``PropertyImage`` backs both houses and vehicles, so the destination
+    folder is resolved per instance at save time instead of being fixed on the
+    field declaration.
+    """
+
+    def __init__(self, *args, house_folder=None, vehicle_folder=None, **kwargs):
+        self.house_folder = house_folder
+        self.vehicle_folder = vehicle_folder
+        super().__init__(*args, **kwargs)
+        self.options["folder"] = self._resolve_folder
+
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        kwargs.pop("house_folder", None)
+        kwargs.pop("vehicle_folder", None)
+        return name, path, args, kwargs
+
+    def _resolve_folder(self, instance):
+        listing_type = getattr(getattr(instance, "property", None), "listing_type", None)
+        if listing_type == "car" and self.vehicle_folder:
+            return self.vehicle_folder
+        if self.house_folder:
+            return self.house_folder
+        return None
+
 class PropertyImage(models.Model):
     property = models.ForeignKey(
         Property,
         on_delete=models.CASCADE,
         related_name='images'
     )
-    image = models.ImageField(upload_to='properties/%Y/%m/%d/')
+    image = ListingImageField(
+        "image",
+        house_folder="getspace/properties",
+        vehicle_folder="getspace/vehicles",
+    )
     order = models.IntegerField(default=0)
 
     class Meta:

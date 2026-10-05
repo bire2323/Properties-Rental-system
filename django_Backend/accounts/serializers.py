@@ -3,6 +3,12 @@ from django.contrib.auth import get_user_model
 import re
 from rest_framework import serializers
 from .models import Profile, OwnerProfile, OwnerVerificationDocument, Notification
+from config.cloudinary_helpers import public_asset_url
+from config.serializer_fields import (
+    CloudinaryPrivateImageField,
+    CloudinaryPublicImageField,
+    CloudinaryPublicUrlField,
+)
 from site_settings.models import SiteSettings
 from .services import verify_google_token
 from audit.services import audit_event
@@ -11,9 +17,29 @@ from audit.models import AuditLog
 User = get_user_model()
 
 
+def _can_view_private_documents(request, subject_user):
+    viewer = getattr(request, "user", None)
+    return bool(
+        viewer
+        and getattr(viewer, "is_authenticated", False)
+        and (
+            viewer.pk == subject_user.pk
+            or getattr(viewer, "is_staff", False)
+            or getattr(viewer, "role", None) == User.Role.ADMIN
+        )
+    )
+
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     """Serialize Profile model for create, update, and read operations."""
+
+    # Declared explicitly: CloudinaryField returns a CloudinaryResource that
+    # ModelSerializer cannot render on its own.
+    profile_image = CloudinaryPublicImageField(required=False, allow_null=True)
+    # Identity documents stay private: signed, expiring URLs only.
+    id_front_image = CloudinaryPrivateImageField(required=False, allow_null=True)
+    id_back_image = CloudinaryPrivateImageField(required=False, allow_null=True)
 
     class Meta:
         model = Profile
@@ -30,6 +56,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             "share_phone_with_hosts",
             "hide_email_on_reviews",
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not _can_view_private_documents(
+            self.context.get("request"), instance.user
+        ):
+            data["id_front_image"] = None
+            data["id_back_image"] = None
+        return data
 
 
 class ProfileDetailSerializer(ProfileSerializer):
@@ -49,6 +84,10 @@ class OwnerProfileSerializer(serializers.ModelSerializer):
     verification_documents = serializers.SerializerMethodField()
 
     def get_verification_documents(self, obj):
+        if not _can_view_private_documents(
+            self.context.get("request"), obj.user
+        ):
+            return []
         return OwnerVerificationDocumentSerializer(
             obj.verification_documents.all(), many=True, context=self.context
         ).data
@@ -119,11 +158,7 @@ class UserSerializer(serializers.ModelSerializer):
         read_only=True,
         default=True
     )
-    profile_image = serializers.ImageField(
-        source="profile.profile_image",
-        read_only=True,
-        default=None
-    )
+    profile_image = CloudinaryPublicUrlField(source="profile.profile_image")
     date_of_birth = serializers.DateField(
         source="profile.date_of_birth",
         read_only=True,
@@ -149,12 +184,12 @@ class UserSerializer(serializers.ModelSerializer):
         read_only=True,
         default=None
     )
-    id_front_image = serializers.ImageField(
+    id_front_image = CloudinaryPrivateImageField(
         source="profile.id_front_image",
         read_only=True,
         default=None
     )
-    id_back_image = serializers.ImageField(
+    id_back_image = CloudinaryPrivateImageField(
         source="profile.id_back_image",
         read_only=True,
         default=None
@@ -165,6 +200,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     # Owner profile data
     owner_profile = OwnerProfileSerializer(read_only=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not _can_view_private_documents(
+            self.context.get("request"), instance
+        ):
+            data["id_front_image"] = None
+            data["id_back_image"] = None
+        return data
 
     def _can_view_contact(self, obj):
         profile = getattr(obj, "profile", None)
@@ -245,7 +289,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         allow_blank=True,
         allow_null=True
     )
-    profile_image = serializers.ImageField(required=False, allow_null=True)
+    profile_image = CloudinaryPublicImageField(required=False, allow_null=True)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
     address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     city = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
@@ -522,6 +566,10 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True, required=False)
     share_phone_with_hosts = serializers.BooleanField(required=False)
     hide_email_on_reviews = serializers.BooleanField(required=False)
+    # Uploads only. Representation is handled by the read serializers above.
+    profile_image = CloudinaryPublicImageField(required=False, allow_null=True)
+    id_front_image = CloudinaryPrivateImageField(required=False, allow_null=True)
+    id_back_image = CloudinaryPrivateImageField(required=False, allow_null=True)
 
     class Meta:
         model = Profile
@@ -598,6 +646,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             instance.user.save(update_fields=update_fields)
         elif new_password:
             instance.user.save(update_fields=["password", "updated_at"])
+
         return super().update(instance, validated_data)
 
 
@@ -610,11 +659,19 @@ class FullUserSerializer(UserSerializer):
 
     profile = ProfileDetailSerializer(read_only=True)
     owner_profile = OwnerProfileSerializer(read_only=True)
-    verification_documents = OwnerVerificationDocumentSerializer(
-        source="owner_profile.verification_documents",
-        many=True,
-        read_only=True
-    )
+    verification_documents = serializers.SerializerMethodField()
+
+    def get_verification_documents(self, obj):
+        owner_profile = getattr(obj, "owner_profile", None)
+        if not owner_profile or not _can_view_private_documents(
+            self.context.get("request"), obj
+        ):
+            return []
+        return OwnerVerificationDocumentSerializer(
+            owner_profile.verification_documents.all(),
+            many=True,
+            context=self.context,
+        ).data
 
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + (

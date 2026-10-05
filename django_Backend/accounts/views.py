@@ -14,6 +14,11 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
+from config.cloudinary_helpers import (
+    legacy_media_path,
+    private_asset_url,
+    public_asset_url,
+)
 from .permissions import CookieJWTAuthentication, IsAuthenticatedCookie
 from .serializers import (
     GoogleAuthSerializer,
@@ -65,17 +70,27 @@ def _mask_email(email):
     return f"{local[0]}***@{domain}"
 
 
-def build_media_url(request, value):
+def build_media_url(request, value, private=False):
+    """Resolve a stored image value to a URL the browser can load.
+
+    Cloudinary values resolve to their own delivery URL. Rows still holding a
+    legacy ``/media/...`` path are prefixed with the request host so the admin
+    verification table keeps rendering before the backfill has run.
+    """
     if not value:
         return None
 
-    if hasattr(value, 'url'):
-        value = value.url
+    url = private_asset_url(value) if private else public_asset_url(value)
+    if not url:
+        return None
 
-    if value.startswith('http://') or value.startswith('https://'):
-        return value
+    if url.startswith(('http://', 'https://')):
+        return url
 
-    return request.build_absolute_uri(value if value.startswith('/') else f'/{value}')
+    if legacy_media_path(value) or not url.startswith('http'):
+        return request.build_absolute_uri(url if url.startswith('/') else f'/{url}')
+
+    return url
 
 
 def normalize_verification_status(value):
@@ -101,12 +116,20 @@ def serialize_owner_verification_user(user, request):
     full_name = f"{user.first_name} {user.last_name}".strip()
     status_value = owner_profile.verification_status if owner_profile else 'pending'
     profile_image_url = build_media_url(request, getattr(profile, 'profile_image', None))
-    
-    document_image_url = build_media_url(request, getattr(document, 'document_image', None))
-    
-    document_front_image_url = build_media_url(request, getattr(document_front, 'document_front_image', None))
-    
-    document_back_image_url = build_media_url(request, getattr(document_back, 'document_back_image', None))
+
+    # Identity documents are private: emit short-lived signed URLs. This
+    # endpoint is admin-only, so the URL is only ever handed to a reviewer.
+    document_image_url = build_media_url(
+        request, getattr(document, 'document_image', None), private=True
+    )
+
+    document_front_image_url = build_media_url(
+        request, getattr(document_front, 'document_front_image', None), private=True
+    )
+
+    document_back_image_url = build_media_url(
+        request, getattr(document_back, 'document_back_image', None), private=True
+    )
 
     if profile and profile.date_of_birth:
         date_of_birth = profile.date_of_birth.isoformat()
@@ -651,7 +674,8 @@ class BecomeOwnerAPIView(APIView):
         profile.date_of_birth = request.data.get('date_of_birth')
         profile.phone_number = request.data.get('phone_number')
 
-        # Profile image upload (optional)
+        # Profile image upload (optional). The media post-save signal removes
+        # the previous asset only after the database transaction commits.
         if request.FILES.get('profile_image'):
             profile.profile_image = request.FILES['profile_image']
 
@@ -715,6 +739,8 @@ class BecomeOwnerAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # Fields are CloudinaryField(type="authenticated"); the uploads happen
+            # on save and are only reachable through signed URLs.
             OwnerVerificationDocument.objects.create(
                 owner_profile=owner_profile,
                 document_type=document_type,
@@ -794,7 +820,7 @@ class FullUserDetailAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = FullUserSerializer(user)
+        serializer = FullUserSerializer(user, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, user_id=None, *args, **kwargs):
@@ -882,7 +908,7 @@ class AdminRecentUsersAPIView(APIView):
             full_name = f"{user.first_name} {user.last_name}".strip()
             profile_image_url = None
             if hasattr(user, 'profile') and user.profile.profile_image:
-                profile_image_url = request.build_absolute_uri(user.profile.profile_image.url)
+                profile_image_url = public_asset_url(user.profile.profile_image)
             payload.append({
                 "id": user.id,
                 "name": full_name or user.email.split('@')[0],
@@ -949,7 +975,7 @@ class AdminAllUsersAPIView(APIView):
             if hasattr(user, 'profile'):
                 phone = user.profile.phone_number or 'N/A'
                 if user.profile.profile_image:
-                    profile_image_url = request.build_absolute_uri(user.profile.profile_image.url)
+                    profile_image_url = public_asset_url(user.profile.profile_image)
             payload.append({
                 "id": user.id,
                 "name": full_name or user.email.split('@')[0],
@@ -1265,8 +1291,11 @@ class AdminNotificationListAPIView(APIView):
             "property_bathrooms": getattr(house, "bathrooms", 0),
             "property_size": f"{house.area_sqft} sqft" if house else "",
             "property_nightly_price": f"{property_obj.currency} {property_obj.price} / {property_obj.get_rental_unit_display().lower()}",
-            "property_image": image.image.url if image else "",
-            "property_images": [property_image.image.url for property_image in property_obj.images.all()],
+            "property_image": public_asset_url(image.image) if image else "",
+            "property_images": [
+                public_asset_url(property_image.image)
+                for property_image in property_obj.images.all()
+            ],
             "property_owner": owner_name,
             "property_owner_phone": owner_phone,
             "property_added_date": property_obj.created_at.strftime("%b %d, %Y"),

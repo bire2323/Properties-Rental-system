@@ -2,6 +2,7 @@ import os
 from decimal import Decimal
 import uuid
 
+from cloudinary.models import CloudinaryField
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -238,6 +239,33 @@ class BookingApplicantDetails(models.Model):
         return f"Applicant details for {self.booking.booking_reference}"
 
 
+class ApplicantDocumentField(CloudinaryField):
+    """Authenticated raw Cloudinary field grouped per booking reference.
+
+    Replaces the old callable ``upload_to=applicant_document_upload_path``,
+    which the field-based API no longer supports. The folder is resolved at
+    save time from the related booking.
+    """
+
+    def __init__(self, *args, base_folder=None, **kwargs):
+        self.base_folder = base_folder
+        super().__init__(*args, **kwargs)
+        self.options["folder"] = self._resolve_folder
+
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        kwargs.pop("base_folder", None)
+        return name, path, args, kwargs
+
+    def _resolve_folder(self, instance):
+        base = self.base_folder or "getspace/identity/booking-documents"
+        booking_ref = None
+        applicant_details = getattr(instance, "applicant_details", None)
+        booking = getattr(applicant_details, "booking", None)
+        if booking is not None:
+            booking_ref = booking.booking_reference
+        return f"{base}/{booking_ref}" if booking_ref else base
+
 class BookingApplicantDocument(models.Model):
    
 
@@ -247,7 +275,15 @@ class BookingApplicantDocument(models.Model):
         related_name="documents",
     )
 
-    document = models.FileField(upload_to=applicant_document_upload_path)
+    # Private: applicant identity documents. Uploaded as authenticated raw
+    # resources and served only through the authorised document endpoints via
+    # a signed URL.
+    document = ApplicantDocumentField(
+        "document",
+        base_folder="getspace/identity/booking-documents",
+        resource_type="raw",
+        type="authenticated",
+    )
     document_type = models.CharField(max_length=50, blank=True)
     original_filename = models.CharField(max_length=255, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)

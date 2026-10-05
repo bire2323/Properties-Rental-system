@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from config.cloudinary_helpers import public_asset_url
 from .models import Testimonial
 
 
@@ -7,10 +8,7 @@ def _profile_image_url(user):
     """Return the user's profile image URL or None (never raises)."""
     profile = getattr(user, "profile", None)
     if profile and profile.profile_image:
-        try:
-            return profile.profile_image.url
-        except (ValueError, OSError):
-            return None
+        return public_asset_url(profile.profile_image)
     return None
 
 
@@ -18,10 +16,7 @@ def _property_image_url(review):
     """Return the review's property main image URL or None."""
     image = review.property.images.first()
     if image and image.image:
-        try:
-            return image.image.url
-        except (ValueError, OSError):
-            return None
+        return public_asset_url(image.image)
     return None
 
 
