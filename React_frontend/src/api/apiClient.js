@@ -17,7 +17,7 @@
  * itself, so it cannot recurse.
  */
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://properties-rental-system.onrender.com'
 
 export const CONNECT_ERROR_MESSAGE =
     'Unable to connect to the server. Please check your internet connection and try again.'
