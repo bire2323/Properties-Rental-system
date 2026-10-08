@@ -10,6 +10,8 @@ from config.serializer_fields import (
     CloudinaryPrivateImageField,
     CloudinaryPublicImageField,
     CloudinaryPublicUrlField,
+    CoordinateField,
+    JSONListField,
 )
 
 logger = logging.getLogger(__name__)
@@ -490,12 +492,8 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
     security_deposit = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, allow_null=True
     )
-    latitude = serializers.DecimalField(
-        max_digits=9, decimal_places=6, required=False, allow_null=True
-    )
-    longitude = serializers.DecimalField(
-        max_digits=9, decimal_places=6, required=False, allow_null=True
-    )
+    latitude = CoordinateField()
+    longitude = CoordinateField()
 
     # company is optional — client passes a company ID
     company = serializers.PrimaryKeyRelatedField(
@@ -529,7 +527,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         required=False,
         default=list,
     )
-    feature_names = serializers.ListField(
+    feature_names = JSONListField(
         child=serializers.CharField(max_length=100, allow_blank=True),
         write_only=True,
         required=False,

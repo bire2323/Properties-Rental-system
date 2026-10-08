@@ -525,8 +525,8 @@ function Step3({ form, onChange, errors }) {
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                onChange('latitude', position.coords.latitude.toString())
-                onChange('longitude', position.coords.longitude.toString())
+                onChange('latitude', position.coords.latitude.toFixed(6))
+                onChange('longitude', position.coords.longitude.toFixed(6))
                 setLocationLoading(false)
             },
             () => {
