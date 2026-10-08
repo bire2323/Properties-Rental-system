@@ -23,6 +23,7 @@ from .views import (
     AdminNotificationDetailAPIView,
     AdminPaymentsAPIView,
     AdminUserLoginResetAPIView,
+    AdminUserRoleAPIView,
 )
 
 urlpatterns = [
@@ -54,4 +55,5 @@ urlpatterns = [
     path('admin/notifications/<str:notification_id>/', AdminNotificationDetailAPIView.as_view(), name='admin-notification-detail'),
     path('admin/payments/', AdminPaymentsAPIView.as_view(), name='admin-payments'),
     path('admin/users/<int:user_id>/reset-login/', AdminUserLoginResetAPIView.as_view(), name='admin-user-reset-login'),
+    path('admin/users/<int:user_id>/role/', AdminUserRoleAPIView.as_view(), name='admin-user-role'),
 ]

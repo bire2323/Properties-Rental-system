@@ -1049,6 +1049,96 @@ class AdminUserLoginResetAPIView(APIView):
         )
 
 
+class AdminUserRoleAPIView(APIView):
+    """Change a user's role between tenant and owner (admin only).
+
+    Promoting to owner approves (or creates) the owner profile so the user
+    can post listings immediately; demoting to tenant keeps the owner profile
+    and its history but revokes posting rights.
+    """
+
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticatedCookie]
+
+    ASSIGNABLE_ROLES = {User.Role.TENANT, User.Role.OWNER}
+
+    def patch(self, request, user_id, *args, **kwargs):
+        if request.user.role != User.Role.ADMIN:
+            return Response(
+                {"detail": "You do not have permission to change user roles."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.is_staff or user.is_superuser or user.role == User.Role.ADMIN:
+            return Response(
+                {"detail": "Administrator accounts cannot have their role changed here."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_role = str(request.data.get("role", "")).strip().lower()
+        if new_role not in self.ASSIGNABLE_ROLES:
+            return Response(
+                {"detail": "Role must be either 'tenant' or 'owner'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if user.role == new_role:
+            return Response(
+                {"detail": f"User already has the '{new_role}' role."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        previous_role = user.role
+        owner_profile = getattr(user, "owner_profile", None)
+
+        if new_role == User.Role.OWNER:
+            if owner_profile is None:
+                owner_profile = OwnerProfile.objects.create(user=user)
+            owner_profile.verification_status = OwnerProfile.VerificationStatus.APPROVED
+            owner_profile.can_post_property = True
+            owner_profile.rejection_reason = ""
+            owner_profile.approved_at = timezone.now()
+            owner_profile.save()
+            # New owners get the Free plan quota without checkout (same as
+            # the self-service become-owner flow); no-op when already held.
+            assign_free_subscription(user)
+        elif owner_profile is not None:
+            owner_profile.can_post_property = False
+            owner_profile.save(update_fields=["can_post_property", "updated_at"])
+
+        user.role = new_role
+        user.save(update_fields=["role", "updated_at"])
+
+        audit_event(
+            actor=request.user,
+            action="ADMIN_USER_ROLE_CHANGED",
+            category=AuditLog.Category.ADMIN,
+            severity=AuditLog.Severity.INFO,
+            result=AuditLog.Result.SUCCESS,
+            target_type="user",
+            target_id=user.pk,
+            target_display=user.email,
+            description=f"Admin changed role for {user.email} from {previous_role} to {new_role}.",
+            previous_state={"role": previous_role},
+            new_state={"role": new_role},
+            metadata={"admin_user": request.user.email},
+            request=request,
+        )
+        return Response(
+            {
+                "id": user.id,
+                "role": user.role,
+                "message": f"{user.email} is now a {new_role}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class AdminOwnerVerificationAPIView(APIView):
     """Return all PENDING owner verification submissions for admin review."""
 

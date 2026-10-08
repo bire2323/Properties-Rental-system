@@ -296,6 +296,13 @@ export async function resetAdminUserLogin(userId) {
     })
 }
 
+export async function updateAdminUserRole(userId, role) {
+    return request(`/api/accounts/admin/users/${userId}/role/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role }),
+    })
+}
+
 export async function getOwnerVerificationList(search = '') {
     try {
         const params = new URLSearchParams()

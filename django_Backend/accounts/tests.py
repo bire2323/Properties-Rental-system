@@ -1,6 +1,8 @@
 from django.test import RequestFactory, TestCase
 from rest_framework.test import APIClient
 
+from audit.models import AuditLog
+
 from .models import OwnerProfile, OwnerVerificationDocument, Profile, User
 from .permissions import CookieJWTAuthentication
 from .views import serialize_owner_verification_user
@@ -224,3 +226,107 @@ class ProfileSecurityTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('Aa1!aaaa'))
+
+
+class AdminUserRoleTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email='role-admin@example.com',
+            password='StrongPass123',
+            first_name='Role',
+            last_name='Admin',
+            role=User.Role.ADMIN,
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.tenant = User.objects.create_user(
+            email='role-tenant@example.com',
+            password='StrongPass123',
+            first_name='Role',
+            last_name='Tenant',
+            role=User.Role.TENANT,
+        )
+        self.owner = User.objects.create_user(
+            email='role-owner@example.com',
+            password='StrongPass123',
+            first_name='Role',
+            last_name='Owner',
+            role=User.Role.OWNER,
+        )
+        OwnerProfile.objects.create(
+            user=self.owner,
+            verification_status=OwnerProfile.VerificationStatus.APPROVED,
+            can_post_property=True,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def _role_url(self, user):
+        return f'/api/accounts/admin/users/{user.id}/role/'
+
+    def test_admin_can_promote_tenant_to_owner(self):
+        response = self.client.patch(self._role_url(self.tenant), {'role': 'owner'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.tenant.refresh_from_db()
+        self.assertEqual(self.tenant.role, User.Role.OWNER)
+        profile = self.tenant.owner_profile
+        self.assertEqual(profile.verification_status, OwnerProfile.VerificationStatus.APPROVED)
+        self.assertTrue(profile.can_post_property)
+
+    def test_admin_can_demote_owner_to_tenant(self):
+        response = self.client.patch(self._role_url(self.owner), {'role': 'tenant'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.role, User.Role.TENANT)
+        profile = self.owner.owner_profile
+        self.assertFalse(profile.can_post_property)
+        # Verification history is kept, only posting rights are revoked.
+        self.assertEqual(profile.verification_status, OwnerProfile.VerificationStatus.APPROVED)
+
+    def test_non_admin_cannot_change_roles(self):
+        tenant_client = APIClient()
+        tenant_client.force_authenticate(user=self.tenant)
+
+        response = tenant_client.patch(self._role_url(self.owner), {'role': 'tenant'}, format='json')
+
+        self.assertEqual(response.status_code, 403)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.role, User.Role.OWNER)
+
+    def test_admin_account_role_is_rejected(self):
+        response = self.client.patch(self._role_url(self.admin), {'role': 'tenant'}, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.role, User.Role.ADMIN)
+
+    def test_admin_role_value_is_rejected(self):
+        response = self.client.patch(self._role_url(self.tenant), {'role': 'admin'}, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.tenant.refresh_from_db()
+        self.assertEqual(self.tenant.role, User.Role.TENANT)
+
+    def test_same_role_is_rejected(self):
+        response = self.client.patch(self._role_url(self.tenant), {'role': 'tenant'}, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('already has', response.data['detail'])
+
+    def test_unknown_user_returns_404(self):
+        response = self.client.patch('/api/accounts/admin/users/999999/role/', {'role': 'owner'}, format='json')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_role_change_writes_audit_event(self):
+        response = self.client.patch(self._role_url(self.tenant), {'role': 'owner'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action='ADMIN_USER_ROLE_CHANGED',
+                target_id=self.tenant.pk,
+            ).exists()
+        )

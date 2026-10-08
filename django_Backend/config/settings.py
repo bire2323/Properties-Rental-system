@@ -81,6 +81,10 @@ cloudinary.config(
     api_key=config("CLOUDINARY_API_KEY"),
     api_secret=config("CLOUDINARY_API_SECRET"),
     secure=True,
+    # Cap every Cloudinary HTTP call (upload, destroy, ping). Without this the
+    # client waits forever on a stalled connection, which blocks a gunicorn
+    # worker past its timeout and gets the whole worker SIGKILLed mid-request.
+    timeout=10,
 )
 CLOUDINARY_PRIVATE_URL_TTL = config(
     "CLOUDINARY_PRIVATE_URL_TTL",
@@ -219,7 +223,9 @@ EMAIL_PORT = config("EMAIL_PORT", default=465, cast=int)
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=False, cast=bool)
 EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=True, cast=bool)
 # Timeout (seconds) for each SMTP operation to avoid hanging the request.
-EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=30, cast=int)
+# Kept well below the gunicorn worker timeout so a dead SMTP server surfaces
+# as a handled error instead of a killed worker (see EMAIL comment above).
+EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=10, cast=int)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 # DEFAULT_FROM_EMAIL falls back to the configured SMTP sender.

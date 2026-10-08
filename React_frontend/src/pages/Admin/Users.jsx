@@ -12,7 +12,8 @@ import AdminSidebar from './components/AdminSidebar'
 import AdminTopbar from './components/AdminTopbar'
 import AdminStatCard from './components/AdminStatCard'
 import { useTheme } from '../../hooks/useTheme'
-import { deleteAdminUser, getAllUsers, getUserStatisticsForUsersPage, resetAdminUserLogin } from '../../api/admin/adminApi'
+import { deleteAdminUser, getAllUsers, getUserStatisticsForUsersPage, updateAdminUserRole } from '../../api/admin/adminApi'
+import { toast } from '../../components/ui/toaster'
 import {
     Button,
     Input,
@@ -41,7 +42,9 @@ function Users() {
     const [openMenuId, setOpenMenuId] = useState(null)
     const [userToDelete, setUserToDelete] = useState(null)
     const [deleting, setDeleting] = useState(false)
-    const [resettingUserId, setResettingUserId] = useState(null)
+    const [roleTargetUser, setRoleTargetUser] = useState(null)
+    const [updatingRole, setUpdatingRole] = useState(false)
+    const [roleError, setRoleError] = useState(null)
     const { isDark } = useTheme()
     const navigate = useNavigate()
 
@@ -144,20 +147,42 @@ function Users() {
         }
     }
 
-    const handleResetUserLogin = async (user) => {
+    const handleOpenRoleModal = (user) => {
+        setRoleTargetUser(user)
+        setRoleError(null)
+        setOpenMenuId(null)
+    }
+
+    const handleCloseRoleModal = () => {
+        setRoleTargetUser(null)
+        setRoleError(null)
+    }
+
+    const handleUpdateRole = async (newRole) => {
+        if (!roleTargetUser || updatingRole) return
+
         try {
-            setResettingUserId(user.id)
-            await resetAdminUserLogin(user.id)
-            setUsers((currentUsers) => currentUsers.map((currentUser) => (
-                currentUser.id === user.id
-                    ? { ...currentUser, status: 'Active', login_blocked: false }
-                    : currentUser
-            )))
-            setOpenMenuId(null)
-        } catch (resetError) {
-            setError(resetError.message || 'Failed to reset user login access.')
+            setUpdatingRole(true)
+            setRoleError(null)
+            const updated = await updateAdminUserRole(roleTargetUser.id, newRole)
+            const displayRole = String(updated.role || newRole).charAt(0).toUpperCase()
+                + String(updated.role || newRole).slice(1)
+            setUsers((currentUsers) => currentUsers
+                .filter((user) => user.id !== roleTargetUser.id || roleFilter === 'all' || roleFilter === newRole)
+                .map((currentUser) => (
+                    currentUser.id === roleTargetUser.id
+                        ? { ...currentUser, role: displayRole }
+                        : currentUser
+                )))
+            if (roleFilter !== 'all' && roleFilter !== newRole) {
+                setTotalCount((count) => Math.max(0, count - 1))
+            }
+            toast.success(`${roleTargetUser.name} is now a ${displayRole}.`)
+            handleCloseRoleModal()
+        } catch (updateError) {
+            setRoleError(updateError.message || 'Failed to update user role.')
         } finally {
-            setResettingUserId(null)
+            setUpdatingRole(false)
         }
     }
 
@@ -306,11 +331,8 @@ function Users() {
                                                                 }}>
                                                                     View Detail
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    disabled={resettingUserId === user.id}
-                                                                    onClick={() => handleResetUserLogin(user)}
-                                                                >
-                                                                    {resettingUserId === user.id ? 'Resetting...' : 'Reset / Unblock'}
+                                                                <DropdownMenuItem onClick={() => handleOpenRoleModal(user)}>
+                                                                    Update Role
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem variant="destructive" onClick={() => {
                                                                     setUserToDelete(user)
@@ -358,6 +380,37 @@ function Users() {
                             </Button>
                             <Button type="button" variant="destructive" onClick={handleDeleteUser} disabled={deleting}>
                                 {deleting ? 'Deleting...' : 'Yes, Delete'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {roleTargetUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+                    <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Update Role</h2>
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                            Change the role for <span className="font-semibold">{roleTargetUser.name}</span> ({roleTargetUser.email}).
+                            Current role: <span className="font-semibold">{roleTargetUser.role}</span>.
+                        </p>
+                        {roleError && <p className="mt-3 text-sm text-red-600">{roleError}</p>}
+                        <div className="mt-6 flex flex-wrap justify-end gap-3">
+                            <Button type="button" variant="outline" onClick={handleCloseRoleModal} disabled={updatingRole}>
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => handleUpdateRole('tenant')}
+                                disabled={updatingRole || roleTargetUser.role === 'Tenant'}
+                            >
+                                {updatingRole ? 'Updating...' : 'Make Tenant'}
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => handleUpdateRole('owner')}
+                                disabled={updatingRole || roleTargetUser.role === 'Owner'}
+                            >
+                                Make Owner
                             </Button>
                         </div>
                     </div>
