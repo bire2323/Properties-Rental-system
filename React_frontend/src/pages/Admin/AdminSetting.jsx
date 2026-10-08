@@ -118,6 +118,7 @@ function AdminSetting() {
     const [passwordSaving, setPasswordSaving] = useState(false)
     const [editingPaymentId, setEditingPaymentId] = useState(null)
     const [paymentForm, setPaymentForm] = useState(emptyPaymentMethod)
+    const [paymentLogoPreview, setPaymentLogoPreview] = useState(null)
     const [paymentSettings, setPaymentSettings] = useState({ expirationHours: '', houseCommission: '', carVehicleCommission: '' })
     const { updateUser } = useAuth()
     const currentSettings = settingsContent[activeTab]
@@ -151,7 +152,20 @@ function AdminSetting() {
     const openPaymentModal = (method = null) => {
         setEditingPaymentId(method?.id || null)
         setPaymentForm(method ? { ...method } : { ...emptyPaymentMethod })
+        setPaymentLogoPreview(resolveSiteMediaUrl(method?.logo))
         setPaymentModalOpen(true)
+    }
+
+    const handlePaymentLogoChange = (event) => {
+        const file = event.target.files?.[0] || null
+        if (file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            setNotice({ type: 'error', message: 'Please select a valid image file (JPEG, PNG or WebP).' })
+            event.target.value = ''
+            return
+        }
+        setPaymentForm((current) => ({ ...current, logo: file }))
+        setPaymentLogoPreview(file ? URL.createObjectURL(file) : null)
+        setNotice(null)
     }
 
     const savePaymentMethod = async (event) => {
@@ -419,7 +433,7 @@ function AdminSetting() {
                                                             <div key={method.id} className={`rounded-lg border p-3 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
                                                                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                                                     <div className="flex min-w-0 items-center gap-3">
-                                                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg ${isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-[#255070]'}`}>{method.logo ? <img src={method.logo} alt="" className="h-full w-full object-cover" /> : method.name === 'Bank Transfer' ? <Landmark className="h-5 w-5" /> : method.name === 'Credit Card' ? <CreditCard className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
+                                                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg ${isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-[#255070]'}`}>{resolveSiteMediaUrl(method.logo) ? <img src={resolveSiteMediaUrl(method.logo)} alt="" className="h-full w-full object-cover" /> : method.name === 'Bank Transfer' ? <Landmark className="h-5 w-5" /> : method.name === 'Credit Card' ? <CreditCard className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
                                                                         <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{method.name}</h4><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${method.enabled ? 'bg-emerald-100 text-emerald-700' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{method.enabled ? 'Enabled' : 'Disabled'}</span></div></div>
                                                                     </div>
                                                                     <div className="grid gap-3 sm:grid-cols-[minmax(150px,1fr)_auto] lg:min-w-[340px] lg:grid-cols-[1fr_auto] lg:items-center"><div><p className={`text-[10px] uppercase tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Account / Phone</p><p className={`mt-1 text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{method.account}</p><p className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{method.holder}</p></div><div className="flex items-center gap-1"><button type="button" onClick={() => togglePaymentMethod(method)} className={`relative inline-flex h-6 w-10 items-center rounded-full ${method.enabled ? 'bg-[#255070]' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`} aria-label={`Toggle ${method.name}`}><span className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${method.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></button><button type="button" onClick={() => openPaymentModal(method)} className={`rounded-lg p-2 ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-500 hover:bg-white'}`} aria-label={`Edit ${method.name}`}><Pencil className="h-4 w-4" /></button><button type="button" onClick={() => deletePaymentMethod(method)} className="rounded-lg p-2 text-red-500 hover:bg-red-50" aria-label={`Delete ${method.name}`}><Trash2 className="h-4 w-4" /></button></div></div>
@@ -570,6 +584,20 @@ function AdminSetting() {
                                         ['holder', 'Account Holder Name', 'e.g. Property Rental System'],
                                     ].map(([key, label, placeholder]) => <label key={key} className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} ${key === 'name' ? 'sm:col-span-2' : ''}`}>{label}<input required value={paymentForm[key]} onChange={(event) => setPaymentForm((current) => ({ ...current, [key]: event.target.value }))} placeholder={placeholder} className={`mt-1.5 w-full rounded-lg border px-3 py-2.5 text-sm outline-none ${isDark ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-400'}`} /></label>)}
                                     <label className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs font-medium ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>Status<span className="flex items-center gap-2"><span>{paymentForm.enabled ? 'Enabled' : 'Disabled'}</span><button type="button" onClick={() => setPaymentForm((current) => ({ ...current, enabled: !current.enabled }))} className={`relative inline-flex h-6 w-10 items-center rounded-full ${paymentForm.enabled ? 'bg-[#255070]' : 'bg-slate-300'}`} aria-label="Toggle payment method status"><span className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${paymentForm.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></button></span></label>
+                                    <label className={`text-xs font-medium sm:col-span-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                        Logo (optional)
+                                        <div className="mt-1.5 flex items-center gap-3">
+                                            {paymentLogoPreview && (
+                                                <img src={paymentLogoPreview} alt="Payment method logo preview" className={`h-12 w-12 shrink-0 rounded-lg border object-contain ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`} />
+                                            )}
+                                            <input
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/webp"
+                                                onChange={handlePaymentLogoChange}
+                                                className={`w-full rounded-lg border px-3 py-2 text-xs outline-none ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                                            />
+                                        </div>
+                                    </label>
                                 </div>
                                 <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setPaymentModalOpen(false)} className={`rounded-lg border px-4 py-2.5 text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button><button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-[#255070] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1d405d]"><Save className="h-4 w-4" /> Save Payment Method</button></div>
                             </form>

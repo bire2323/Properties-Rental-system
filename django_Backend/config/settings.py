@@ -73,6 +73,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.middleware.CloudinaryErrorMiddleware',
 ]
 
 cloudinary.config(
@@ -261,6 +262,14 @@ LOGGING = {
     },
     "loggers": {
         "django": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        # Project code (cloudinary_helpers, media_signals, middleware, ...).
+        # ERROR-level console output so Render logs show the real exception
+        # behind a failed image upload instead of only the 500 status.
+        "config": {
             "handlers": ["console"],
             "level": "ERROR",
             "propagate": False,
